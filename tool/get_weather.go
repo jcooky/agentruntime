@@ -122,18 +122,18 @@ func getWeatherSummary(apiKey string, date string, latitude, longitude float64, 
 	return &weatherResp, nil
 }
 
-func (s *service) GetWeather(ctx context.Context, req *GetWeatherRequest) (*GetWeatherResponse, error) {
+func (m *manager) GetWeather(ctx context.Context, req *GetWeatherRequest) (*GetWeatherResponse, error) {
 	if strings.Contains(req.Location, "HKCEC") {
 		req.Location = "HK"
 	}
-	s.logger.Debug("get_weather", "location", req.Location, "date", req.Date)
+	m.logger.Debug("get_weather", "location", req.Location, "date", req.Date)
 
-	latitude, longitude, err := getCoordinates(s.config.OpenWeatherApiKey, req.Location)
+	latitude, longitude, err := getCoordinates(m.config.OpenWeatherApiKey, req.Location)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to convert coordinates")
 	}
 
-	weatherSummary, err := getWeatherSummary(s.config.OpenWeatherApiKey, req.Date, latitude, longitude, "metric", "en")
+	weatherSummary, err := getWeatherSummary(m.config.OpenWeatherApiKey, req.Date, latitude, longitude, "metric", "en")
 	if err != nil {
 		return nil, errors.Wrapf(err, "error occurred while fetching weather information")
 	}
@@ -150,7 +150,7 @@ func init() {
 		}) (res struct {
 			*GetWeatherResponse
 		}, err error) {
-			s := di.MustGet[*service](ctx, ManagerKey)
+			s := di.MustGet[*manager](ctx, ManagerKey)
 			res.GetWeatherResponse, err = s.GetWeather(ctx, req.GetWeatherRequest)
 			return
 		},

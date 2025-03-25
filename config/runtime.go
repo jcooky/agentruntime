@@ -17,8 +17,8 @@ type RuntimeConfig struct {
 	OpenAIApiKey         string `env:"OPENAI_API_KEY"`
 	DatabaseUrl          string `env:"DATABASE_URL"`
 	DatabaseAutoMigrate  bool   `env:"DATABASE_AUTO_MIGRATE"`
-	LocalToolAutoMigrate bool   `env:"LOCAL_TOOL_AUTO_MIGRATE"`
 	OpenWeatherApiKey    string `env:"OPENWEATHER_API_KEY"`
+	McpServerConfigFiles string `env:"MCP_SERVER_CONFIG_FILES"`
 }
 
 var (
@@ -53,7 +53,7 @@ func resolveRuntimeConfig(testing bool) (*RuntimeConfig, error) {
 		LogLevel:             "debug",
 		LogHandler:           "default",
 		DatabaseAutoMigrate:  true,
-		LocalToolAutoMigrate: true,
+		McpServerConfigFiles: "./mcpservers.yaml",
 	}
 	if err := configReader.AddStruct(&c).Feed(); err != nil {
 		return nil, err

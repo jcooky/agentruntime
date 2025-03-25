@@ -14,7 +14,6 @@ func NewCmd() *cobra.Command {
 	}
 
 	cmd.AddCommand(
-		newRunCmd(),
 		newAgentCmd(),
 		newThreadCmd(),
 		newServeCmd(),

@@ -14,10 +14,10 @@ import (
 type (
 	Manager interface {
 		GetLocalTool(ctx context.Context, toolName string) ai.Tool
-		InitializeTools(ctx context.Context) error
 		GetTools(ctx context.Context, names []string) ([]entity.Tool, error)
-
-		GetWeather(ctx context.Context, req *GetWeatherRequest) (*GetWeatherResponse, error)
+		GetMCPTool(ctx context.Context, serverName, toolName string) ai.Tool
+		GetMCPTools(ctx context.Context, serverName string) []ai.Tool
+		RegisterMCPTool(ctx context.Context, req RegisterMCPToolRequest) error
 	}
 )
 
@@ -32,17 +32,16 @@ func init() {
 			return nil, err
 		}
 
-		s := &service{
+		s := &manager{
 			db:     di.MustGet[*gorm.DB](ctx, db.Key),
 			logger: di.MustGet[*mylog.Logger](ctx, mylog.Key),
 			config: conf,
 		}
 
-		if conf.LocalToolAutoMigrate || env == di.EnvTest {
-			if err := s.InitializeTools(ctx); err != nil {
-				return nil, err
-			}
-		}
+		go func() {
+			<-ctx.Done()
+			s.Close()
+		}()
 
 		return s, nil
 	})

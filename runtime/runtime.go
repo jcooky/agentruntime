@@ -10,6 +10,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/yukinagae/genkit-go-plugins/plugins/openai"
 	"gorm.io/gorm"
+	"os"
 )
 
 type (
@@ -34,6 +35,7 @@ func init() {
 			return nil, err
 		}
 
+		os.Setenv("OPENAI_API_KEY", conf.OpenAIApiKey)
 		if err := openai.Init(c, &openai.Config{
 			APIKey: conf.OpenAIApiKey,
 		}); err != nil {

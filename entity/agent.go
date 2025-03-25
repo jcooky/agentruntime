@@ -23,7 +23,7 @@ type Agent struct {
 	MessageExamples datatypes.JSONSlice[[]MessageExample]
 	Knowledge       datatypes.JSONSlice[map[string]any]
 
-	Tools []Tool `gorm:"many2many:agents_tools"`
+	Tools datatypes.JSONSlice[Tool]
 
 	Metadata datatypes.JSONType[map[string]string]
 	Busy     bool

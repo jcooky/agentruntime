@@ -11,3 +11,4 @@ message_examples:
   - name: "USER"
     text: |
       I want to know the weather in Hong Kong.
+mcpServers:

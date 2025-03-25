@@ -18,7 +18,7 @@ type (
 	}
 )
 
-func (s *service) DoneAgent(ctx context.Context, req *DoneAgentRequest) (*DoneAgentResponse, error) {
+func (m *manager) DoneAgent(ctx context.Context, req *DoneAgentRequest) (*DoneAgentResponse, error) {
 	// Verify thread exists
 	thread := myctx.GetThreadFromContext(ctx)
 	if thread == nil {
@@ -45,7 +45,7 @@ func init() {
 		}) (res struct {
 			*DoneAgentResponse
 		}, err error) {
-			s := di.MustGet[*service](ctx, ManagerKey)
+			s := di.MustGet[*manager](ctx, ManagerKey)
 			res.DoneAgentResponse, err = s.DoneAgent(ctx, req.DoneAgentRequest)
 			return
 		},

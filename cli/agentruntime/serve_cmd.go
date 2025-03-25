@@ -11,6 +11,7 @@ import (
 	"github.com/habiliai/agentruntime/internal/mylog"
 	"github.com/habiliai/agentruntime/runtime"
 	"github.com/habiliai/agentruntime/thread"
+	"github.com/habiliai/agentruntime/tool"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
@@ -62,6 +63,7 @@ func newServeCmd() *cobra.Command {
 			dbInstance := di.MustGet[*gorm.DB](ctx, db.Key)
 			agentManagerServer := di.MustGet[agent.AgentManagerServer](ctx, agent.ManagerServerKey)
 			runtimeServer := di.MustGet[runtime.AgentRuntimeServer](ctx, runtime.ServerKey)
+			toolManager := di.MustGet[tool.Manager](ctx, tool.ManagerKey)
 
 			logger.Debug("start agent-runtime", "config", cfg)
 
@@ -72,6 +74,26 @@ func newServeCmd() *cobra.Command {
 
 			// load agent config files
 			agentConfigs, err := config.LoadAgentsFromFiles(agentFiles)
+
+			// register mcp servers or others
+			mcpServerChecklist := map[string]struct{}{}
+			for _, ac := range agentConfigs {
+				for name, mcpServer := range ac.MCPServers {
+					if _, ok := mcpServerChecklist[name]; ok {
+						continue
+					}
+					if err := toolManager.RegisterMCPTool(ctx, tool.RegisterMCPToolRequest{
+						ServerName: name,
+						Command:    mcpServer.Command,
+						Args:       mcpServer.Args,
+						Env:        mcpServer.Env,
+					}); err != nil {
+						return err
+					}
+				}
+			}
+
+			// save agents from config files
 			if err != nil {
 				return errors.Wrapf(err, "failed to load agent config")
 			}

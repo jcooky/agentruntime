@@ -1,0 +1,68 @@
+package tool
+
+import (
+	"context"
+	"fmt"
+	"github.com/firebase/genkit/go/ai"
+	"github.com/firebase/genkit/go/plugins/mcp"
+	mcpclient "github.com/mark3labs/mcp-go/client"
+	mcpgo "github.com/mark3labs/mcp-go/mcp"
+	"github.com/pkg/errors"
+	"runtime/debug"
+)
+
+type RegisterMCPToolRequest struct {
+	ServerName string
+	Command    string
+	Args       []string
+	Env        map[string]string
+}
+
+func (m *manager) RegisterMCPTool(ctx context.Context, req RegisterMCPToolRequest) error {
+	var envs []string
+	for key, val := range req.Env {
+		envs = append(envs, fmt.Sprintf("%s=%s", key, val))
+	}
+
+	mcpClient, err := mcpclient.NewStdioMCPClient(req.Command, envs, req.Args...)
+	if err != nil {
+		return fmt.Errorf("failed to create MCP client: %w", err)
+	}
+
+	initRequest := mcpgo.InitializeRequest{}
+	initRequest.Params.ProtocolVersion = mcpgo.LATEST_PROTOCOL_VERSION
+	if bi, ok := debug.ReadBuildInfo(); ok {
+		initRequest.Params.ClientInfo = mcpgo.Implementation{
+			Name:    bi.Main.Path,
+			Version: bi.Main.Version,
+		}
+	}
+	if _, err := mcpClient.Initialize(ctx, initRequest); err != nil {
+		return errors.Wrapf(err, "failed to initialize MCP client")
+	}
+	m.closeFn = append(m.closeFn, func() {
+		if err := mcpClient.Close(); err != nil {
+			m.logger.Warn("failed to close MCP client", "err", err)
+		}
+	})
+
+	listToolsResult, err := mcpClient.ListTools(ctx, mcpgo.ListToolsRequest{})
+	if err != nil {
+		return errors.Wrapf(err, "failed to list tools")
+	}
+	for _, tool := range listToolsResult.Tools {
+		if _, err := mcp.DefineTool(mcpClient, req.ServerName, tool); err != nil {
+			return errors.Wrapf(err, "failed to define tool")
+		}
+	}
+
+	return nil
+}
+
+func (m *manager) GetMCPTool(_ context.Context, mcpServerName, toolName string) ai.Tool {
+	return mcp.LookupTool(mcpServerName, toolName)
+}
+
+func (m *manager) GetMCPTools(_ context.Context, mcpServerName string) []ai.Tool {
+	return mcp.LookupTools(mcpServerName)
+}

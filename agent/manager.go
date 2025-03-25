@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"github.com/firebase/genkit/go/ai"
 	"github.com/habiliai/agentruntime/config"
 	"github.com/habiliai/agentruntime/entity"
 	myerrors "github.com/habiliai/agentruntime/errors"
@@ -11,6 +12,7 @@ import (
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 	"log/slog"
+	"strings"
 )
 
 type (
@@ -96,11 +98,29 @@ func (s *manager) SaveAgentFromConfig(
 		}
 		agent.MessageExamples = append(agent.MessageExamples, messages)
 	}
-	tools, err := s.toolManager.GetTools(ctx, ac.Tools)
-	if err != nil {
-		return agent, err
+
+	var availableTools []ai.Tool
+	for _, agentTool := range ac.Tools {
+		toolNames := strings.SplitN(agentTool, "/", 2)
+		if len(toolNames) == 1 {
+			availableTools = append(availableTools, s.toolManager.GetLocalTool(ctx, toolNames[0]))
+		} else if len(toolNames) == 2 {
+			if toolNames[1] == "*" {
+				availableTools = append(availableTools, s.toolManager.GetMCPTools(ctx, toolNames[0])...)
+			} else {
+				availableTools = append(availableTools, s.toolManager.GetMCPTool(ctx, toolNames[0], toolNames[1]))
+			}
+		} else {
+			return agent, errors.Wrapf(myerrors.ErrInvalidConfig, "invalid tool name %s", agentTool)
+		}
 	}
-	agent.Tools = tools
+
+	for _, tool := range availableTools {
+		agent.Tools = append(agent.Tools, entity.Tool{
+			Name:        tool.Definition().Name,
+			Description: tool.Definition().Description,
+		})
+	}
 	agent.Metadata = datatypes.NewJSONType(ac.Metadata)
 	agent.Knowledge = ac.Knowledge
 

@@ -117,7 +117,7 @@ func (s *service) Run(
 					Action:      tool.Name,
 					Description: tool.Description,
 				})
-				tools = append(tools, s.toolManager.GetLocalTool(ctx, tool.LocalToolName))
+				tools = append(tools, s.toolManager.GetLocalTool(ctx, tool.Name))
 			}
 
 			var promptBuf strings.Builder

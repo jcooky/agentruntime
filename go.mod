@@ -2,7 +2,7 @@ module github.com/habiliai/agentruntime
 
 go 1.24
 
-replace github.com/firebase/genkit/go => github.com/habiliai/genkit/go v0.2.2-0.20250307210207-78939b29741a
+replace github.com/firebase/genkit/go => github.com/habiliai/genkit/go v0.2.2-0.20250327044640-68bce7c3a077
 
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
@@ -13,6 +13,7 @@ require (
 	github.com/golobby/config/v3 v3.4.2
 	github.com/google/uuid v1.6.0
 	github.com/lmittmann/tint v1.0.7
+	github.com/mark3labs/mcp-go v0.17.0
 	github.com/mokiat/gog v0.15.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.9.1
@@ -56,6 +57,7 @@ require (
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
+	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/openai/openai-go v0.1.0-alpha.61 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
@@ -71,6 +73,7 @@ require (
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
+	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
 	go.opentelemetry.io/otel v1.26.0 // indirect
 	go.opentelemetry.io/otel/metric v1.26.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.26.0 // indirect

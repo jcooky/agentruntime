@@ -9,46 +9,27 @@ import (
 	"github.com/habiliai/agentruntime/internal/mylog"
 	"github.com/pkg/errors"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
+	"sync"
 )
 
 type (
-	service struct {
-		logger *mylog.Logger
-		db     *gorm.DB
-		config *config.RuntimeConfig
+	manager struct {
+		logger   *mylog.Logger
+		db       *gorm.DB
+		config   *config.RuntimeConfig
+		mcpTools map[string]ai.Tool
+
+		mtx     sync.Mutex
+		closeFn []func()
 	}
 )
 
-func (s *service) InitializeTools(ctx context.Context) error {
-	_, tx := db.OpenSession(ctx, s.db)
-	return tx.Transaction(func(tx *gorm.DB) error {
-		for _, toolName := range localToolNames {
-			var tool entity.Tool
-			if err := tx.Clauses(clause.Locking{
-				Strength: "UPDATE",
-			}).Find(&tool, "name = ?", toolName).Error; err != nil {
-				return errors.Wrapf(err, "failed to find tool")
-			}
-			toolDef := ai.LookupTool(toolName).Definition()
-			tool.Name = toolName
-			tool.Description = toolDef.Description
-			tool.LocalToolName = tool.Name
-			if err := tx.Save(&tool).Error; err != nil {
-				return errors.Wrapf(err, "failed to save tool")
-			}
-		}
-
-		return nil
-	})
-}
-
-func (s *service) GetLocalTool(_ context.Context, toolName string) ai.Tool {
+func (m *manager) GetLocalTool(_ context.Context, toolName string) ai.Tool {
 	return ai.LookupTool(toolName)
 }
 
-func (s *service) GetTools(ctx context.Context, names []string) ([]entity.Tool, error) {
-	_, tx := db.OpenSession(ctx, s.db)
+func (m *manager) GetTools(ctx context.Context, names []string) ([]entity.Tool, error) {
+	_, tx := db.OpenSession(ctx, m.db)
 
 	var tools []entity.Tool
 	if err := tx.Find(&tools, "name IN ?", names).Error; err != nil {
@@ -58,13 +39,17 @@ func (s *service) GetTools(ctx context.Context, names []string) ([]entity.Tool, 
 	return tools, nil
 }
 
+func (m *manager) Close() {
+	for _, closeFn := range m.closeFn {
+		closeFn()
+	}
+}
+
 var (
-	_              Manager = (*service)(nil)
-	localToolNames []string
+	_ Manager = (*manager)(nil)
 )
 
 func RegisterLocalTool[In any, Out any](name string, description string, fn func(context.Context, In) (Out, error)) ai.Tool {
-	localToolNames = append(localToolNames, name)
 	return ai.DefineTool(
 		name,
 		description,

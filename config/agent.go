@@ -19,10 +19,11 @@ type AgentConfig struct {
 			Actions []string `yaml:"actions"`
 		} `yaml:"messages"`
 	} `yaml:"messageExamples"`
-	Model     string            `yaml:"model"`
-	Tools     []string          `yaml:"tools"`
-	Metadata  map[string]string `yaml:"metadata"`
-	Knowledge []map[string]any  `yaml:"knowledge"`
+	Model      string               `yaml:"model"`
+	Tools      []string             `yaml:"tools"`
+	Metadata   map[string]string    `yaml:"metadata"`
+	Knowledge  []map[string]any     `yaml:"knowledge"`
+	MCPServers map[string]MCPServer `yaml:"mcpServers"`
 }
 
 func LoadAgentsFromFiles(files []string) ([]AgentConfig, error) {
