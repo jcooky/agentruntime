@@ -9,6 +9,5 @@ type Thread struct {
 
 	Instruction string
 
-	Participants []Agent   `gorm:"many2many:thread_participants;"`
-	Messages     []Message `gorm:"foreignKey:ThreadID"`
+	Messages []Message `gorm:"foreignKey:ThreadID"`
 }

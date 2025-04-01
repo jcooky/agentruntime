@@ -26,17 +26,27 @@ type AgentConfig struct {
 	MCPServers map[string]MCPServer `yaml:"mcpServers"`
 }
 
+func LoadAgentFromFile(file string) (agent AgentConfig, err error) {
+	var yamlBytes []byte
+	if yamlBytes, err = os.ReadFile(file); err != nil {
+		err = errors.Wrapf(err, "failed to read file %s", file)
+		return
+	}
+
+	if err = yaml.Unmarshal(yamlBytes, &agent); err != nil {
+		err = errors.Wrapf(err, "failed to unmarshal file %s", file)
+		return
+	}
+
+	return
+}
+
 func LoadAgentsFromFiles(files []string) ([]AgentConfig, error) {
 	agents := make([]AgentConfig, 0, len(files))
 	for _, file := range files {
-		var agent AgentConfig
-		yamlBytes, err := os.ReadFile(file)
+		agent, err := LoadAgentFromFile(file)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to read file %s", file)
-		}
-
-		if err := yaml.Unmarshal(yamlBytes, &agent); err != nil {
-			return nil, errors.Wrapf(err, "failed to unmarshal file %s", file)
+			return nil, err
 		}
 		agents = append(agents, agent)
 	}

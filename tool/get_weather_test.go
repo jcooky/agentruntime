@@ -19,12 +19,16 @@ func TestGetWeather(t *testing.T) {
 	ctx := di.WithContainer(context.TODO(), di.EnvTest)
 
 	s := di.MustGet[tool.Manager](ctx, tool.ManagerKey)
-	weatherSummary, err := s.GetWeather(ctx, &tool.GetWeatherRequest{
-		Location: "Seoul",
-		Date:     "2023-10-01",
-		Unit:     "c",
+	getWeatherTool := s.GetTool(ctx, "get_weather")
+	res, err := getWeatherTool.RunRaw(ctx, map[string]any{
+		"location": "Seoul",
+		"date":     "2023-10-01",
+		"unit":     "c",
 	})
 	require.NoError(t, err)
+
+	weatherSummary, ok := res.(*tool.GetWeatherResponse)
+	require.True(t, ok)
 
 	t.Logf("contents: %v", weatherSummary)
 

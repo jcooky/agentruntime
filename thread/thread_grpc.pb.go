@@ -31,7 +31,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ThreadManagerClient interface {
 	CreateThread(ctx context.Context, in *CreateThreadRequest, opts ...grpc.CallOption) (*CreateThreadResponse, error)
-	GetThread(ctx context.Context, in *GetThreadRequest, opts ...grpc.CallOption) (*GetThreadResponse, error)
+	GetThread(ctx context.Context, in *GetThreadRequest, opts ...grpc.CallOption) (*Thread, error)
 	AddMessage(ctx context.Context, in *AddMessageRequest, opts ...grpc.CallOption) (*AddMessageResponse, error)
 	GetMessages(ctx context.Context, in *GetMessagesRequest, opts ...grpc.CallOption) (ThreadManager_GetMessagesClient, error)
 	GetNumMessages(ctx context.Context, in *GetNumMessagesRequest, opts ...grpc.CallOption) (*GetNumMessagesResponse, error)
@@ -55,9 +55,9 @@ func (c *threadManagerClient) CreateThread(ctx context.Context, in *CreateThread
 	return out, nil
 }
 
-func (c *threadManagerClient) GetThread(ctx context.Context, in *GetThreadRequest, opts ...grpc.CallOption) (*GetThreadResponse, error) {
+func (c *threadManagerClient) GetThread(ctx context.Context, in *GetThreadRequest, opts ...grpc.CallOption) (*Thread, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetThreadResponse)
+	out := new(Thread)
 	err := c.cc.Invoke(ctx, ThreadManager_GetThread_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -123,7 +123,7 @@ func (c *threadManagerClient) GetNumMessages(ctx context.Context, in *GetNumMess
 // for forward compatibility
 type ThreadManagerServer interface {
 	CreateThread(context.Context, *CreateThreadRequest) (*CreateThreadResponse, error)
-	GetThread(context.Context, *GetThreadRequest) (*GetThreadResponse, error)
+	GetThread(context.Context, *GetThreadRequest) (*Thread, error)
 	AddMessage(context.Context, *AddMessageRequest) (*AddMessageResponse, error)
 	GetMessages(*GetMessagesRequest, ThreadManager_GetMessagesServer) error
 	GetNumMessages(context.Context, *GetNumMessagesRequest) (*GetNumMessagesResponse, error)
@@ -137,7 +137,7 @@ type UnimplementedThreadManagerServer struct {
 func (UnimplementedThreadManagerServer) CreateThread(context.Context, *CreateThreadRequest) (*CreateThreadResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateThread not implemented")
 }
-func (UnimplementedThreadManagerServer) GetThread(context.Context, *GetThreadRequest) (*GetThreadResponse, error) {
+func (UnimplementedThreadManagerServer) GetThread(context.Context, *GetThreadRequest) (*Thread, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetThread not implemented")
 }
 func (UnimplementedThreadManagerServer) AddMessage(context.Context, *AddMessageRequest) (*AddMessageResponse, error) {

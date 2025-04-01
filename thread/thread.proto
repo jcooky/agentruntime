@@ -8,7 +8,7 @@ import "google/protobuf/timestamp.proto";
 
 service ThreadManager {
   rpc CreateThread(CreateThreadRequest) returns (CreateThreadResponse);
-  rpc GetThread(GetThreadRequest) returns (GetThreadResponse);
+  rpc GetThread(GetThreadRequest) returns (Thread);
 
   rpc AddMessage(AddMessageRequest) returns (AddMessageResponse);
   rpc GetMessages(GetMessagesRequest) returns (stream GetMessagesResponse);
@@ -53,7 +53,9 @@ message Message {
 
 message AddMessageRequest {
   uint32 thread_id = 1;
-  string message = 2;
+  string sender = 3;
+  string content = 4;
+  repeated Message.ToolCall tool_calls = 5;
 }
 
 message AddMessageResponse {
@@ -73,13 +75,10 @@ message GetThreadRequest {
   uint32 thread_id = 1;
 }
 
-message GetThreadResponse {
-  Thread thread = 1;
-}
-
 message Thread {
   uint32 id = 1;
   google.protobuf.Timestamp created_at = 2;
   google.protobuf.Timestamp updated_at = 3;
   string instruction = 4;
+  repeated string participants = 5;
 }

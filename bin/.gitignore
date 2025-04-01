@@ -1,5 +1,7 @@
 agentruntime
 agentruntime-*
+agentnetwork
+agentnetwork-*
 protoc
 protoc-*
 golangci-lint

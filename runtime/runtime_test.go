@@ -1,12 +1,12 @@
 package runtime_test
 
 import (
-	"github.com/habiliai/agentruntime/agent"
 	"github.com/habiliai/agentruntime/config"
 	"github.com/habiliai/agentruntime/internal/di"
 	"github.com/habiliai/agentruntime/internal/mytesting"
 	"github.com/habiliai/agentruntime/runtime"
 	"github.com/habiliai/agentruntime/thread"
+	threadtest "github.com/habiliai/agentruntime/thread/test"
 	"github.com/stretchr/testify/suite"
 	"os"
 	"testing"
@@ -16,9 +16,8 @@ type AgentRuntimeTestSuite struct {
 	mytesting.Suite
 
 	agents        []config.AgentConfig
-	runtime       runtime.Runtime
-	agentManager  agent.Manager
-	threadManager thread.Manager
+	runtime       runtime.Service
+	threadManager *threadtest.ThreadManagerClientMock
 }
 
 func (s *AgentRuntimeTestSuite) SetupTest() {
@@ -30,9 +29,9 @@ func (s *AgentRuntimeTestSuite) SetupTest() {
 	s.agents, err = config.LoadAgentsFromFiles([]string{"./testdata/test1.agent.yaml"})
 	s.Require().NoError(err)
 
-	s.runtime = di.MustGet[runtime.Runtime](s, runtime.Key)
-	s.agentManager = di.MustGet[agent.Manager](s, agent.ManagerKey)
-	s.threadManager = di.MustGet[thread.Manager](s, thread.ManagerKey)
+	s.threadManager = &threadtest.ThreadManagerClientMock{}
+	di.Set(s.Context, thread.ClientKey, s.threadManager)
+	s.runtime = di.MustGet[runtime.Service](s, runtime.ServiceKey)
 
 	s.Require().NoError(err)
 }

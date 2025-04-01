@@ -3,20 +3,23 @@ package runtime
 import (
 	"context"
 	"github.com/habiliai/agentruntime/internal/di"
-	"github.com/mokiat/gog"
 )
 
 type agentRuntimeServer struct {
 	UnsafeAgentRuntimeServer
 
-	runtime Runtime
+	runtime Service
 }
 
 func (a *agentRuntimeServer) Run(ctx context.Context, req *RunRequest) (*RunResponse, error) {
-	err := a.runtime.Run(ctx, uint(req.ThreadId), gog.Map(req.AgentIds, func(id uint32) uint {
-		return uint(id)
-	}))
-	return &RunResponse{}, err
+	agents, err := a.runtime.findAgentsByNames(req.AgentNames)
+	if err != nil {
+		return nil, err
+	}
+	if err = a.runtime.Run(ctx, uint(req.ThreadId), agents); err != nil {
+		return nil, err
+	}
+	return &RunResponse{}, nil
 }
 
 var (
@@ -27,7 +30,7 @@ var (
 func init() {
 	di.Register(ServerKey, func(c context.Context, _ di.Env) (any, error) {
 		return &agentRuntimeServer{
-			runtime: di.MustGet[Runtime](c, Key),
+			runtime: di.MustGet[Service](c, ServiceKey),
 		}, nil
 	})
 }

@@ -3,8 +3,6 @@ package tool
 import (
 	"context"
 	"github.com/habiliai/agentruntime/internal/di"
-	"github.com/habiliai/agentruntime/internal/myctx"
-	"github.com/pkg/errors"
 )
 
 type (
@@ -18,18 +16,8 @@ type (
 	}
 )
 
-func (m *manager) DoneAgent(ctx context.Context, req *DoneAgentRequest) (*DoneAgentResponse, error) {
+func (m *manager) DoneAgent(_ context.Context, req *DoneAgentRequest) (*DoneAgentResponse, error) {
 	// Verify thread exists
-	thread := myctx.GetThreadFromContext(ctx)
-	if thread == nil {
-		return nil, errors.New("thread not found in context")
-	}
-
-	agent := myctx.GetAgentFromContext(ctx)
-	if agent == nil {
-		return nil, errors.New("agent not found in context")
-	}
-
 	return &DoneAgentResponse{
 		Success: true,
 		Message: "Task marked as completed: " + req.Reason,

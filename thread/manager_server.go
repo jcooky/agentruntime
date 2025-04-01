@@ -3,6 +3,7 @@ package thread
 import (
 	"context"
 	"encoding/json"
+	"github.com/habiliai/agentruntime/entity"
 	"github.com/habiliai/agentruntime/internal/di"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -89,24 +90,42 @@ func (m *managerServer) CreateThread(ctx context.Context, req *CreateThreadReque
 	}, nil
 }
 
-func (m *managerServer) GetThread(ctx context.Context, request *GetThreadRequest) (*GetThreadResponse, error) {
+func (m *managerServer) GetThread(ctx context.Context, request *GetThreadRequest) (*Thread, error) {
 	thr, err := m.manager.GetThreadById(ctx, uint(request.ThreadId))
 	if err != nil {
 		return nil, err
 	}
 
-	return &GetThreadResponse{
-		Thread: &Thread{
-			Id:          uint32(thr.ID),
-			Instruction: thr.Instruction,
-			CreatedAt:   timestamppb.New(thr.CreatedAt),
-			UpdatedAt:   timestamppb.New(thr.UpdatedAt),
-		},
+	return &Thread{
+		Id:          uint32(thr.ID),
+		Instruction: thr.Instruction,
+		CreatedAt:   timestamppb.New(thr.CreatedAt),
+		UpdatedAt:   timestamppb.New(thr.UpdatedAt),
 	}, nil
 }
 
 func (m *managerServer) AddMessage(ctx context.Context, request *AddMessageRequest) (*AddMessageResponse, error) {
-	msg, err := m.manager.AddMessage(ctx, uint(request.ThreadId), request.Message)
+	content := entity.MessageContent{
+		Text: request.Content,
+	}
+
+	for _, toolCall := range request.ToolCalls {
+		var args any
+		if err := json.Unmarshal([]byte(toolCall.Arguments), &args); err != nil {
+			return nil, errors.Wrapf(err, "failed to unmarshal tool call arguments")
+		}
+		var result any
+		if err := json.Unmarshal([]byte(toolCall.Result), &result); err != nil {
+			return nil, errors.Wrapf(err, "failed to unmarshal tool call result")
+		}
+		content.ToolCalls = append(content.ToolCalls, entity.MessageContentToolCall{
+			Name:      toolCall.Name,
+			Arguments: args,
+			Result:    result,
+		})
+	}
+
+	msg, err := m.manager.AddMessage(ctx, uint(request.ThreadId), request.Sender, content)
 	if err != nil {
 		return nil, err
 	}

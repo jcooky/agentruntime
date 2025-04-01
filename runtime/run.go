@@ -6,15 +6,13 @@ import (
 	"encoding/json"
 	"github.com/firebase/genkit/go/ai"
 	"github.com/habiliai/agentruntime/entity"
-	"github.com/habiliai/agentruntime/internal/db"
-	"github.com/habiliai/agentruntime/internal/myctx"
+	"github.com/habiliai/agentruntime/thread"
 	"github.com/habiliai/agentruntime/tool"
 	"github.com/mokiat/gog"
 	"github.com/pkg/errors"
 	"github.com/yukinagae/genkit-go-plugins/plugins/openai"
 	"golang.org/x/sync/errgroup"
-	"gorm.io/datatypes"
-	"gorm.io/gorm/clause"
+	"io"
 	"slices"
 	"strings"
 	"text/template"
@@ -38,46 +36,66 @@ type (
 		Description string `json:"description"`
 	}
 
-	ChatInstValues struct {
-		Agent entity.Agent
+	Participant struct {
+		Name string
+		Role string
+	}
 
+	ThreadValues struct {
+		Instruction  string
+		Participants []Participant
+	}
+
+	ChatInstValues struct {
+		Agent               entity.Agent
 		RecentConversations []Conversation
 		Knowledge           []string
 		AvailableActions    []AvailableAction
 		MessageExamples     [][]entity.MessageExample
-		Thread              *entity.Thread
+		Thread              ThreadValues
 	}
 )
 
 func (s *service) Run(
 	ctx context.Context,
 	threadId uint,
-	agentIds []uint,
+	agents []entity.Agent,
 ) error {
-	ctx, sess := db.OpenSession(ctx, s.db)
-
-	var thread entity.Thread
-	if err := sess.First(&thread, threadId).Error; err != nil {
-		return errors.Wrapf(err, "failed to find thread")
+	thr, err := s.threadManagerClient.GetThread(ctx, &thread.GetThreadRequest{
+		ThreadId: uint32(threadId),
+	})
+	if err != nil {
+		return errors.Wrapf(err, "failed to get thread")
 	}
 
-	var agents []entity.Agent
-	if err := sess.Preload(clause.Associations).Find(&agents, "id in ?", agentIds).Error; err != nil {
-		return errors.Wrapf(err, "failed to find agent")
+	var messages []*thread.Message
+	{
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+
+		messagesStream, err := s.threadManagerClient.GetMessages(ctx, &thread.GetMessagesRequest{
+			ThreadId: uint32(threadId),
+		})
+		if err != nil {
+			return errors.Wrapf(err, "failed to get messages")
+		}
+
+		for {
+			resp, err := messagesStream.Recv()
+			if err == io.EOF {
+				break
+			} else if err != nil {
+				return errors.Wrapf(err, "failed to receive messages")
+			}
+
+			messages = append(messages, resp.Messages...)
+		}
 	}
 
-	var messages []entity.Message
-	if err := sess.
-		Order("created_at DESC").
-		Limit(200).
-		Find(&messages, "thread_id = ?", threadId).Error; err != nil {
-		return errors.Wrapf(err, "failed to find messages")
-	}
-
-	slices.SortStableFunc(messages, func(a, b entity.Message) int {
-		if a.CreatedAt.Before(b.CreatedAt) {
+	slices.SortStableFunc(messages, func(a, b *thread.Message) int {
+		if a.CreatedAt.AsTime().Before(b.CreatedAt.AsTime()) {
 			return -1
-		} else if a.CreatedAt.After(b.CreatedAt) {
+		} else if a.CreatedAt.AsTime().After(b.CreatedAt.AsTime()) {
 			return 1
 		} else {
 			return 0
@@ -96,28 +114,31 @@ func (s *service) Run(
 				MessageExamples:     agent.MessageExamples,
 				RecentConversations: make([]Conversation, 0, len(messages)),
 				AvailableActions:    make([]AvailableAction, 0, len(agent.Tools)),
-				Thread:              &thread,
+				Thread: ThreadValues{
+					Instruction: thr.Instruction,
+				},
 			}
 
 			// build recent conversations
 			for _, msg := range messages {
 				instValues.RecentConversations = append(instValues.RecentConversations, Conversation{
-					User: msg.User,
-					Text: msg.Content.Data().Text,
-					Actions: gog.Map(msg.Content.Data().ToolCalls, func(tc entity.MessageContentToolCall) string {
+					User: msg.Sender,
+					Text: msg.Content,
+					Actions: gog.Map(msg.ToolCalls, func(tc *thread.Message_ToolCall) string {
 						return tc.Name
 					}),
 				})
 			}
 
 			// build available actions
+			s.logger.Debug("agent tools", "tools", agent.Tools)
 			tools := make([]ai.Tool, 0, len(agent.Tools))
 			for _, tool := range agent.Tools {
 				instValues.AvailableActions = append(instValues.AvailableActions, AvailableAction{
 					Action:      tool.Name,
 					Description: tool.Description,
 				})
-				tools = append(tools, s.toolManager.GetLocalTool(ctx, tool.Name))
+				tools = append(tools, s.toolManager.GetTool(ctx, tool.Name))
 			}
 
 			var promptBuf strings.Builder
@@ -148,13 +169,7 @@ func (s *service) Run(
 
 			ctx = tool.WithEmptyCallDataStore(ctx)
 			resp, err := ai.Generate(
-				myctx.WithThread(
-					myctx.WithAgent(
-						ctx,
-						&agent,
-					),
-					&thread,
-				),
+				ctx,
 				model,
 				ai.WithCandidates(1),
 				ai.WithSystemPrompt(agent.System),
@@ -175,27 +190,35 @@ func (s *service) Run(
 				return errors.Wrapf(err, "failed to unmarshal conversation")
 			}
 
-			content := entity.MessageContent{
-				Text: conversation.Text,
+			req := &thread.AddMessageRequest{
+				ThreadId: uint32(threadId),
+				Sender:   agent.Name,
+				Content:  conversation.Text,
 			}
 
 			toolCallData := tool.GetCallData(ctx)
 			for _, data := range toolCallData {
-				tc := entity.MessageContentToolCall{
-					Name:      data.Name,
-					Arguments: data.Arguments,
-					Result:    data.Result,
+				tc := thread.Message_ToolCall{
+					Name: data.Name,
 				}
-				content.ToolCalls = append(content.ToolCalls, tc)
+
+				if v, err := json.Marshal(data.Arguments); err != nil {
+					return errors.Wrapf(err, "failed to marshal tool call arguments")
+				} else {
+					tc.Arguments = string(v)
+				}
+
+				if v, err := json.Marshal(data.Result); err != nil {
+					return errors.Wrapf(err, "failed to marshal tool call result")
+				} else {
+					tc.Result = string(v)
+				}
+
+				req.ToolCalls = append(req.ToolCalls, &tc)
 			}
 
-			newMessage := entity.Message{
-				ThreadID: threadId,
-				User:     agent.Name,
-				Content:  datatypes.NewJSONType(content),
-			}
-			if err := sess.Create(&newMessage).Error; err != nil {
-				return errors.Wrapf(err, "failed to create message")
+			if _, err := s.threadManagerClient.AddMessage(ctx, req); err != nil {
+				return errors.Wrapf(err, "failed to add message")
 			}
 
 			return nil

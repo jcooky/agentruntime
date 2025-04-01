@@ -16,7 +16,7 @@ import (
 type (
 	Manager interface {
 		CreateThread(ctx context.Context, instruction string) (*entity.Thread, error)
-		AddMessage(ctx context.Context, threadId uint, message string) (*entity.Message, error)
+		AddMessage(ctx context.Context, threadId uint, sender string, content entity.MessageContent) (*entity.Message, error)
 		GetMessages(ctx context.Context, threadId uint, order string, cursor uint, limit uint) ([]entity.Message, error)
 		GetNumMessages(ctx context.Context, threadId uint) (int64, error)
 		GetThreads(ctx context.Context, cursor uint, limit uint) ([]entity.Thread, error)
@@ -97,7 +97,7 @@ func (s *manager) GetMessages(
 	return
 }
 
-func (s *manager) AddMessage(ctx context.Context, threadId uint, message string) (*entity.Message, error) {
+func (s *manager) AddMessage(ctx context.Context, threadId uint, sender string, content entity.MessageContent) (*entity.Message, error) {
 	_, tx := db.OpenSession(ctx, s.db)
 	var thread entity.Thread
 	if r := tx.Find(&thread, threadId); r.Error != nil {
@@ -108,10 +108,8 @@ func (s *manager) AddMessage(ctx context.Context, threadId uint, message string)
 
 	msg := entity.Message{
 		ThreadID: thread.ID,
-		Content: datatypes.NewJSONType(entity.MessageContent{
-			Text: message,
-		}),
-		User: "USER",
+		Content:  datatypes.NewJSONType(content),
+		User:     sender,
 	}
 
 	if err := tx.Save(&msg).Error; err != nil {

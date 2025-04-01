@@ -46,7 +46,7 @@ func init() {
 			return nil, err
 		}
 
-		cfg, err := di.Get[*config.RuntimeConfig](c, config.RuntimeConfigKey)
+		cfg, err := di.Get[*config.NetworkConfig](c, config.NetworkConfigKey)
 		if err != nil {
 			return nil, err
 		}

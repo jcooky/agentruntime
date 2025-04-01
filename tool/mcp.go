@@ -59,10 +59,6 @@ func (m *manager) RegisterMCPTool(ctx context.Context, req RegisterMCPToolReques
 	return nil
 }
 
-func (m *manager) GetMCPTool(_ context.Context, mcpServerName, toolName string) ai.Tool {
-	return mcp.LookupTool(mcpServerName, toolName)
-}
-
 func (m *manager) GetMCPTools(_ context.Context, mcpServerName string) []ai.Tool {
 	return mcp.LookupTools(mcpServerName)
 }

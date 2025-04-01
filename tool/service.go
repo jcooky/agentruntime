@@ -4,39 +4,29 @@ import (
 	"context"
 	"github.com/firebase/genkit/go/ai"
 	"github.com/habiliai/agentruntime/config"
-	"github.com/habiliai/agentruntime/entity"
-	"github.com/habiliai/agentruntime/internal/db"
 	"github.com/habiliai/agentruntime/internal/mylog"
-	"github.com/pkg/errors"
 	"gorm.io/gorm"
-	"sync"
+	"strings"
 )
 
 type (
 	manager struct {
-		logger   *mylog.Logger
-		db       *gorm.DB
-		config   *config.RuntimeConfig
-		mcpTools map[string]ai.Tool
+		logger *mylog.Logger
+		db     *gorm.DB
+		config *config.RuntimeConfig
 
-		mtx     sync.Mutex
 		closeFn []func()
 	}
 )
 
-func (m *manager) GetLocalTool(_ context.Context, toolName string) ai.Tool {
-	return ai.LookupTool(toolName)
-}
-
-func (m *manager) GetTools(ctx context.Context, names []string) ([]entity.Tool, error) {
-	_, tx := db.OpenSession(ctx, m.db)
-
-	var tools []entity.Tool
-	if err := tx.Find(&tools, "name IN ?", names).Error; err != nil {
-		return nil, errors.Wrapf(err, "failed to find tools")
+func (m *manager) GetTool(_ context.Context, toolName string) ai.Tool {
+	toolName = strings.Replace(toolName, "/", "_", -1)
+	tool := ai.LookupTool(toolName)
+	if tool.Action() == nil {
+		return nil
 	}
 
-	return tools, nil
+	return tool
 }
 
 func (m *manager) Close() {

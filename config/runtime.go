@@ -15,10 +15,10 @@ type RuntimeConfig struct {
 	LogLevel             string `env:"LOG_LEVEL"`
 	LogHandler           string `env:"LOG_HANDLER"`
 	OpenAIApiKey         string `env:"OPENAI_API_KEY"`
-	DatabaseUrl          string `env:"DATABASE_URL"`
-	DatabaseAutoMigrate  bool   `env:"DATABASE_AUTO_MIGRATE"`
 	OpenWeatherApiKey    string `env:"OPENWEATHER_API_KEY"`
 	McpServerConfigFiles string `env:"MCP_SERVER_CONFIG_FILES"`
+	NetworkGrpcAddr      string `env:"NETWORK_GRPC_ADDR"`
+	NetworkGrpcSecure    bool   `env:"NETWORK_GRPC_SECURE"`
 }
 
 var (
@@ -48,12 +48,12 @@ func resolveRuntimeConfig(testing bool) (*RuntimeConfig, error) {
 
 	c := RuntimeConfig{
 		Host:                 "0.0.0.0",
-		Port:                 8080,
-		DatabaseUrl:          "postgres://postgres:postgres@localhost:5432/test?search_path=agentruntime",
+		Port:                 10080,
 		LogLevel:             "debug",
 		LogHandler:           "default",
-		DatabaseAutoMigrate:  true,
 		McpServerConfigFiles: "./mcpservers.yaml",
+		NetworkGrpcAddr:      "localhost:9080",
+		NetworkGrpcSecure:    false,
 	}
 	if err := configReader.AddStruct(&c).Feed(); err != nil {
 		return nil, err

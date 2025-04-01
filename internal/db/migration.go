@@ -12,20 +12,16 @@ func AutoMigrate(db *gorm.DB) error {
 	}
 
 	return errors.WithStack(db.AutoMigrate(
-		&entity.Agent{},
 		&entity.Message{},
-		&entity.Tool{},
 		&entity.Thread{},
+		&entity.AgentRuntime{},
 	))
 }
 
 func DropAll(db *gorm.DB) error {
 	return errors.WithStack(db.Migrator().DropTable(
-		"thread_participants",
+		&entity.AgentRuntime{},
 		&entity.Thread{},
-		"agents_tools",
-		&entity.Tool{},
 		&entity.Message{},
-		&entity.Agent{},
 	))
 }

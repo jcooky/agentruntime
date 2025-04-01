@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/firebase/genkit/go/ai"
 	"github.com/habiliai/agentruntime/config"
-	"github.com/habiliai/agentruntime/entity"
 	"github.com/habiliai/agentruntime/internal/db"
 	"github.com/habiliai/agentruntime/internal/di"
 	"github.com/habiliai/agentruntime/internal/mylog"
@@ -13,9 +12,7 @@ import (
 
 type (
 	Manager interface {
-		GetLocalTool(ctx context.Context, toolName string) ai.Tool
-		GetTools(ctx context.Context, names []string) ([]entity.Tool, error)
-		GetMCPTool(ctx context.Context, serverName, toolName string) ai.Tool
+		GetTool(ctx context.Context, toolName string) ai.Tool
 		GetMCPTools(ctx context.Context, serverName string) []ai.Tool
 		RegisterMCPTool(ctx context.Context, req RegisterMCPToolRequest) error
 	}

@@ -8,12 +8,14 @@ GOLANG_CI_LINT := bin/golangci-lint
 
 AGENTRUNTIME_BIN := bin/agentruntime
 AGENTRUNTIME_BIN_FILES := bin/agentruntime-linux-amd64 bin/agentruntime-linux-arm64 bin/agentruntime-darwin-amd64 bin/agentruntime-darwin-arm64 bin/agentruntime-windows-amd64.exe
-
-.PHONY: all
-all: build
+AGENTNETWORK_BIN := bin/agentnetwork
+AGENTNETWORK_BIN_FILES := bin/agentnetwork-linux-amd64 bin/agentnetwork-linux-arm64 bin/agentnetwork-darwin-amd64 bin/agentnetwork-darwin-arm64
 
 .PHONY: build
-build: $(AGENTRUNTIME_BIN)
+build: $(AGENTRUNTIME_BIN) $(AGENTNETWORK_BIN)
+
+.PHONY: all
+all: $(AGENTRUNTIME_BIN_FILES) $(AGENTNETWORK_BIN_FILES)
 
 bin/protoc-linux-amd64.zip:
 	wget -O $@ "https://github.com/protocolbuffers/protobuf/releases/download/v27.1/protoc-27.1-linux-x86_64.zip"
@@ -52,7 +54,7 @@ $(PROTOC_GEN_GO_GRPC):
 	@export PATH="$(shell go env GOPATH)/bin:$(PATH)"
 	$(PROTOC) --go-grpc_out=. --go-grpc_opt=paths=source_relative -I. $<
 
-PB_FILES := runtime/runtime.pb.go runtime/runtime_grpc.pb.go thread/thread.pb.go thread/thread_grpc.pb.go agent/agent.pb.go agent/agent_grpc.pb.go
+PB_FILES := runtime/runtime.pb.go runtime/runtime_grpc.pb.go thread/thread.pb.go thread/thread_grpc.pb.go network/network.pb.go network/network_grpc.pb.go
 .PHONY: pb
 pb: $(PB_FILES)
 
@@ -88,8 +90,17 @@ bin/agentruntime-%: pb
 	$(eval ARCH_NAME := $(word 2,$(subst -, ,$*)))
 	GOOS=$(OS_NAME) GOARCH=$(ARCH_NAME) CGO_ENABLED=0 go build -o $@ ./cmd/agentruntime
 
+.PHONY: bin/agentnetwork-%
+bin/agentnetwork-%: pb
+	$(eval OS_NAME := $(word 1,$(subst -, ,$*)))
+	$(eval ARCH_NAME := $(word 2,$(subst -, ,$*)))
+	GOOS=$(OS_NAME) GOARCH=$(ARCH_NAME) CGO_ENABLED=0 go build -o $@ ./cmd/agentnetwork
+
 $(AGENTRUNTIME_BIN): bin/agentruntime-$(GOOS)-$(GOARCH)
-	cp bin/agentruntime-$(GOOS)-$(GOARCH) $(AGENTRUNTIME_BIN)
+	ln -sf agentruntime-$(GOOS)-$(GOARCH) $(AGENTRUNTIME_BIN)
+
+$(AGENTNETWORK_BIN): bin/agentnetwork-$(GOOS)-$(GOARCH)
+	ln -sf agentnetwork-$(GOOS)-$(GOARCH) $(AGENTNETWORK_BIN)
 
 .PHONY: install
 install:

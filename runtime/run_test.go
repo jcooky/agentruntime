@@ -2,34 +2,56 @@ package runtime_test
 
 import (
 	"github.com/habiliai/agentruntime/entity"
+	"github.com/habiliai/agentruntime/thread"
+	threadtest "github.com/habiliai/agentruntime/thread/test"
 	"github.com/mokiat/gog"
+	"github.com/stretchr/testify/mock"
+	"google.golang.org/protobuf/types/known/timestamppb"
+	"io"
 )
 
 func (s *AgentRuntimeTestSuite) TestRun() {
 	var agents []entity.Agent
 	for _, agentConfig := range s.agents {
-		agent, err := s.agentManager.SaveAgentFromConfig(s, agentConfig)
+		ag, err := s.runtime.RegisterAgent(s, agentConfig)
 		s.Require().NoError(err)
 
-		agents = append(agents, agent)
+		agents = append(agents, *ag)
 	}
 
-	thread, err := s.threadManager.CreateThread(s, "# Mission: AI agents dialogue with user")
-	s.Require().NoError(err)
+	getMessagesStreamMock := &threadtest.MockGetMessagesClient{}
+	getMessagesStreamMock.On("Recv").Return(&thread.GetMessagesResponse{
+		Messages: nil,
+	}, io.EOF).Once()
+	defer getMessagesStreamMock.AssertExpectations(s.T())
 
-	err = s.runtime.Run(s, thread.ID, gog.Map(agents, func(a entity.Agent) uint {
-		return a.ID
-	}))
-	s.Require().NoError(err)
+	threadId := uint32(1)
+	s.threadManager.On("GetThread", mock.Anything, mock.MatchedBy(func(in *thread.GetThreadRequest) bool {
+		return in.ThreadId == threadId
+	})).Return(&thread.Thread{
+		Id:          uint32(threadId),
+		CreatedAt:   timestamppb.Now(),
+		UpdatedAt:   timestamppb.Now(),
+		Instruction: "# Mission: AI agents dialogue with user",
+	}, nil).Once()
+	s.threadManager.On("GetMessages", mock.Anything, mock.MatchedBy(func(in *thread.GetMessagesRequest) bool {
+		return in.ThreadId == threadId
+	})).Return(getMessagesStreamMock, nil).Once()
+	s.threadManager.On("AddMessage", mock.Anything, mock.MatchedBy(func(in *thread.AddMessageRequest) bool {
+		s.T().Logf(">> AddMessage: %v\n", in)
+		if !s.Len(in.ToolCalls, 2) {
+			return false
+		}
+		toolCallNames := gog.Map(in.ToolCalls, func(tc *thread.Message_ToolCall) string {
+			return tc.Name
+		})
+		return s.Contains(toolCallNames, "done_agent") &&
+			s.Contains(toolCallNames, "get_weather") &&
+			in.ThreadId == threadId
+	})).Return(&thread.AddMessageResponse{
+		MessageId: uint32(1),
+	}, nil).Once()
+	defer s.threadManager.AssertExpectations(s.T())
 
-	messages, err := s.threadManager.GetMessages(s, thread.ID, "DESC", 0, 100)
-	s.Require().NoError(err)
-	s.T().Logf(">> response: %v\n", messages[0].Content.Data().Text)
-
-	s.Require().Len(messages[0].Content.Data().ToolCalls, 2)
-	toolCallNames := gog.Map(messages[0].Content.Data().ToolCalls, func(tc entity.MessageContentToolCall) string {
-		return tc.Name
-	})
-	s.Require().Contains(toolCallNames, "done_agent")
-	s.Require().Contains(toolCallNames, "get_weather")
+	s.Require().NoError(s.runtime.Run(s, uint(threadId), agents))
 }

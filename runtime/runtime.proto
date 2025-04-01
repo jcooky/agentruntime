@@ -10,7 +10,7 @@ service AgentRuntime {
 
 message RunRequest {
   uint32 thread_id = 1;
-  repeated uint32 agent_ids = 2;
+  repeated string agent_names = 2;
 }
 
 message RunResponse {

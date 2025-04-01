@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"github.com/habiliai/agentruntime/cli/agentruntime"
 	"github.com/habiliai/agentruntime/internal/di"
 	"os"
 	"os/signal"
@@ -14,7 +13,7 @@ func main() {
 	defer cancel()
 
 	ctx = di.WithContainer(ctx, di.EnvProd)
-	if err := agentruntime.NewCmd().ExecuteContext(ctx); err != nil {
+	if err := newCmd().ExecuteContext(ctx); err != nil {
 		os.Exit(1)
 	}
 }

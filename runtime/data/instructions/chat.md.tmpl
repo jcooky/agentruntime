@@ -1,12 +1,14 @@
 {{- if .Thread }}
 # About this thread
 {{ .Thread.Instruction }}
+{{- if .Thread.Participants }}
 
 ## Participants
 {{- range .Thread.Participants }}
 - {{ .Name }}:
   - Name: {{ .Name }}
   - Role: {{ .Role }}
+{{- end }}
 {{- end }}
 {{- end }}
 
