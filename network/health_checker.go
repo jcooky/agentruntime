@@ -54,10 +54,8 @@ func (s *service) runHealthChecker(ctx context.Context) {
 							return nil
 						}(); err != nil {
 							s.logger.Warn("Health check failed", "addr", runtime.Addr, "err", err)
-							if errors.Is(err, myerrors.ErrTimeout) {
-								if err := runtime.Delete(s.db); err != nil {
-									s.logger.Error("failed to delete agent runtime", "addr", runtime.Addr, "err", err)
-								}
+							if err := runtime.Delete(s.db); err != nil {
+								s.logger.Error("failed to delete agent runtime", "addr", runtime.Addr, "err", err)
 							}
 						}
 					}()

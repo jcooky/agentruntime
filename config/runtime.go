@@ -52,7 +52,7 @@ func resolveRuntimeConfig(testing bool) (*RuntimeConfig, error) {
 		LogLevel:             "debug",
 		LogHandler:           "default",
 		McpServerConfigFiles: "./mcpservers.yaml",
-		NetworkGrpcAddr:      "localhost:9080",
+		NetworkGrpcAddr:      "127.0.0.1:9080",
 		NetworkGrpcSecure:    false,
 	}
 	if err := configReader.AddStruct(&c).Feed(); err != nil {

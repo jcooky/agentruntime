@@ -5,17 +5,18 @@ import (
 	"github.com/firebase/genkit/go/ai"
 	"github.com/habiliai/agentruntime/config"
 	"github.com/habiliai/agentruntime/internal/mylog"
-	"gorm.io/gorm"
+	mcpclient "github.com/mark3labs/mcp-go/client"
 	"strings"
+	"sync"
 )
 
 type (
 	manager struct {
 		logger *mylog.Logger
-		db     *gorm.DB
 		config *config.RuntimeConfig
 
-		closeFn []func()
+		mcpClients map[string]mcpclient.MCPClient
+		mtx        sync.Mutex
 	}
 )
 
@@ -30,8 +31,10 @@ func (m *manager) GetTool(_ context.Context, toolName string) ai.Tool {
 }
 
 func (m *manager) Close() {
-	for _, closeFn := range m.closeFn {
-		closeFn()
+	for _, client := range m.mcpClients {
+		if err := client.Close(); err != nil {
+			m.logger.Warn("failed to close MCP client", "err", err)
+		}
 	}
 }
 

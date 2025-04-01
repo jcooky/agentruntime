@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"github.com/habiliai/agentruntime/config"
-	"github.com/habiliai/agentruntime/internal/db"
 	di "github.com/habiliai/agentruntime/internal/di"
 	"github.com/habiliai/agentruntime/internal/grpcutils"
 	"github.com/habiliai/agentruntime/internal/mylog"
@@ -15,9 +14,9 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
-	"gorm.io/gorm"
 	"net"
 	"os"
+	"strings"
 )
 
 func newCmd() *cobra.Command {
@@ -38,7 +37,8 @@ func newCmd() *cobra.Command {
 					return errors.Wrapf(err, "failed to read agent-files-dir")
 				}
 				for _, file := range files {
-					if file.IsDir() {
+					if file.IsDir() ||
+						(!strings.HasSuffix(file.Name(), ".yaml") && !strings.HasSuffix(file.Name(), ".yml")) {
 						continue
 					}
 					agentFiles = append(agentFiles, fmt.Sprintf("%s/%s", args[0], file.Name()))
@@ -53,17 +53,11 @@ func newCmd() *cobra.Command {
 			// Initialize the container
 			cfg := di.MustGet[*config.RuntimeConfig](ctx, config.RuntimeConfigKey)
 			logger := di.MustGet[*mylog.Logger](ctx, mylog.Key)
-			dbInstance := di.MustGet[*gorm.DB](ctx, db.Key)
 			runtimeService := di.MustGet[runtime.Service](ctx, runtime.ServiceKey)
 			runtimeServer := di.MustGet[runtime.AgentRuntimeServer](ctx, runtime.ServerKey)
 			toolManager := di.MustGet[tool.Manager](ctx, tool.ManagerKey)
 
 			logger.Debug("start agent-runtime", "config", cfg)
-
-			// auto migrate the database
-			if err := db.AutoMigrate(dbInstance); err != nil {
-				return errors.Wrapf(err, "failed to migrate database")
-			}
 
 			// load agent config files
 			agentConfigs, err := config.LoadAgentsFromFiles(agentFiles)
@@ -130,7 +124,7 @@ func newCmd() *cobra.Command {
 
 			agentManager := network.NewAgentNetworkClient(networkCC)
 			if _, err = agentManager.RegisterAgent(ctx, &network.RegisterAgentRequest{
-				Addr:   fmt.Sprintf("localhost:%d", cfg.Port),
+				Addr:   fmt.Sprintf("127.0.0.1:%d", cfg.Port),
 				Secure: false,
 				Names:  agentNames,
 			}); err != nil {

@@ -4,10 +4,9 @@ import (
 	"context"
 	"github.com/firebase/genkit/go/ai"
 	"github.com/habiliai/agentruntime/config"
-	"github.com/habiliai/agentruntime/internal/db"
 	"github.com/habiliai/agentruntime/internal/di"
 	"github.com/habiliai/agentruntime/internal/mylog"
-	"gorm.io/gorm"
+	mcpclient "github.com/mark3labs/mcp-go/client"
 )
 
 type (
@@ -30,9 +29,9 @@ func init() {
 		}
 
 		s := &manager{
-			db:     di.MustGet[*gorm.DB](ctx, db.Key),
-			logger: di.MustGet[*mylog.Logger](ctx, mylog.Key),
-			config: conf,
+			logger:     di.MustGet[*mylog.Logger](ctx, mylog.Key),
+			config:     conf,
+			mcpClients: make(map[string]mcpclient.MCPClient),
 		}
 
 		go func() {

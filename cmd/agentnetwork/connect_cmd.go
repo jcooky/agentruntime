@@ -175,7 +175,7 @@ func newConnectCmd() *cobra.Command {
 
 	f := cmd.Flags()
 	f.BoolVarP(&flags.noSecure, "no-secure", "s", false, "Specify connect without SSL/TLS")
-	f.StringVarP(&flags.addr, "addr", "A", "localhost:9080", "Specify the address of the server")
+	f.StringVarP(&flags.addr, "addr", "A", "127.0.0.1:9080", "Specify the address of the server")
 
 	return cmd
 }
