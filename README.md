@@ -22,8 +22,8 @@
 
 The platform consists of three core components:
 
-1. **Runtime**: The main execution environment that orchestrates all agent activities
-2. **AgentManager**: Manages agent lifecycle, configuration, and capabilities
+1. **AgentRuntime**: The main execution environment that orchestrates all agent activities
+2. **AgentNetwork**: The network server that manages agent registration, health checks, and communication between agents and the runtime
 3. **ThreadManager**: Handles conversation threads, context, and state persistence
 
 ## Installation
@@ -32,16 +32,32 @@ The platform consists of three core components:
 
 ```bash
 # For macOS
+# Install agentnetwork
+curl -L https://github.com/habiliai/agentruntime/releases/latest/download/agentnetwork-darwin-amd64 -o agentnetwork
+chmod +x agentnetwork
+sudo mv agentnetwork /usr/local/bin/
+
+# Install agentruntime
 curl -L https://github.com/habiliai/agentruntime/releases/latest/download/agentruntime-darwin-amd64 -o agentruntime
 chmod +x agentruntime
 sudo mv agentruntime /usr/local/bin/
 
 # For Linux
+# Install agentnetwork
+curl -L https://github.com/habiliai/agentruntime/releases/latest/download/agentnetwork-linux-amd64 -o agentnetwork
+chmod +x agentnetwork
+sudo mv agentnetwork /usr/local/bin/
+
+# Install agentruntime
 curl -L https://github.com/habiliai/agentruntime/releases/latest/download/agentruntime-linux-amd64 -o agentruntime
 chmod +x agentruntime
 sudo mv agentruntime /usr/local/bin/
 
 # For Windows (using PowerShell)
+# Install agentnetwork
+Invoke-WebRequest -Uri https://github.com/habiliai/agentruntime/releases/latest/download/agentnetwork-windows-amd64.exe -OutFile agentnetwork.exe
+
+# Install agentruntime
 Invoke-WebRequest -Uri https://github.com/habiliai/agentruntime/releases/latest/download/agentruntime-windows-amd64.exe -OutFile agentruntime.exe
 ```
 
@@ -104,20 +120,28 @@ OPENAI_API_KEY=YOUR_OPENAI_API_KEY
 OPENWEATHER_API_KEY=YOUR_OPENWEATHER_API_KEY
 ```
 
-3. Create thread and run the agent:
+3. Start the network server:
+
+```bash
+# Start the agentnetwork server
+agentnetwork serve
+```
+
+4. In a separate terminal, create a thread and run the agent:
 
 ```bash
 # Create a new thread
-agentruntime thread create
-# Add a message to the thread
-agentruntime thread add-message <thread id> "Hello, world!"
-# Create a new agent
-agentruntime agent create example.agent.yaml
-# Start the agent
-agentruntime run <thread id> <agent name>
+agentnetwork thread create
+# Run your agent
+agentruntime <agent files or directory>
 ```
 
-4. Interact with your agent through the command-line interface
+5. Interact with your agent through the command-line interface:
+
+```bash
+# Connect to the thread to see ongoing interactions
+agentnetwork connect <thread id>
+```
 
 ## Protocols
 
@@ -178,41 +202,74 @@ agentruntime thread list
 agentruntime thread list-messages <thread_id>
 ```
 
-### AgentManager Service
+### AgentNetwork Service
 
-The AgentManager service manages agent configurations and states.
+The AgentNetwork service is the main network server that coordinates all services including ThreadManager, AgentManager, and Runtime.
 
 ```protobuf
 syntax = "proto3";
 
-service AgentManager {
-  rpc GetAgentByName(GetAgentByNameRequest) returns (Agent);
-  rpc GetAgent(GetAgentRequest) returns (Agent);
+service Network {
+  rpc GetConfig(GetConfigRequest) returns (GetConfigResponse);
+  rpc SetConfig(SetConfigRequest) returns (SetConfigResponse);
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+  rpc Health(HealthRequest) returns (HealthResponse);
 }
 ```
 
-For the complete protobuf definition, please refer to [agent/agent.proto](https://github.com/habiliai/agentruntime/blob/main/agent/agent.proto) in the source code.
+For the complete protobuf definition, please refer to [network/network.proto](https://github.com/habiliai/agentruntime/blob/main/network/network.proto) in the source code.
 
 #### CLI Usage
 
 ```bash
-# Create agents from configuration files
-agentruntime agent create <agent-config-file> [<agent-config-file2> ...]
+# Start the network server
+agentnetwork serve [--config <config-path>]
 
-# List all available agents
-agentruntime agent list
+# Connect to a network server
+agentnetwork connect [--addr <addr>]
+
+# List threads in the network
+agentnetwork thread list
+
+# Create a thread on the network
+agentnetwork thread create
+
+# Add a message to a thread
+agentnetwork thread add-message <thread_id> "Your message"
 ```
 
 ### Server Mode
 
-AgentRuntime can also be run as a standalone server that exposes all services via gRPC.
+AgentRuntime has been split into two main commands:
+
+1. **agentnetwork** - Handles the network server that manages threads and agents
+2. **agentruntime** - Handles agent execution and interaction
+
+#### Starting the Network Server
 
 ```bash
-# Start the gRPC server
-agentruntime serve <agent-file-or-directory>
+# Start the network server
+agentnetwork serve
 
 # With file watching (auto-reload when config changes)
-agentruntime serve --watch <agent-file-or-directory>
+agentnetwork serve --watch <agent-file-or-directory>
+```
+
+#### Connecting to a Network Server
+
+```bash
+# Connect to the default network server
+agentnetwork connect
+
+# Connect to a specific network server
+agentnetwork connect --host <host> --port <port>
+```
+
+#### Running Agents
+
+```bash
+# Run multiple agents
+agentruntime <agent files or directory> [...<agent files or directory>]
 ```
 
 When running in server mode, clients can connect to the gRPC endpoints to use the services programmatically.
