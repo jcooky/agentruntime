@@ -111,5 +111,5 @@ release: $(AGENTRUNTIME_BIN_FILES) $(AGENTNETWORK_BIN_FILES)
 	$(eval NEXT_VERSION := $(shell convco version --bump))
 	git tag -a v$(NEXT_VERSION) -m "chore(release): v$(NEXT_VERSION)"
 	git push origin v$(NEXT_VERSION)
-	convco changelog > CHANGELOG.md
-	gh release create v$(NEXT_VERSION) $(AGENTRUNTIME_BIN_FILES) --title "v$(NEXT_VERSION)" --notes-file CHANGELOG.md
+	convco changelog --max-versions 1 > CHANGELOG.md
+	gh release create v$(NEXT_VERSION) $(AGENTRUNTIME_BIN_FILES) $(AGENTNETWORK_BIN_FILES) --title "v$(NEXT_VERSION)" --notes-file CHANGELOG.md
