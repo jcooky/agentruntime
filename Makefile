@@ -107,7 +107,7 @@ install:
 	CGO_ENABLED=0 go install ./cmd/agentruntime
 
 .PHONY: release
-release: $(AGENTRUNTIME_BIN_FILES)
+release: $(AGENTRUNTIME_BIN_FILES) $(AGENTNETWORK_BIN_FILES)
 	$(eval NEXT_VERSION := $(shell convco version --bump))
 	git tag -a v$(NEXT_VERSION) -m "chore(release): v$(NEXT_VERSION)"
 	git push origin v$(NEXT_VERSION)
