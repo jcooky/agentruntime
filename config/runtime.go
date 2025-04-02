@@ -10,15 +10,14 @@ import (
 )
 
 type RuntimeConfig struct {
-	Host                 string `env:"HOST"`
-	Port                 int    `env:"PORT"`
-	LogLevel             string `env:"LOG_LEVEL"`
-	LogHandler           string `env:"LOG_HANDLER"`
-	OpenAIApiKey         string `env:"OPENAI_API_KEY"`
-	OpenWeatherApiKey    string `env:"OPENWEATHER_API_KEY"`
-	McpServerConfigFiles string `env:"MCP_SERVER_CONFIG_FILES"`
-	NetworkGrpcAddr      string `env:"NETWORK_GRPC_ADDR"`
-	NetworkGrpcSecure    bool   `env:"NETWORK_GRPC_SECURE"`
+	Host              string `env:"HOST"`
+	Port              int    `env:"PORT"`
+	LogLevel          string `env:"LOG_LEVEL"`
+	LogHandler        string `env:"LOG_HANDLER"`
+	OpenAIApiKey      string `env:"OPENAI_API_KEY"`
+	OpenWeatherApiKey string `env:"OPENWEATHER_API_KEY"`
+	NetworkGrpcAddr   string `env:"NETWORK_GRPC_ADDR"`
+	NetworkGrpcSecure bool   `env:"NETWORK_GRPC_SECURE"`
 }
 
 var (
@@ -47,13 +46,12 @@ func resolveRuntimeConfig(testing bool) (*RuntimeConfig, error) {
 	configReader.AddFeeder(feeder.Env{})
 
 	c := RuntimeConfig{
-		Host:                 "0.0.0.0",
-		Port:                 10080,
-		LogLevel:             "debug",
-		LogHandler:           "default",
-		McpServerConfigFiles: "./mcpservers.yaml",
-		NetworkGrpcAddr:      "127.0.0.1:9080",
-		NetworkGrpcSecure:    false,
+		Host:              "0.0.0.0",
+		Port:              10080,
+		LogLevel:          "debug",
+		LogHandler:        "default",
+		NetworkGrpcAddr:   "localhost:9080",
+		NetworkGrpcSecure: false,
 	}
 	if err := configReader.AddStruct(&c).Feed(); err != nil {
 		return nil, err
