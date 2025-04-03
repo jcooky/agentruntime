@@ -3,8 +3,8 @@ module github.com/habiliai/agentruntime
 go 1.24
 
 replace (
-	github.com/firebase/genkit/go => github.com/habiliai/genkit/go v0.2.2-0.20250401071700-b6e3b7806f8a
-	github.com/yukinagae/genkit-go-plugins => github.com/habiliai/genkit-go-plugins v0.0.0-20250401091600-fa82994b3abb
+	github.com/firebase/genkit/go => github.com/habiliai/genkit/go v0.2.2-0.20250402133352-de4f65992e80
+	github.com/mark3labs/mcp-go => github.com/habiliai/mcp-go v0.17.1-0.20250403060106-7a5181225d1b
 )
 
 require (
@@ -14,14 +14,15 @@ require (
 	github.com/goccy/go-yaml v1.15.23
 	github.com/golobby/config/v3 v3.4.2
 	github.com/google/uuid v1.6.0
+	github.com/invopop/jsonschema v0.12.0
 	github.com/lmittmann/tint v1.0.7
-	github.com/mark3labs/mcp-go v0.17.0
+	github.com/mark3labs/mcp-go v0.17.1-0.20250329140527-051cda5533c7
 	github.com/mokiat/gog v0.15.0
 	github.com/pkg/errors v0.9.1
 	github.com/pterm/pterm v0.12.80
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0
-	github.com/yukinagae/genkit-go-plugins v0.2.2
+	github.com/yukinagae/genkit-go-plugins v0.2.3-0.20250401094943-d1914214dfa7
 	golang.org/x/sync v0.12.0
 	google.golang.org/grpc v1.65.0
 	google.golang.org/protobuf v1.34.2
@@ -54,7 +55,6 @@ require (
 	github.com/gookit/color v1.5.4 // indirect
 	github.com/huandu/xstrings v1.5.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	github.com/invopop/jsonschema v0.12.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/pgx/v5 v5.7.2 // indirect
@@ -66,7 +66,6 @@ require (
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
-	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/openai/openai-go v0.1.0-alpha.61 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect

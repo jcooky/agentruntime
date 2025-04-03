@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"github.com/firebase/genkit/go/ai"
 	"github.com/habiliai/agentruntime/entity"
+	myerrors "github.com/habiliai/agentruntime/errors"
 	"github.com/habiliai/agentruntime/thread"
 	"github.com/habiliai/agentruntime/tool"
 	"github.com/mokiat/gog"
@@ -131,14 +132,24 @@ func (s *service) Run(
 			}
 
 			// build available actions
-			s.logger.Debug("agent tools", "tools", agent.Tools)
 			tools := make([]ai.Tool, 0, len(agent.Tools))
 			for _, tool := range agent.Tools {
 				instValues.AvailableActions = append(instValues.AvailableActions, AvailableAction{
 					Action:      tool.Name,
 					Description: tool.Description,
 				})
-				tools = append(tools, s.toolManager.GetTool(ctx, tool.Name))
+
+				toolNames := strings.SplitN(tool.Name, "/", 2)
+				var v ai.Tool
+				if len(toolNames) == 1 {
+					v = s.toolManager.GetTool(ctx, tool.Name)
+				} else {
+					v = s.toolManager.GetMCPTool(ctx, toolNames[0], toolNames[1])
+				}
+				if v == nil {
+					return errors.Wrapf(myerrors.ErrInvalidConfig, "invalid tool name %s", tool.Name)
+				}
+				tools = append(tools, v)
 			}
 
 			var promptBuf strings.Builder

@@ -1,14 +1,16 @@
 package tool
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"github.com/firebase/genkit/go/ai"
-	"github.com/firebase/genkit/go/plugins/mcp"
+	"github.com/habiliai/agentruntime/internal/genkit/plugins/mcp"
 	mcpclient "github.com/mark3labs/mcp-go/client"
 	mcpgo "github.com/mark3labs/mcp-go/mcp"
 	"github.com/pkg/errors"
-	"runtime/debug"
+	"io"
+	"strings"
 )
 
 type RegisterMCPToolRequest struct {
@@ -29,24 +31,34 @@ func (m *manager) RegisterMCPTool(ctx context.Context, req RegisterMCPToolReques
 
 	mcpClient, ok := m.mcpClients[req.ServerName]
 	if !ok {
-		mcpClient, err = mcpclient.NewStdioMCPClient(req.Command, envs, req.Args...)
+		c, err := mcpclient.NewStdioMCPClient(req.Command, envs, req.Args...)
 		if err != nil {
 			return fmt.Errorf("failed to create MCP client: %w", err)
 		}
 
+		go func(stderr io.Reader) {
+			rd := bufio.NewReader(stderr)
+			for {
+				line, err := rd.ReadString('\n')
+				if err != nil {
+					if err == io.EOF || strings.Contains(err.Error(), "already closed") {
+						return
+					}
+					m.logger.Error("failed to copy stderr", "err", err, "serverName", req.ServerName)
+					return
+				}
+				m.logger.Warn("[MCP] "+strings.TrimSpace(line), "serverName", req.ServerName)
+			}
+		}(c.Stderr())
+
 		initRequest := mcpgo.InitializeRequest{}
 		initRequest.Params.ProtocolVersion = mcpgo.LATEST_PROTOCOL_VERSION
-		if bi, ok := debug.ReadBuildInfo(); ok {
-			initRequest.Params.ClientInfo = mcpgo.Implementation{
-				Name:    bi.Main.Path,
-				Version: bi.Main.Version,
-			}
-		}
-		if _, err := mcpClient.Initialize(ctx, initRequest); err != nil {
+		if _, err := c.Initialize(ctx, initRequest); err != nil {
 			return errors.Wrapf(err, "failed to initialize MCP client")
 		}
 
-		m.mcpClients[req.ServerName] = mcpClient
+		m.mcpClients[req.ServerName] = c
+		mcpClient = c
 	}
 
 	listToolsResult, err := mcpClient.ListTools(ctx, mcpgo.ListToolsRequest{})
@@ -54,11 +66,11 @@ func (m *manager) RegisterMCPTool(ctx context.Context, req RegisterMCPToolReques
 		return errors.Wrapf(err, "failed to list tools")
 	}
 	for _, tool := range listToolsResult.Tools {
-		if mcp.LookupTool(req.ServerName, tool.Name).Action() != nil {
+		if ai.LookupTool(tool.Name).Action() != nil {
 			m.logger.InfoContext(ctx, "tool already registered", "tool", tool.Name)
 			continue
 		}
-		if _, err := mcp.DefineTool(mcpClient, req.ServerName, tool); err != nil {
+		if _, err := mcp.DefineTool(mcpClient, tool); err != nil {
 			return errors.Wrapf(err, "failed to define tool")
 		}
 	}
@@ -66,6 +78,24 @@ func (m *manager) RegisterMCPTool(ctx context.Context, req RegisterMCPToolReques
 	return nil
 }
 
-func (m *manager) GetMCPTools(_ context.Context, mcpServerName string) []ai.Tool {
-	return mcp.LookupTools(mcpServerName)
+func (m *manager) GetMCPTools(ctx context.Context, mcpServerName string) []ai.Tool {
+	client, ok := m.mcpClients[mcpServerName]
+	if !ok {
+		return nil
+	}
+
+	listToolsResult, err := client.ListTools(ctx, mcpgo.ListToolsRequest{})
+	if err != nil {
+		m.logger.Error("failed to list tools", "err", err)
+		return nil
+	}
+
+	var tools []ai.Tool
+	for _, tool := range listToolsResult.Tools {
+		if t := ai.LookupTool(tool.Name); t != nil {
+			tools = append(tools, t)
+		}
+	}
+
+	return tools
 }

@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"github.com/habiliai/agentruntime/internal/di"
 	"github.com/habiliai/agentruntime/internal/grpcutils"
 	"github.com/habiliai/agentruntime/internal/msgutils"
 	"github.com/habiliai/agentruntime/internal/stringslices"
@@ -42,6 +44,8 @@ func newConnectCmd() *cobra.Command {
 			}
 			defer conn.Close()
 
+			ctx = di.WithContainer(ctx, di.EnvProd)
+
 			threadManager := thread.NewThreadManagerClient(conn)
 			agentNetwork := network.NewAgentNetworkClient(conn)
 
@@ -52,7 +56,8 @@ func newConnectCmd() *cobra.Command {
 				return errors.Wrapf(err, "failed to get thread with id %d", threadId)
 			}
 
-			pterm.DefaultLogger.Info("thr: ", []pterm.LoggerArgument{{Key: "thr", Value: thr}})
+			logger := pterm.DefaultLogger
+			logger.Info("thr: ", []pterm.LoggerArgument{{Key: "thr", Value: thr}})
 
 			secondary := pterm.ThemeDefault.SecondaryStyle
 
@@ -92,9 +97,7 @@ func newConnectCmd() *cobra.Command {
 				if len(runtimeInfo.AgentRuntimeInfo) == 0 {
 					secondary.Println("< Agent: ", "No agent found")
 				} else {
-					var (
-						eg errgroup.Group
-					)
+					var eg errgroup.Group
 					for _, info := range runtimeInfo.AgentRuntimeInfo {
 						names := stringslices.IntersectIgnoreCase(info.AgentNames, agentMentions)
 						if len(names) == 0 {
@@ -104,7 +107,7 @@ func newConnectCmd() *cobra.Command {
 						eg.Go(func() error {
 							conn, err := grpcutils.NewClient(info.Addr, info.Secure)
 							if err != nil {
-								return errors.Wrapf(err, "failed to create gRPC client. addr: %s", info.Addr)
+								return err
 							}
 							defer conn.Close()
 
@@ -113,14 +116,14 @@ func newConnectCmd() *cobra.Command {
 								ThreadId:   uint32(threadId),
 								AgentNames: names,
 							}); err != nil {
-								return errors.Wrapf(err, "failed to run agent. addr: %s", info.Addr)
+								return err
 							}
 
 							return nil
 						})
 					}
 					if err := eg.Wait(); err != nil {
-						return err
+						logger.Error(fmt.Sprintf("failed to run agent: err: %v", err))
 					}
 				}
 

@@ -53,7 +53,7 @@ func (s *service) RegisterAgent(
 			if toolNames[1] == "*" {
 				tools = append(tools, s.toolManager.GetMCPTools(ctx, toolNames[0])...)
 			} else {
-				tools = append(tools, s.toolManager.GetTool(ctx, toolNames[0]+"/"+toolNames[1]))
+				tools = append(tools, s.toolManager.GetMCPTool(ctx, toolNames[0], toolNames[1]))
 			}
 			for _, v := range tools {
 				if v == nil {

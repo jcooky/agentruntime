@@ -50,7 +50,8 @@ func init() {
 			return nil, err
 		}
 
-		return NewLogger(conf.LogLevel, conf.LogHandler), nil
+		logger := NewLogger(conf.LogLevel, conf.LogHandler)
+		slog.SetDefault(logger)
+		return logger, nil
 	})
-
 }

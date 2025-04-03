@@ -6,7 +6,6 @@ import (
 	"github.com/habiliai/agentruntime/config"
 	"github.com/habiliai/agentruntime/internal/mylog"
 	mcpclient "github.com/mark3labs/mcp-go/client"
-	"strings"
 	"sync"
 )
 
@@ -21,12 +20,23 @@ type (
 )
 
 func (m *manager) GetTool(_ context.Context, toolName string) ai.Tool {
-	toolName = strings.Replace(toolName, "/", "_", -1)
 	tool := ai.LookupTool(toolName)
 	if tool.Action() == nil {
 		return nil
 	}
 
+	return tool
+}
+
+func (m *manager) GetMCPTool(_ context.Context, serverName, toolName string) ai.Tool {
+	if _, ok := m.mcpClients[serverName]; !ok {
+		return nil
+	}
+
+	tool := ai.LookupTool(toolName)
+	if tool.Action() == nil {
+		return nil
+	}
 	return tool
 }
 

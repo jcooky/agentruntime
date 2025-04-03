@@ -12,6 +12,7 @@ import (
 type (
 	Manager interface {
 		GetTool(ctx context.Context, toolName string) ai.Tool
+		GetMCPTool(ctx context.Context, serverName, toolName string) ai.Tool
 		GetMCPTools(ctx context.Context, serverName string) []ai.Tool
 		RegisterMCPTool(ctx context.Context, req RegisterMCPToolRequest) error
 	}
