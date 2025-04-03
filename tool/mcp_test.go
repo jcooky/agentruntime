@@ -13,9 +13,9 @@ func (s *ToolTestSuite) TestToolByMCP() {
 		},
 	}))
 
-	tool := s.toolManager.GetTool(s, "filesystem/list_directory")
+	tool := s.toolManager.GetMCPTool(s, "filesystem", "list_directory")
 	s.NotNil(tool)
 
-	s.Equal("filesystem_list_directory", tool.Definition().Name)
+	s.Equal("list_directory", tool.Definition().Name)
 	s.T().Logf("tool definition: %v", tool.Definition())
 }

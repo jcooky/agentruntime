@@ -196,8 +196,11 @@ func (s *service) Run(
 
 			responseText := resp.Text()
 
-			var conversation Conversation
+			var conversation struct {
+				Text string `json:"text"`
+			}
 			if err := json.Unmarshal([]byte(responseText), &conversation); err != nil {
+				s.logger.Debug("failed to unmarshal conversation", "responseText", responseText)
 				return errors.Wrapf(err, "failed to unmarshal conversation")
 			}
 

@@ -21,8 +21,15 @@ func (s *AgentRuntimeTestSuite) TestRun() {
 
 	getMessagesStreamMock := &threadtest.MockGetMessagesClient{}
 	getMessagesStreamMock.On("Recv").Return(&thread.GetMessagesResponse{
-		Messages: nil,
-	}, io.EOF).Once()
+		Messages: []*thread.Message{
+			{
+				Id:      1,
+				Content: "Hello, what is the weather today?",
+				Sender:  "USER",
+			},
+		},
+	}, nil).Once()
+	getMessagesStreamMock.On("Recv").Return(&thread.GetMessagesResponse{}, io.EOF).Once()
 	defer getMessagesStreamMock.AssertExpectations(s.T())
 
 	threadId := uint32(1)
