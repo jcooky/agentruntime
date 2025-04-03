@@ -14,6 +14,10 @@ type networkServer struct {
 	service Service
 }
 
+func (s *networkServer) CheckLive(ctx context.Context, request *CheckLiveRequest) (*emptypb.Empty, error) {
+	return &emptypb.Empty{}, s.service.CheckLive(ctx, request.Names)
+}
+
 func (s *networkServer) GetAgentRuntimeInfo(ctx context.Context, req *GetAgentRuntimeInfoRequest) (*GetAgentRuntimeInfoResponse, error) {
 
 	var (

@@ -10,6 +10,12 @@ service AgentNetwork {
   rpc GetAgentRuntimeInfo(GetAgentRuntimeInfoRequest) returns (GetAgentRuntimeInfoResponse);
   rpc RegisterAgent(RegisterAgentRequest) returns (google.protobuf.Empty);
   rpc DeregisterAgent(DeregisterAgentRequest) returns (google.protobuf.Empty);
+
+  rpc CheckLive(CheckLiveRequest) returns (google.protobuf.Empty);
+}
+
+message CheckLiveRequest {
+  repeated string names = 1;
 }
 
 message DeregisterAgentRequest {

@@ -105,6 +105,7 @@ $(AGENTNETWORK_BIN): bin/agentnetwork-$(GOOS)-$(GOARCH)
 .PHONY: install
 install:
 	CGO_ENABLED=0 go install ./cmd/agentruntime
+	CGO_ENABLED=0 go install ./cmd/agentnetwork
 
 .PHONY: release
 release: $(AGENTRUNTIME_BIN_FILES) $(AGENTNETWORK_BIN_FILES)

@@ -17,6 +17,7 @@ import (
 	"net"
 	"os"
 	"strings"
+	"time"
 )
 
 func newCmd() *cobra.Command {
@@ -124,7 +125,7 @@ func newCmd() *cobra.Command {
 
 			agentManager := network.NewAgentNetworkClient(networkCC)
 			if _, err = agentManager.RegisterAgent(ctx, &network.RegisterAgentRequest{
-				Addr:   fmt.Sprintf("127.0.0.1:%d", cfg.Port),
+				Addr:   cfg.RuntimeGrpcAddr,
 				Secure: false,
 				Names:  agentNames,
 			}); err != nil {
@@ -135,6 +136,24 @@ func newCmd() *cobra.Command {
 					Names: agentNames,
 				}); err != nil {
 					logger.Warn("failed to deregister agent", "err", err)
+				}
+			}()
+			go func() {
+				ticker := time.NewTicker(30 * time.Second)
+				defer ticker.Stop()
+				for {
+					select {
+					case <-ctx.Done():
+						return
+					case <-ticker.C:
+						if _, err := agentManager.CheckLive(ctx, &network.CheckLiveRequest{
+							Names: agentNames,
+						}); err != nil {
+							logger.Warn("failed to check live", "err", err)
+						} else {
+							logger.Info("agent is alive", "names", agentNames)
+						}
+					}
 				}
 			}()
 

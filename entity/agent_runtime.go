@@ -3,14 +3,16 @@ package entity
 import (
 	"github.com/pkg/errors"
 	"gorm.io/gorm"
+	"time"
 )
 
 type AgentRuntime struct {
 	gorm.Model
 
-	Name   string `gorm:"index:idx_agent_name_uniq,unique,where:deleted_at IS NULL"`
-	Addr   string
-	Secure bool
+	Name       string `gorm:"index:idx_agent_name_uniq,unique,where:deleted_at IS NULL"`
+	Addr       string
+	Secure     bool
+	LastLiveAt time.Time
 }
 
 func (a *AgentRuntime) Save(db *gorm.DB) error {

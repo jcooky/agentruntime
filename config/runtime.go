@@ -18,6 +18,7 @@ type RuntimeConfig struct {
 	OpenWeatherApiKey string `env:"OPENWEATHER_API_KEY"`
 	NetworkGrpcAddr   string `env:"NETWORK_GRPC_ADDR"`
 	NetworkGrpcSecure bool   `env:"NETWORK_GRPC_SECURE"`
+	RuntimeGrpcAddr   string `env:"RUNTIME_GRPC_ADDR"`
 }
 
 var (
@@ -50,8 +51,9 @@ func resolveRuntimeConfig(testing bool) (*RuntimeConfig, error) {
 		Port:              10080,
 		LogLevel:          "debug",
 		LogHandler:        "default",
-		NetworkGrpcAddr:   "localhost:9080",
+		NetworkGrpcAddr:   "127.0.0.1:9080",
 		NetworkGrpcSecure: false,
+		RuntimeGrpcAddr:   "127.0.0.1:10080",
 	}
 	if err := configReader.AddStruct(&c).Feed(); err != nil {
 		return nil, err

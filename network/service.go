@@ -13,6 +13,7 @@ import (
 	"gorm.io/gorm/clause"
 	"log/slog"
 	"strings"
+	"time"
 )
 
 type (
@@ -21,6 +22,7 @@ type (
 		GetAllAgentRuntimeInfo(ctx context.Context) ([]entity.AgentRuntime, error)
 		RegisterAgent(ctx context.Context, addr string, secure bool, agentNames []string) error
 		DeregisterAgent(ctx context.Context, agentNames []string) error
+		CheckLive(ctx context.Context, agentNames []string) error
 	}
 
 	service struct {
@@ -33,6 +35,24 @@ type (
 var (
 	_ Service = (*service)(nil)
 )
+
+func (s *service) CheckLive(ctx context.Context, agentNames []string) error {
+	_, tx := db.OpenSession(ctx, s.db)
+	for _, agentName := range agentNames {
+		var agentRuntime entity.AgentRuntime
+		if err := s.db.First(&agentRuntime, "name = ?", agentName).Error; err != nil {
+			return errors.Wrapf(err, "failed to find agent runtime")
+		}
+
+		agentRuntime.LastLiveAt = time.Now()
+
+		if err := agentRuntime.Save(tx); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
 
 func (s *service) DeregisterAgent(ctx context.Context, agentNames []string) error {
 	_, tx := db.OpenSession(ctx, s.db)
@@ -67,6 +87,7 @@ func (s *service) RegisterAgent(ctx context.Context, addr string, secure bool, a
 			agentRuntime.Name = agentName
 			agentRuntime.Addr = addr
 			agentRuntime.Secure = secure
+			agentRuntime.LastLiveAt = time.Now()
 
 			if err := agentRuntime.Save(tx); err != nil {
 				return err
