@@ -27,7 +27,7 @@ func makeInputSchema(
 func toText(contents []mcp.Content) string {
 	text := ""
 	for _, c := range contents {
-		if t, ok := c.(*mcp.TextContent); ok {
+		if t, ok := c.(mcp.TextContent); ok {
 			text += t.Text
 		}
 	}

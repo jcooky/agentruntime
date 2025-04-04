@@ -19,7 +19,7 @@ import (
 const _ = grpc.SupportPackageIsVersion8
 
 const (
-	AgentRuntime_Run_FullMethodName = "/agent.AgentRuntime/Run"
+	AgentRuntime_Run_FullMethodName = "/runtime.AgentRuntime/Run"
 )
 
 // AgentRuntimeClient is the client API for AgentRuntime service.
@@ -97,7 +97,7 @@ func _AgentRuntime_Run_Handler(srv interface{}, ctx context.Context, dec func(in
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var AgentRuntime_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "agent.AgentRuntime",
+	ServiceName: "runtime.AgentRuntime",
 	HandlerType: (*AgentRuntimeServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

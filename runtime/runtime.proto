@@ -1,6 +1,6 @@
 syntax = 'proto3';
 
-package agent;
+package runtime;
 
 option go_package = "github.com/habiliai/agentruntime/runtime";
 
