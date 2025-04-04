@@ -40,7 +40,7 @@ func TestMCPToolCall(t *testing.T) {
 			break
 		}
 	}
-	tool, err := mcp.DefineTool(c, listDirTool)
+	tool, err := mcp.DefineTool(c, listDirTool, nil)
 	if err != nil {
 		t.Fatalf("failed to define tool: %v", err)
 	}

@@ -70,7 +70,14 @@ func (m *manager) RegisterMCPTool(ctx context.Context, req RegisterMCPToolReques
 			m.logger.InfoContext(ctx, "tool already registered", "tool", tool.Name)
 			continue
 		}
-		if _, err := mcp.DefineTool(mcpClient, tool); err != nil {
+		if _, err := mcp.DefineTool(mcpClient, tool, func(ctx context.Context, in any, out *mcp.ToolResult) error {
+			appendCallData(ctx, CallData{
+				Name:      tool.Name,
+				Arguments: in,
+				Result:    out,
+			})
+			return nil
+		}); err != nil {
 			return errors.Wrapf(err, "failed to define tool")
 		}
 	}

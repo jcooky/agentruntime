@@ -25,7 +25,7 @@ func (r *ToolResult) String() string {
 }
 
 // DefineTool defines a tool function.
-func DefineTool(mcpClient mcpclient.MCPClient, mcpTool mcp.Tool) (ai.Tool, error) {
+func DefineTool(mcpClient mcpclient.MCPClient, mcpTool mcp.Tool, cb func(ctx context.Context, input any, output *ToolResult) error) (ai.Tool, error) {
 	metadata := make(map[string]any)
 	metadata["type"] = "tool"
 	metadata["name"] = mcpTool.Name
@@ -41,7 +41,7 @@ func DefineTool(mcpClient mcpclient.MCPClient, mcpTool mcp.Tool) (ai.Tool, error
 		"tool",
 		metadata,
 		schema,
-		func(ctx context.Context, input any) (out *ToolResult, err error) {
+		func(ctx context.Context, in any) (out *ToolResult, err error) {
 			if err = mcpClient.Ping(ctx); err != nil {
 				return
 			}
@@ -52,14 +52,25 @@ func DefineTool(mcpClient mcpclient.MCPClient, mcpTool mcp.Tool) (ai.Tool, error
 				},
 			}
 			req.Params.Name = mcpTool.Name
-			req.Params.Arguments = input
+			req.Params.Arguments = in
 
 			var result *mcp.CallToolResult
 			if result, err = mcpClient.CallTool(ctx, req); err != nil {
 				return
 			}
 
-			return processResult(result)
+			out, err = processResult(result)
+			if err != nil {
+				return
+			}
+
+			if cb != nil {
+				if err = cb(ctx, in, out); err != nil {
+					return
+				}
+			}
+
+			return out, nil
 		},
 	)
 
