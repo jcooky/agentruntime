@@ -34,7 +34,7 @@ type (
 	Conversation struct {
 		User    string   `json:"user"`
 		Text    string   `json:"text"`
-		Actions []Action `json:"actions"`
+		Actions []Action `json:"actions,omitempty"`
 	}
 
 	AvailableAction struct {
@@ -43,13 +43,13 @@ type (
 	}
 
 	Participant struct {
-		Name string
-		Role string
+		Name string `json:"name"`
+		Role string `json:"role"`
 	}
 
 	ThreadValues struct {
 		Instruction  string
-		Participants []Participant
+		Participants []Participant `json:"participants,omitempty"`
 	}
 
 	ChatInstValues struct {
