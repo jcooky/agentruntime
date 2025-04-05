@@ -54,7 +54,7 @@ func (s *service) findAgentsByNames(names []string) ([]entity.Agent, error) {
 
 	notFoundNames := make([]string, 0, len(names))
 	for _, name := range names {
-		if !found[name] {
+		if !found[strings.ToLower(name)] {
 			notFoundNames = append(notFoundNames, name)
 		}
 	}

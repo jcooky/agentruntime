@@ -26,10 +26,15 @@ var (
 )
 
 type (
+	Action struct {
+		Name      string `json:"name"`
+		Arguments any    `json:"arguments"`
+		Result    any    `json:"result"`
+	}
 	Conversation struct {
 		User    string   `json:"user"`
 		Text    string   `json:"text"`
-		Actions []string `json:"actions"`
+		Actions []Action `json:"actions"`
 	}
 
 	AvailableAction struct {
@@ -125,8 +130,12 @@ func (s *service) Run(
 				instValues.RecentConversations = append(instValues.RecentConversations, Conversation{
 					User: msg.Sender,
 					Text: msg.Content,
-					Actions: gog.Map(msg.ToolCalls, func(tc *thread.Message_ToolCall) string {
-						return tc.Name
+					Actions: gog.Map(msg.ToolCalls, func(tc *thread.Message_ToolCall) Action {
+						return Action{
+							Name:      tc.Name,
+							Arguments: tc.Arguments,
+							Result:    tc.Result,
+						}
 					}),
 				})
 			}
