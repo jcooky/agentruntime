@@ -212,17 +212,28 @@ func (s *service) Run(
 			}
 
 			ctx = tool.WithEmptyCallDataStore(ctx)
-			resp, err := ai.Generate(
-				ctx,
-				model,
-				ai.WithCandidates(1),
-				ai.WithSystemPrompt(agent.System),
-				ai.WithTextPrompt(prompt),
-				ai.WithConfig(config),
-				ai.WithOutputFormat(ai.OutputFormatJSON),
-				ai.WithOutputSchema(&Conversation{}),
-				ai.WithTools(tools...),
+			var (
+				resp *ai.GenerateResponse
+				err  error
 			)
+			for i := 0; i < 3; i++ {
+				resp, err = ai.Generate(
+					ctx,
+					model,
+					ai.WithCandidates(1),
+					ai.WithSystemPrompt(agent.System),
+					ai.WithTextPrompt(prompt),
+					ai.WithConfig(config),
+					ai.WithOutputFormat(ai.OutputFormatJSON),
+					ai.WithOutputSchema(&Conversation{}),
+					ai.WithTools(tools...),
+				)
+				if err != nil {
+					s.logger.Warn("failed to generate", "err", err)
+				} else {
+					break
+				}
+			}
 			if err != nil {
 				return errors.Wrapf(err, "failed to generate")
 			}
