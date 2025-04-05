@@ -25,7 +25,7 @@ func (s *service) runHealthChecker(ctx context.Context) {
 			}
 
 			for _, runtime := range runtimes {
-				if time.Now().Sub(runtime.LastLiveAt).Minutes() <= 2.5 {
+				if time.Since(runtime.LastLiveAt).Minutes() <= 2.5 {
 					continue
 				}
 

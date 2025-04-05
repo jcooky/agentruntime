@@ -6,10 +6,10 @@ import (
 	"github.com/habiliai/agentruntime/internal/di"
 	"github.com/habiliai/agentruntime/internal/grpcutils"
 	"github.com/habiliai/agentruntime/internal/msgutils"
-	"github.com/habiliai/agentruntime/internal/stringslices"
 	"github.com/habiliai/agentruntime/network"
 	"github.com/habiliai/agentruntime/runtime"
 	"github.com/habiliai/agentruntime/thread"
+	"github.com/mokiat/gog"
 	"github.com/pkg/errors"
 	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
@@ -87,25 +87,29 @@ func newConnectCmd() *cobra.Command {
 				}
 
 				agentMentions := msgutils.ExtractMentions(userInput)
-				runtimeInfo, err := agentNetwork.GetAgentRuntimeInfo(ctx, &network.GetAgentRuntimeInfoRequest{
+				resp, err := agentNetwork.GetAgentRuntimeInfo(ctx, &network.GetAgentRuntimeInfoRequest{
 					Names: agentMentions,
 				})
 				if err != nil {
 					return errors.Wrap(err, "failed to get agent runtime info")
 				}
 
-				if len(runtimeInfo.AgentRuntimeInfo) == 0 {
+				runtimeInfoAgg := make(map[string][]*network.AgentRuntimeInfo)
+				for _, info := range resp.AgentRuntimeInfo {
+					runtimeInfoAgg[info.Addr] = append(runtimeInfoAgg[info.Addr], info)
+				}
+
+				if len(resp.AgentRuntimeInfo) == 0 {
 					secondary.Println("< Agent: ", "No agent found")
 				} else {
 					var eg errgroup.Group
-					for _, info := range runtimeInfo.AgentRuntimeInfo {
-						names := stringslices.IntersectIgnoreCase(info.AgentNames, agentMentions)
-						if len(names) == 0 {
-							continue
-						}
-
+					for addr, info := range runtimeInfoAgg {
+						secure := info[0].Secure
+						names := gog.Map(info, func(i *network.AgentRuntimeInfo) string {
+							return i.Info.Name
+						})
 						eg.Go(func() error {
-							conn, err := grpcutils.NewClient(info.Addr, info.Secure)
+							conn, err := grpcutils.NewClient(addr, secure)
 							if err != nil {
 								return err
 							}

@@ -7,6 +7,7 @@ import (
 	"github.com/firebase/genkit/go/ai"
 	"github.com/habiliai/agentruntime/entity"
 	myerrors "github.com/habiliai/agentruntime/errors"
+	"github.com/habiliai/agentruntime/network"
 	"github.com/habiliai/agentruntime/thread"
 	"github.com/habiliai/agentruntime/tool"
 	"github.com/mokiat/gog"
@@ -94,6 +95,11 @@ func (s *service) Run(
 				return errors.Wrapf(err, "failed to receive messages")
 			}
 
+			for _, msg := range resp.Messages {
+				if msg.Sender == "USER" {
+					continue
+				}
+			}
 			messages = append(messages, resp.Messages...)
 		}
 	}
@@ -107,6 +113,18 @@ func (s *service) Run(
 			return 0
 		}
 	})
+
+	agentRuntimeInfo, err := s.networkClient.GetAgentRuntimeInfo(ctx, &network.GetAgentRuntimeInfoRequest{
+		All: gog.PtrOf(true),
+	})
+	if err != nil {
+		return errors.Wrapf(err, "failed to get agent runtime info")
+	}
+
+	agentInfoMap := make(map[string]*network.AgentInfo)
+	for _, agentRuntime := range agentRuntimeInfo.AgentRuntimeInfo {
+		agentInfoMap[agentRuntime.Info.Name] = agentRuntime.Info
+	}
 
 	var eg errgroup.Group
 	for _, agent := range agents {
@@ -138,6 +156,12 @@ func (s *service) Run(
 						}
 					}),
 				})
+				if sender, ok := agentInfoMap[msg.Sender]; ok {
+					instValues.Thread.Participants = append(instValues.Thread.Participants, Participant{
+						Name: sender.Name,
+						Role: sender.Role,
+					})
+				}
 			}
 
 			// build available actions

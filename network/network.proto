@@ -25,7 +25,7 @@ message DeregisterAgentRequest {
 message RegisterAgentRequest {
   string addr = 1;
   bool secure = 2;
-  repeated string names = 3;
+  repeated AgentInfo info = 3;
 }
 
 message GetAgentRuntimeInfoRequest {
@@ -37,8 +37,14 @@ message GetAgentRuntimeInfoResponse {
   repeated AgentRuntimeInfo agent_runtime_info = 1;
 }
 
+message AgentInfo {
+  string name = 1;
+  string role = 2;
+  map<string, string> metadata = 3;
+}
+
 message AgentRuntimeInfo {
+  AgentInfo info = 1;
   string addr = 2;
   bool secure = 3;
-  repeated string agent_names = 4;
 }

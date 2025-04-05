@@ -9,6 +9,7 @@ import (
 	"github.com/habiliai/agentruntime/network"
 	"github.com/habiliai/agentruntime/runtime"
 	"github.com/habiliai/agentruntime/tool"
+	"github.com/mokiat/gog"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
@@ -16,7 +17,9 @@ import (
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"net"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -30,22 +33,24 @@ func newCmd() *cobra.Command {
 			}
 
 			var agentFiles []string
-			if stat, err := os.Stat(args[0]); os.IsNotExist(err) {
-				return errors.Wrapf(err, "agent-file or agent-files-dir does not exist")
-			} else if stat.IsDir() {
-				files, err := os.ReadDir(args[0])
-				if err != nil {
-					return errors.Wrapf(err, "failed to read agent-files-dir")
-				}
-				for _, file := range files {
-					if file.IsDir() ||
-						(!strings.HasSuffix(file.Name(), ".yaml") && !strings.HasSuffix(file.Name(), ".yml")) {
-						continue
+			for _, filename := range args {
+				if stat, err := os.Stat(filename); os.IsNotExist(err) {
+					return errors.Wrapf(err, "agent-file or agent-files-dir does not exist")
+				} else if stat.IsDir() {
+					files, err := os.ReadDir(filename)
+					if err != nil {
+						return errors.Wrapf(err, "failed to read agent-files-dir")
 					}
-					agentFiles = append(agentFiles, fmt.Sprintf("%s/%s", args[0], file.Name()))
+					for _, file := range files {
+						if file.IsDir() ||
+							(!strings.HasSuffix(file.Name(), ".yaml") && !strings.HasSuffix(file.Name(), ".yml")) {
+							continue
+						}
+						agentFiles = append(agentFiles, fmt.Sprintf("%s/%s", filename, file.Name()))
+					}
+				} else {
+					agentFiles = append(agentFiles, filename)
 				}
-			} else {
-				agentFiles = append(agentFiles, args[0])
 			}
 
 			ctx := cmd.Context()
@@ -85,13 +90,17 @@ func newCmd() *cobra.Command {
 			}
 
 			// save agents from config files
-			var agentNames []string
+			var agentInfo []*network.AgentInfo
 			for _, ac := range agentConfigs {
 				a, err := runtimeService.RegisterAgent(ctx, ac)
 				if err != nil {
 					return err
 				}
-				agentNames = append(agentNames, a.Name)
+				agentInfo = append(agentInfo, &network.AgentInfo{
+					Name:     a.Name,
+					Role:     a.Role,
+					Metadata: a.Metadata,
+				})
 
 				logger.Info("Agent loaded", "name", ac.Name)
 			}
@@ -111,26 +120,28 @@ func newCmd() *cobra.Command {
 			grpc_health_v1.RegisterHealthServer(server, health.NewServer())
 			runtime.RegisterAgentRuntimeServer(server, runtimeServer)
 
+			closeCh := make(chan os.Signal, 3)
+			defer close(closeCh)
+			signal.Notify(closeCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGABRT)
+
 			go func() {
-				<-ctx.Done()
+				<-closeCh
 				server.GracefulStop()
 			}()
 
 			// register agent server
-			networkCC := di.MustGet[*grpc.ClientConn](ctx, network.GrpcClientConnKey)
-			if err != nil {
-				return err
-			}
-			defer networkCC.Close()
-
-			agentManager := network.NewAgentNetworkClient(networkCC)
+			agentManager := di.MustGet[network.AgentNetworkClient](ctx, network.ClientKey)
 			if _, err = agentManager.RegisterAgent(ctx, &network.RegisterAgentRequest{
 				Addr:   cfg.RuntimeGrpcAddr,
 				Secure: false,
-				Names:  agentNames,
+				Info:   agentInfo,
 			}); err != nil {
 				return err
 			}
+
+			agentNames := gog.Map(agentInfo, func(i *network.AgentInfo) string {
+				return i.Name
+			})
 			defer func() {
 				if _, err := agentManager.DeregisterAgent(ctx, &network.DeregisterAgentRequest{
 					Names: agentNames,

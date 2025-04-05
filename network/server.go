@@ -5,7 +5,6 @@ import (
 	"github.com/habiliai/agentruntime/entity"
 	"github.com/habiliai/agentruntime/internal/di"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
-	"slices"
 )
 
 type networkServer struct {
@@ -32,38 +31,26 @@ func (s *networkServer) GetAgentRuntimeInfo(ctx context.Context, req *GetAgentRu
 	if err != nil {
 		return nil, err
 	}
-
-	resp := &GetAgentRuntimeInfoResponse{}
-	for _, info := range runtimeInfo {
+	resp := &GetAgentRuntimeInfoResponse{
+		AgentRuntimeInfo: make([]*AgentRuntimeInfo, 0, len(runtimeInfo)),
+	}
+	for _, agent := range runtimeInfo {
 		resp.AgentRuntimeInfo = append(resp.AgentRuntimeInfo, &AgentRuntimeInfo{
-			Addr:       info.Addr,
-			Secure:     info.Secure,
-			AgentNames: []string{info.Name},
+			Addr:   agent.Addr,
+			Secure: agent.Secure,
+			Info: &AgentInfo{
+				Name:     agent.Name,
+				Role:     agent.Role,
+				Metadata: agent.Metadata.Data(),
+			},
 		})
-	}
-
-	if req.GetAll() {
-		return resp, nil
-	}
-
-	// Merge AgentRuntimeInfo by Addr
-	for i := 0; i < len(resp.AgentRuntimeInfo); i++ {
-		for j := i + 1; j < len(resp.AgentRuntimeInfo); j++ {
-			if resp.AgentRuntimeInfo[i].Addr != resp.AgentRuntimeInfo[j].Addr {
-				continue
-			}
-
-			resp.AgentRuntimeInfo[i].AgentNames = append(resp.AgentRuntimeInfo[i].AgentNames, resp.AgentRuntimeInfo[j].AgentNames...)
-			resp.AgentRuntimeInfo = slices.Delete(resp.AgentRuntimeInfo, j, j+1)
-			j--
-		}
 	}
 
 	return resp, nil
 }
 
 func (s *networkServer) RegisterAgent(ctx context.Context, req *RegisterAgentRequest) (*emptypb.Empty, error) {
-	if err := s.service.RegisterAgent(ctx, req.Addr, req.Secure, req.Names); err != nil {
+	if err := s.service.RegisterAgent(ctx, req.Addr, req.Secure, req.Info); err != nil {
 		return nil, err
 	}
 

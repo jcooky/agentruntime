@@ -7,6 +7,7 @@ import (
 	"github.com/habiliai/agentruntime/internal/di"
 	"github.com/habiliai/agentruntime/internal/mylog"
 	"github.com/habiliai/agentruntime/internal/stringslices"
+	"github.com/habiliai/agentruntime/network"
 	"github.com/habiliai/agentruntime/thread"
 	"github.com/habiliai/agentruntime/tool"
 	"github.com/pkg/errors"
@@ -29,6 +30,7 @@ type (
 		toolManager         tool.Manager
 		agents              []entity.Agent
 		threadManagerClient thread.ThreadManagerClient
+		networkClient       network.AgentNetworkClient
 	}
 )
 
@@ -84,6 +86,7 @@ func init() {
 			logger:              logger,
 			toolManager:         di.MustGet[tool.Manager](c, tool.ManagerKey),
 			threadManagerClient: di.MustGet[thread.ThreadManagerClient](c, thread.ClientKey),
+			networkClient:       di.MustGet[network.AgentNetworkClient](c, network.ClientKey),
 		}, nil
 	})
 }

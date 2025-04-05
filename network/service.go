@@ -9,6 +9,7 @@ import (
 	"github.com/habiliai/agentruntime/internal/stringslices"
 	"github.com/habiliai/agentruntime/tool"
 	"github.com/pkg/errors"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"log/slog"
@@ -20,7 +21,7 @@ type (
 	Service interface {
 		GetAgentRuntimeInfo(ctx context.Context, agentNames []string) ([]entity.AgentRuntime, error)
 		GetAllAgentRuntimeInfo(ctx context.Context) ([]entity.AgentRuntime, error)
-		RegisterAgent(ctx context.Context, addr string, secure bool, agentNames []string) error
+		RegisterAgent(ctx context.Context, addr string, secure bool, agentInfo []*AgentInfo) error
 		DeregisterAgent(ctx context.Context, agentNames []string) error
 		CheckLive(ctx context.Context, agentNames []string) error
 	}
@@ -72,21 +73,23 @@ func (s *service) DeregisterAgent(ctx context.Context, agentNames []string) erro
 	})
 }
 
-func (s *service) RegisterAgent(ctx context.Context, addr string, secure bool, agentNames []string) error {
+func (s *service) RegisterAgent(ctx context.Context, addr string, secure bool, agentInfo []*AgentInfo) error {
 	_, tx := db.OpenSession(ctx, s.db)
 
 	return tx.Transaction(func(tx *gorm.DB) error {
-		for _, agentName := range agentNames {
+		for _, info := range agentInfo {
 			var agentRuntime entity.AgentRuntime
 			if err := tx.Clauses(clause.Locking{
 				Strength: "UPDATE",
-			}).Find(&agentRuntime, "lower(name) = ?", strings.ToLower(agentName)).Error; err != nil {
+			}).Find(&agentRuntime, "lower(name) = ?", strings.ToLower(info.Name)).Error; err != nil {
 				return errors.Wrapf(err, "failed to find agent runtime")
 			}
 
-			agentRuntime.Name = agentName
+			agentRuntime.Name = info.Name
 			agentRuntime.Addr = addr
 			agentRuntime.Secure = secure
+			agentRuntime.Role = info.Role
+			agentRuntime.Metadata = datatypes.NewJSONType(info.Metadata)
 			agentRuntime.LastLiveAt = time.Now()
 
 			if err := agentRuntime.Save(tx); err != nil {
