@@ -8,11 +8,10 @@ import (
 	"github.com/habiliai/agentruntime/internal/mylog"
 	"github.com/habiliai/agentruntime/internal/stringslices"
 	"github.com/habiliai/agentruntime/network"
+	"github.com/habiliai/agentruntime/runner"
 	"github.com/habiliai/agentruntime/thread"
 	"github.com/habiliai/agentruntime/tool"
 	"github.com/pkg/errors"
-	"github.com/yukinagae/genkit-go-plugins/plugins/openai"
-	"os"
 	"strings"
 )
 
@@ -31,6 +30,7 @@ type (
 		agents              []entity.Agent
 		threadManagerClient thread.ThreadManagerClient
 		networkClient       network.AgentNetworkClient
+		runner              runner.Runner
 	}
 )
 
@@ -68,22 +68,11 @@ func (s *service) findAgentsByNames(names []string) ([]entity.Agent, error) {
 
 func init() {
 	di.Register(ServiceKey, func(c context.Context, _ di.Env) (any, error) {
-		conf, err := di.Get[*config.RuntimeConfig](c, config.RuntimeConfigKey)
-		if err != nil {
-			return nil, err
-		}
-
-		os.Setenv("OPENAI_API_KEY", conf.OpenAIApiKey)
-		if err := openai.Init(c, &openai.Config{
-			APIKey: conf.OpenAIApiKey,
-		}); err != nil {
-			return nil, errors.WithStack(err)
-		}
-
 		logger := di.MustGet[*mylog.Logger](c, mylog.Key)
 
 		return &service{
 			logger:              logger,
+			runner:              di.MustGet[runner.Runner](c, runner.Key),
 			toolManager:         di.MustGet[tool.Manager](c, tool.ManagerKey),
 			threadManagerClient: di.MustGet[thread.ThreadManagerClient](c, thread.ClientKey),
 			networkClient:       di.MustGet[network.AgentNetworkClient](c, network.ClientKey),

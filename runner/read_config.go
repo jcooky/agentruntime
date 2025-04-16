@@ -1,4 +1,4 @@
-package runtime
+package runner
 
 import (
 	"context"
@@ -10,11 +10,12 @@ import (
 	"strings"
 )
 
-func (s *service) RegisterAgent(
+func (s *runner) NewAgentFromConfig(
 	ctx context.Context,
 	ac config.AgentConfig,
 ) (*entity.Agent, error) {
 	var a entity.Agent
+
 	a.Name = ac.Name
 	a.System = ac.System
 	a.Bio = ac.Bio
@@ -71,8 +72,6 @@ func (s *service) RegisterAgent(
 
 	a.Metadata = ac.Metadata
 	a.Knowledge = ac.Knowledge
-
-	s.agents = append(s.agents, a)
 
 	return &a, nil
 }

@@ -45,7 +45,7 @@ func NewLogger(logLevel string, logHandler string) *Logger {
 
 func init() {
 	di.Register(Key, func(c context.Context, _ di.Env) (any, error) {
-		conf, err := di.Get[*config.RuntimeConfig](c, config.RuntimeConfigKey)
+		conf, err := di.Get[*config.LogConfig](c, config.LogConfigKey)
 		if err != nil {
 			return nil, err
 		}
