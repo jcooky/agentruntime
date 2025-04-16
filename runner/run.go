@@ -57,9 +57,9 @@ type (
 	}
 
 	RunRequest struct {
-		ThreadInstruction string         `json:"thread_instruction"`
+		ThreadInstruction string         `json:"thread_instruction,omitempty"`
 		History           []Conversation `json:"history"`
-		Agent             entity.Agent   `json:"agents"`
+		Agent             entity.Agent   `json:"agent"`
 		Participant       []Participant  `json:"participants,omitempty"`
 	}
 
