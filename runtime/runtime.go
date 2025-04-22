@@ -3,12 +3,12 @@ package runtime
 import (
 	"context"
 	"github.com/habiliai/agentruntime/config"
+	"github.com/habiliai/agentruntime/engine"
 	"github.com/habiliai/agentruntime/entity"
 	"github.com/habiliai/agentruntime/internal/di"
 	"github.com/habiliai/agentruntime/internal/mylog"
 	"github.com/habiliai/agentruntime/internal/stringslices"
 	"github.com/habiliai/agentruntime/network"
-	"github.com/habiliai/agentruntime/runner"
 	"github.com/habiliai/agentruntime/thread"
 	"github.com/habiliai/agentruntime/tool"
 	"github.com/pkg/errors"
@@ -30,7 +30,7 @@ type (
 		agents              []entity.Agent
 		threadManagerClient thread.ThreadManagerClient
 		networkClient       network.AgentNetworkClient
-		runner              runner.Runner
+		runner              engine.Engine
 	}
 )
 
@@ -72,7 +72,7 @@ func init() {
 
 		return &service{
 			logger:              logger,
-			runner:              di.MustGet[runner.Runner](c, runner.Key),
+			runner:              di.MustGet[engine.Engine](c, engine.Key),
 			toolManager:         di.MustGet[tool.Manager](c, tool.ManagerKey),
 			threadManagerClient: di.MustGet[thread.ThreadManagerClient](c, thread.ClientKey),
 			networkClient:       di.MustGet[network.AgentNetworkClient](c, network.ClientKey),

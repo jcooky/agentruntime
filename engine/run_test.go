@@ -1,17 +1,17 @@
-package runner_test
+package engine_test
 
 import (
-	"github.com/habiliai/agentruntime/runner"
+	"github.com/habiliai/agentruntime/engine"
 	"github.com/mokiat/gog"
 )
 
-func (s *RunnerTestSuite) TestRun() {
-	ag, err := s.runner.NewAgentFromConfig(s, s.agentConfig)
+func (s *EngineTestSuite) TestRun() {
+	ag, err := s.engine.NewAgentFromConfig(s, s.agentConfig)
 	s.Require().NoError(err)
 
-	resp, err := s.runner.Run(s, runner.RunRequest{
+	resp, err := s.engine.Run(s, engine.RunRequest{
 		ThreadInstruction: "# Mission: AI agents dialogue with user",
-		History: []runner.Conversation{
+		History: []engine.Conversation{
 			{
 				User: "USER",
 				Text: "Hello, what is the weather today?",
@@ -25,7 +25,7 @@ func (s *RunnerTestSuite) TestRun() {
 	if !s.Len(resp.ToolCalls, 2) {
 		s.T().FailNow()
 	}
-	toolCallNames := gog.Map(resp.ToolCalls, func(tc runner.RunResponseToolcall) string {
+	toolCallNames := gog.Map(resp.ToolCalls, func(tc engine.RunResponseToolcall) string {
 		return tc.Name
 	})
 	s.Require().Contains(toolCallNames, "done_agent")

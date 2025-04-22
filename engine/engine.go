@@ -1,4 +1,4 @@
-package runner
+package engine
 
 import (
 	"context"
@@ -9,11 +9,12 @@ import (
 	"github.com/habiliai/agentruntime/tool"
 	"github.com/pkg/errors"
 	"github.com/yukinagae/genkit-go-plugins/plugins/openai"
+	goopenai "github.com/openai/openai-go"
 	"os"
 )
 
 type (
-	Runner interface {
+	Engine interface {
 		NewAgentFromConfig(
 			ctx context.Context,
 			ac config.AgentConfig,
@@ -21,14 +22,14 @@ type (
 		Run(ctx context.Context, req RunRequest) (*RunResponse, error)
 	}
 
-	runner struct {
+	engine struct {
 		logger      *mylog.Logger
 		toolManager tool.Manager
 	}
 )
 
 var (
-	_   Runner = (*runner)(nil)
+	_   Engine = (*engine)(nil)
 	Key        = di.NewKey()
 )
 
@@ -36,13 +37,16 @@ func init() {
 	di.Register(Key, func(ctx context.Context, env di.Env) (any, error) {
 		conf := di.MustGet[*config.OpenAIConfig](ctx, config.OpenAIConfigKey)
 		os.Setenv("OPENAI_API_KEY", conf.OpenAIApiKey)
-		if err := openai.Init(ctx, &openai.Config{
-			APIKey: conf.OpenAIApiKey,
-		}); err != nil {
-			return nil, errors.WithStack(err)
+
+		if !openai.IsDefinedModel(goopenai.ChatModelGPT4o) {
+			if err := openai.Init(ctx, &openai.Config{
+				APIKey: conf.OpenAIApiKey,
+			}); err != nil {
+				return nil, errors.WithStack(err)
+			}
 		}
 
-		return &runner{
+		return &engine{
 			logger:      di.MustGet[*mylog.Logger](ctx, mylog.Key),
 			toolManager: di.MustGet[tool.Manager](ctx, tool.ManagerKey),
 		}, nil

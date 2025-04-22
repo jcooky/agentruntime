@@ -1,4 +1,4 @@
-package runner
+package engine
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-func (s *runner) NewAgentFromConfig(
+func (s *engine) NewAgentFromConfig(
 	ctx context.Context,
 	ac config.AgentConfig,
 ) (*entity.Agent, error) {

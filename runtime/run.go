@@ -3,9 +3,9 @@ package runtime
 import (
 	"context"
 	_ "embed"
+	"github.com/habiliai/agentruntime/engine"
 	"github.com/habiliai/agentruntime/entity"
 	"github.com/habiliai/agentruntime/network"
-	"github.com/habiliai/agentruntime/runner"
 	"github.com/habiliai/agentruntime/thread"
 	"github.com/mokiat/gog"
 	"github.com/pkg/errors"
@@ -79,15 +79,15 @@ func (s *service) Run(
 
 	// build recent conversations
 	var (
-		history      = make([]runner.Conversation, 0, len(messages))
-		participants []runner.Participant
+		history      = make([]engine.Conversation, 0, len(messages))
+		participants []engine.Participant
 	)
 	for _, msg := range messages {
-		history = append(history, runner.Conversation{
+		history = append(history, engine.Conversation{
 			User: msg.Sender,
 			Text: msg.Content,
-			Actions: gog.Map(msg.ToolCalls, func(tc *thread.Message_ToolCall) runner.Action {
-				return runner.Action{
+			Actions: gog.Map(msg.ToolCalls, func(tc *thread.Message_ToolCall) engine.Action {
+				return engine.Action{
 					Name:      tc.Name,
 					Arguments: tc.Arguments,
 					Result:    tc.Result,
@@ -95,7 +95,7 @@ func (s *service) Run(
 			}),
 		})
 		if sender, ok := agentInfoMap[msg.Sender]; ok {
-			participants = append(participants, runner.Participant{
+			participants = append(participants, engine.Participant{
 				Name: sender.Name,
 				Role: sender.Role,
 			})
@@ -108,7 +108,7 @@ func (s *service) Run(
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 
-			resp, err := s.runner.Run(ctx, runner.RunRequest{
+			resp, err := s.runner.Run(ctx, engine.RunRequest{
 				ThreadInstruction: thr.Instruction,
 				History:           history,
 				Agent:             agent,

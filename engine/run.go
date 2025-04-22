@@ -1,4 +1,4 @@
-package runner
+package engine
 
 import (
 	"context"
@@ -76,7 +76,7 @@ type (
 	}
 )
 
-func (s *runner) Run(
+func (s *engine) Run(
 	ctx context.Context,
 	req RunRequest,
 ) (*RunResponse, error) {

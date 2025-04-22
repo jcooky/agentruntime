@@ -1,22 +1,22 @@
-package runner_test
+package engine_test
 
 import (
 	"github.com/habiliai/agentruntime/config"
+	"github.com/habiliai/agentruntime/engine"
 	"github.com/habiliai/agentruntime/internal/di"
 	"github.com/habiliai/agentruntime/internal/mytesting"
-	"github.com/habiliai/agentruntime/runner"
 	"github.com/stretchr/testify/suite"
 	"testing"
 )
 
-type RunnerTestSuite struct {
+type EngineTestSuite struct {
 	mytesting.Suite
 
-	runner      runner.Runner
+	engine      engine.Engine
 	agentConfig config.AgentConfig
 }
 
-func (s *RunnerTestSuite) SetupTest() {
+func (s *EngineTestSuite) SetupTest() {
 	s.Suite.SetupTest()
 
 	var err error
@@ -24,9 +24,9 @@ func (s *RunnerTestSuite) SetupTest() {
 	s.agentConfig, err = config.LoadAgentFromFile("./testdata/test1.agent.yaml")
 	s.Require().NoError(err)
 
-	s.runner = di.MustGet[runner.Runner](s.Context, runner.Key)
+	s.engine = di.MustGet[engine.Engine](s.Context, engine.Key)
 }
 
 func TestRunner(t *testing.T) {
-	suite.Run(t, new(RunnerTestSuite))
+	suite.Run(t, new(EngineTestSuite))
 }
