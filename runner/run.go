@@ -7,6 +7,7 @@ import (
 	"github.com/firebase/genkit/go/ai"
 	"github.com/habiliai/agentruntime/entity"
 	myerrors "github.com/habiliai/agentruntime/errors"
+	"github.com/habiliai/agentruntime/internal/sliceutils"
 	"github.com/habiliai/agentruntime/tool"
 	"github.com/pkg/errors"
 	"github.com/yukinagae/genkit-go-plugins/plugins/openai"
@@ -80,11 +81,12 @@ func (s *runner) Run(
 	req RunRequest,
 ) (*RunResponse, error) {
 	agent := req.Agent
+
 	// construct inst values
 	instValues := ChatInstValues{
 		Agent:               agent,
-		MessageExamples:     agent.MessageExamples,
-		RecentConversations: req.History,
+		MessageExamples:     sliceutils.RandomSampleN(agent.MessageExamples, 7),
+		RecentConversations: sliceutils.Cut(req.History, -25, len(req.History)),
 		AvailableActions:    make([]AvailableAction, 0, len(agent.Tools)),
 		Thread: ThreadValues{
 			Instruction:  req.ThreadInstruction,
