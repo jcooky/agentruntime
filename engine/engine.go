@@ -7,9 +7,9 @@ import (
 	"github.com/habiliai/agentruntime/internal/di"
 	"github.com/habiliai/agentruntime/internal/mylog"
 	"github.com/habiliai/agentruntime/tool"
+	goopenai "github.com/openai/openai-go"
 	"github.com/pkg/errors"
 	"github.com/yukinagae/genkit-go-plugins/plugins/openai"
-	goopenai "github.com/openai/openai-go"
 	"os"
 )
 

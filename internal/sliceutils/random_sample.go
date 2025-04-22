@@ -3,18 +3,12 @@ package sliceutils
 import "math/rand/v2"
 
 func RandomSampleN[T any](slice []T, n int) []T {
+	n = min(n, len(slice))
 	res := make([]T, 0, n)
-	selected := map[int]struct{}{}
+	indices := rand.Perm(len(slice))
+
 	for i := 0; i < n; i++ {
-		for {
-			idx := rand.IntN(len(slice))
-			if _, ok := selected[idx]; !ok {
-				continue
-			}
-			selected[idx] = struct{}{}
-			res = append(res, slice[idx])
-			break
-		}
+		res = append(res, slice[indices[i]])
 	}
 
 	return res
