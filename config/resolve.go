@@ -20,16 +20,15 @@ func resolveConfig[T any](config *T, testing bool) error {
 	if _, err := os.Stat(".env"); !os.IsNotExist(err) {
 		configReader.AddFeeder(feeder.DotEnv{Path: ".env"})
 	}
-	if testing {
-		filename := ".env.test"
-		if v := os.Getenv("ENV_TEST_FILE"); v != "" {
-			filename = v
-		}
-		if _, err := os.Stat(filename); os.IsNotExist(err) {
-			return errors.Wrapf(err, "should be existed %s in testing", filename)
-		}
+
+	filename := ".env.test"
+	if v := os.Getenv("ENV_TEST_FILE"); v != "" {
+		filename = v
+	}
+	if _, err := os.Stat(filename); !os.IsNotExist(err) {
 		configReader.AddFeeder(feeder.DotEnv{Path: filename})
 	}
+
 	configReader.AddFeeder(feeder.Env{})
 
 	return errors.Wrapf(configReader.AddStruct(config).Feed(), "failed to load config")

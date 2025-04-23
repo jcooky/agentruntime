@@ -24,7 +24,7 @@ var (
 
 func init() {
 	di.Register(ManagerKey, func(ctx context.Context, env di.Env) (any, error) {
-		conf, err := di.Get[*config.RuntimeConfig](ctx, config.RuntimeConfigKey)
+		conf, err := di.Get[*config.ToolConfig](ctx, config.ToolConfigKey)
 		if err != nil {
 			return nil, err
 		}
@@ -39,6 +39,10 @@ func init() {
 			<-ctx.Done()
 			s.Close()
 		}()
+
+		s.RegisterGetWeatherTool()
+		s.RegisterDoneTool()
+		s.RegisterWebSearchTool()
 
 		return s, nil
 	})

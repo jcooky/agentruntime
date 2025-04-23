@@ -8,9 +8,9 @@ import (
 type RuntimeConfig struct {
 	LogConfig
 	OpenAIConfig
+	ToolConfig
 	Host              string `env:"HOST"`
 	Port              int    `env:"PORT"`
-	OpenWeatherApiKey string `env:"OPENWEATHER_API_KEY"`
 	NetworkGrpcAddr   string `env:"NETWORK_GRPC_ADDR"`
 	NetworkGrpcSecure bool   `env:"NETWORK_GRPC_SECURE"`
 	RuntimeGrpcAddr   string `env:"RUNTIME_GRPC_ADDR"`

@@ -18,8 +18,10 @@ require (
 	github.com/lmittmann/tint v1.0.7
 	github.com/mark3labs/mcp-go v0.17.1-0.20250329140527-051cda5533c7
 	github.com/mokiat/gog v0.15.0
+	github.com/openai/openai-go v0.1.0-alpha.61
 	github.com/pkg/errors v0.9.1
 	github.com/pterm/pterm v0.12.80
+	github.com/serpapi/google-search-results-golang v0.0.0-20240325113416-ec93f510648e
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0
 	github.com/yukinagae/genkit-go-plugins v0.2.3-0.20250401094943-d1914214dfa7
@@ -67,7 +69,6 @@ require (
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
-	github.com/openai/openai-go v0.1.0-alpha.61 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/habiliai/agentruntime/internal/di"
 	"github.com/pkg/errors"
 	"net/http"
 	"net/url"
@@ -141,7 +140,7 @@ func (m *manager) GetWeather(ctx context.Context, req *GetWeatherRequest) (*GetW
 	return weatherSummary, nil
 }
 
-func init() {
+func (m *manager) RegisterGetWeatherTool() {
 	RegisterLocalTool(
 		"get_weather",
 		"Get weather information when you need it",
@@ -150,8 +149,7 @@ func init() {
 		}) (res struct {
 			*GetWeatherResponse
 		}, err error) {
-			s := di.MustGet[*manager](ctx, ManagerKey)
-			res.GetWeatherResponse, err = s.GetWeather(ctx, req.GetWeatherRequest)
+			res.GetWeatherResponse, err = m.GetWeather(ctx, req.GetWeatherRequest)
 			return
 		},
 	)

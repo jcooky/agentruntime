@@ -12,7 +12,7 @@ import (
 type (
 	manager struct {
 		logger *mylog.Logger
-		config *config.RuntimeConfig
+		config *config.ToolConfig
 
 		mcpClients map[string]mcpclient.MCPClient
 		mtx        sync.Mutex

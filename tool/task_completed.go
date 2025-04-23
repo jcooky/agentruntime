@@ -2,7 +2,6 @@ package tool
 
 import (
 	"context"
-	"github.com/habiliai/agentruntime/internal/di"
 )
 
 type (
@@ -24,7 +23,7 @@ func (m *manager) DoneAgent(_ context.Context, req *DoneAgentRequest) (*DoneAgen
 	}, nil
 }
 
-func init() {
+func (m *manager) RegisterDoneTool() {
 	RegisterLocalTool(
 		"done_agent",
 		"Mark the current task as completed when you've fulfilled all requirements",
@@ -33,8 +32,7 @@ func init() {
 		}) (res struct {
 			*DoneAgentResponse
 		}, err error) {
-			s := di.MustGet[*manager](ctx, ManagerKey)
-			res.DoneAgentResponse, err = s.DoneAgent(ctx, req.DoneAgentRequest)
+			res.DoneAgentResponse, err = m.DoneAgent(ctx, req.DoneAgentRequest)
 			return
 		},
 	)
