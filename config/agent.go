@@ -1,9 +1,11 @@
 package config
 
 import (
+	"io"
+	"os"
+
 	"github.com/goccy/go-yaml"
 	"github.com/pkg/errors"
-	"os"
 )
 
 type AgentConfig struct {
@@ -26,15 +28,15 @@ type AgentConfig struct {
 	MCPServers map[string]MCPServer `yaml:"mcpServers"`
 }
 
-func LoadAgentFromFile(file string) (agent AgentConfig, err error) {
+func LoadAgentFromFile(file io.Reader) (agent AgentConfig, err error) {
 	var yamlBytes []byte
-	if yamlBytes, err = os.ReadFile(file); err != nil {
-		err = errors.Wrapf(err, "failed to read file %s", file)
+	if yamlBytes, err = io.ReadAll(file); err != nil {
+		err = errors.Wrapf(err, "failed to read file")
 		return
 	}
 
 	if err = yaml.Unmarshal(yamlBytes, &agent); err != nil {
-		err = errors.Wrapf(err, "failed to unmarshal file %s", file)
+		err = errors.Wrapf(err, "failed to unmarshal file")
 		return
 	}
 
@@ -44,9 +46,15 @@ func LoadAgentFromFile(file string) (agent AgentConfig, err error) {
 func LoadAgentsFromFiles(files []string) ([]AgentConfig, error) {
 	agents := make([]AgentConfig, 0, len(files))
 	for _, file := range files {
-		agent, err := LoadAgentFromFile(file)
+		fileReader, err := os.Open(file)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrapf(err, "failed to open file %s", file)
+		}
+		defer fileReader.Close()
+
+		agent, err := LoadAgentFromFile(fileReader)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to load agent from file %s", file)
 		}
 		agents = append(agents, agent)
 	}

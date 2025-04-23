@@ -51,7 +51,6 @@ func init() {
 		}
 
 		logger := NewLogger(conf.LogLevel, conf.LogHandler)
-		slog.SetDefault(logger)
 		return logger, nil
 	})
 }

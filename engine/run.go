@@ -131,14 +131,6 @@ func (s *engine) Run(
 		config = openai.GenerationReasoningConfig{
 			ReasoningEffort: "high",
 		}
-	case "gpt-4o":
-		config = ai.GenerationCommonConfig{
-			Temperature: 0.2,
-			TopP:        0.5,
-			TopK:        16,
-		}
-	default:
-		return nil, errors.Errorf("unsupported model %s", agent.ModelName)
 	}
 
 	ctx = tool.WithEmptyCallDataStore(ctx)

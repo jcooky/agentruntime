@@ -2,12 +2,15 @@ package agentruntime
 
 import (
 	"context"
+	"io"
+	"log/slog"
+
 	"github.com/habiliai/agentruntime/config"
 	"github.com/habiliai/agentruntime/engine"
 	"github.com/habiliai/agentruntime/entity"
 	"github.com/habiliai/agentruntime/internal/di"
 	"github.com/habiliai/agentruntime/internal/mylog"
-	"log/slog"
+	"github.com/habiliai/agentruntime/tool"
 )
 
 type (
@@ -21,7 +24,8 @@ type (
 	Tool           = entity.Tool
 
 	AIEngine struct {
-		engine engine.Engine
+		engine      engine.Engine
+		toolManager tool.Manager
 
 		openAIAPIKey string
 		logger       *slog.Logger
@@ -30,6 +34,23 @@ type (
 
 func (a *AIEngine) Run(ctx context.Context, req RunRequest) (*RunResponse, error) {
 	return a.engine.Run(ctx, req)
+}
+
+func (a *AIEngine) CreateAgentFromYaml(ctx context.Context, yamlFile io.Reader) (*Agent, error) {
+	yamlCfg, err := config.LoadAgentFromFile(yamlFile)
+	if err != nil {
+		return nil, err
+	}
+
+	for name, mcpServer := range yamlCfg.MCPServers {
+		a.toolManager.RegisterMCPTool(ctx, tool.RegisterMCPToolRequest{
+			ServerName: name,
+			Command:    mcpServer.Command,
+			Args:       mcpServer.Args,
+			Env:        mcpServer.Env,
+		})
+	}
+	return a.engine.NewAgentFromConfig(ctx, yamlCfg)
 }
 
 func NewAIEngine(ctx context.Context, optionFuncs ...func(*AIEngine)) *AIEngine {
@@ -48,6 +69,7 @@ func NewAIEngine(ctx context.Context, optionFuncs ...func(*AIEngine)) *AIEngine 
 	}
 
 	e.engine = di.MustGet[engine.Engine](ctx, engine.Key)
+	e.toolManager = di.MustGet[tool.Manager](ctx, tool.ManagerKey)
 	return e
 }
 
