@@ -34,8 +34,8 @@ type (
 	}
 )
 
-func (a *AIEngine) Run(ctx context.Context, req RunRequest) (*RunResponse, error) {
-	return a.engine.Run(ctx, req)
+func (a *AIEngine) Run(ctx context.Context, req RunRequest, out any) (*RunResponse, error) {
+	return a.engine.Run(ctx, req, out)
 }
 
 func (a *AIEngine) CreateAgentFromYaml(ctx context.Context, yamlFile io.Reader) (*Agent, error) {

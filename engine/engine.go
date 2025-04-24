@@ -19,7 +19,7 @@ type (
 			ctx context.Context,
 			ac config.AgentConfig,
 		) (*entity.Agent, error)
-		Run(ctx context.Context, req RunRequest) (*RunResponse, error)
+		Run(ctx context.Context, req RunRequest, output any) (*RunResponse, error)
 	}
 
 	engine struct {

@@ -108,12 +108,13 @@ func (s *service) Run(
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 
+			var content string
 			resp, err := s.runner.Run(ctx, engine.RunRequest{
 				ThreadInstruction: thr.Instruction,
 				History:           history,
 				Agent:             agent,
 				Participant:       participants,
-			})
+			}, &content)
 			if err != nil {
 				return err
 			}
@@ -121,7 +122,7 @@ func (s *service) Run(
 			req := &thread.AddMessageRequest{
 				ThreadId: uint32(threadId),
 				Sender:   agent.Name,
-				Content:  resp.Content,
+				Content:  content,
 			}
 
 			for _, toolCall := range resp.ToolCalls {

@@ -11,6 +11,7 @@ import (
 	"github.com/habiliai/agentruntime/tool"
 	"github.com/pkg/errors"
 	"github.com/yukinagae/genkit-go-plugins/plugins/openai"
+	"reflect"
 	"strings"
 	"text/template"
 )
@@ -65,7 +66,6 @@ type (
 	}
 
 	RunResponse struct {
-		Content   string                `json:"content"`
 		ToolCalls []RunResponseToolcall `json:"tool_calls"`
 	}
 
@@ -79,7 +79,13 @@ type (
 func (s *engine) Run(
 	ctx context.Context,
 	req RunRequest,
+	output any,
 ) (*RunResponse, error) {
+	if output == nil {
+		return nil, errors.Errorf("output is nil")
+	} else if reflect.TypeOf(output).Kind() != reflect.Ptr {
+		return nil, errors.Errorf("output is not a pointer")
+	}
 	agent := req.Agent
 
 	// construct inst values
@@ -135,24 +141,37 @@ func (s *engine) Run(
 
 	ctx = tool.WithEmptyCallDataStore(ctx)
 	var (
-		resp *ai.GenerateResponse
-		err  error
+		responseText string
+		err          error
+		resp         *ai.GenerateResponse
+		opts         []ai.GenerateOption
+		format       = ai.OutputFormatText
 	)
+	if reflect.TypeOf(output).Elem().Kind() != reflect.String {
+		format = ai.OutputFormatJSON
+		opts = append(opts,
+			ai.WithOutputFormat(format),
+			ai.WithOutputSchema(output),
+		)
+	}
+	opts = append(opts,
+		ai.WithCandidates(1),
+		ai.WithSystemPrompt(agent.System),
+		ai.WithTextPrompt(prompt),
+		ai.WithConfig(config),
+		ai.WithTools(tools...),
+	)
+
 	for i := 0; i < 3; i++ {
 		resp, err = ai.Generate(
 			ctx,
 			model,
-			ai.WithCandidates(1),
-			ai.WithSystemPrompt(agent.System),
-			ai.WithTextPrompt(prompt),
-			ai.WithConfig(config),
-			ai.WithOutputFormat(ai.OutputFormatJSON),
-			ai.WithOutputSchema(&Conversation{}),
-			ai.WithTools(tools...),
+			opts...,
 		)
 		if err != nil {
 			s.logger.Warn("failed to generate", "err", err)
 		} else {
+			responseText = resp.Text()
 			break
 		}
 	}
@@ -160,20 +179,19 @@ func (s *engine) Run(
 		return nil, errors.Wrapf(err, "failed to generate")
 	}
 
-	responseText := resp.Text()
-
-	var conversation struct {
-		Text string `json:"text"`
-	}
-	if err := json.Unmarshal([]byte(responseText), &conversation); err != nil {
-		s.logger.Debug("failed to unmarshal conversation", "responseText", responseText)
-		return nil, errors.Wrapf(err, "failed to unmarshal conversation")
-	}
-
-	res := RunResponse{
-		Content: conversation.Text,
+	if format == ai.OutputFormatJSON {
+		if err := json.Unmarshal([]byte(responseText), output); err != nil {
+			return nil, errors.Wrapf(err, "failed to unmarshal response")
+		}
+	} else {
+		o, ok := output.(*string)
+		if !ok {
+			return nil, errors.Errorf("output is not a string pointer")
+		}
+		*o = responseText
 	}
 
+	var res RunResponse
 	toolCallData := tool.GetCallData(ctx)
 	for _, data := range toolCallData {
 		tc := RunResponseToolcall{

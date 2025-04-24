@@ -28,11 +28,6 @@ About {{ .Agent.Name }}:
 - {{ . }}
 {{- end }}
 
-# Knowledge
-```json
-{{ .Agent.Knowledge | toJson }}
-```
-
 # Example Conversations for {{ .Agent.Name }}
 ```json
 {{ .Agent.MessageExamples | toJson }}
@@ -48,11 +43,8 @@ About {{ .Agent.Name }}:
 {{ .AvailableActions | toJson }}
 ```
 
-# Instructions: Write the next message for {{ .Agent.Name }}.
-Response format should be formatted in a valid JSON block like this:
-```json
-{ "user": "{{ .Agent.Name }}", "text": "<string>", "action": "<string>" }
-```
+# Instructions
+- Write the next message for {{ .Agent.Name }}.
 
 The “action” field should be one of the options in [Available Actions] and the "text" field should be the response you want to send.
 
