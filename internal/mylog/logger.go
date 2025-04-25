@@ -2,10 +2,11 @@ package mylog
 
 import (
 	"context"
-	"github.com/habiliai/agentruntime/config"
-	"github.com/habiliai/agentruntime/internal/di"
 	"log/slog"
 	"os"
+
+	"github.com/habiliai/agentruntime/config"
+	"github.com/habiliai/agentruntime/internal/di"
 )
 
 type Logger = slog.Logger
@@ -44,8 +45,8 @@ func NewLogger(logLevel string, logHandler string) *Logger {
 }
 
 func init() {
-	di.Register(Key, func(c context.Context, _ di.Env) (any, error) {
-		conf, err := di.Get[*config.LogConfig](c, config.LogConfigKey)
+	di.Register(Key, func(c context.Context, container *di.Container) (any, error) {
+		conf, err := di.Get[*config.LogConfig](c, container, config.LogConfigKey)
 		if err != nil {
 			return nil, err
 		}

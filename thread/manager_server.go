@@ -3,6 +3,7 @@ package thread
 import (
 	"context"
 	"encoding/json"
+
 	"github.com/habiliai/agentruntime/entity"
 	"github.com/habiliai/agentruntime/internal/di"
 	"github.com/pkg/errors"
@@ -141,9 +142,9 @@ var (
 )
 
 func init() {
-	di.Register(ManagerServerKey, func(ctx context.Context, _ di.Env) (any, error) {
+	di.Register(ManagerServerKey, func(ctx context.Context, container *di.Container) (any, error) {
 		return &managerServer{
-			manager: di.MustGet[Manager](ctx, ManagerKey),
+			manager: di.MustGet[Manager](ctx, container, ManagerKey),
 		}, nil
 	})
 }

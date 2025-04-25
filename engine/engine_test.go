@@ -2,14 +2,15 @@ package engine_test
 
 import (
 	_ "embed"
+	"os"
+	"strings"
+	"testing"
+
 	"github.com/habiliai/agentruntime/config"
 	"github.com/habiliai/agentruntime/engine"
 	"github.com/habiliai/agentruntime/internal/di"
 	"github.com/habiliai/agentruntime/internal/mytesting"
 	"github.com/stretchr/testify/suite"
-	"os"
-	"strings"
-	"testing"
 )
 
 //go:embed testdata/test1.agent.yaml
@@ -31,7 +32,7 @@ func (s *EngineTestSuite) SetupTest() {
 	s.agentConfig, err = config.LoadAgentFromFile(strings.NewReader(test1AgentYaml))
 	s.Require().NoError(err)
 
-	s.engine = di.MustGet[engine.Engine](s.Context, engine.Key)
+	s.engine = di.MustGet[engine.Engine](s.Context, s.Container, engine.Key)
 }
 
 func TestRunner(t *testing.T) {

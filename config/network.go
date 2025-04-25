@@ -2,6 +2,7 @@ package config
 
 import (
 	"context"
+
 	"github.com/habiliai/agentruntime/internal/di"
 )
 
@@ -37,9 +38,9 @@ func resolveNetworkConfig(testing bool) (*NetworkConfig, error) {
 }
 
 func init() {
-	di.Register(NetworkConfigKey, func(ctx context.Context, env di.Env) (any, error) {
+	di.Register(NetworkConfigKey, func(ctx context.Context, c *di.Container) (any, error) {
 		return resolveNetworkConfig(
-			env == di.EnvTest,
+			c.Env == di.EnvTest,
 		)
 	})
 }

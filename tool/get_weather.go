@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/pkg/errors"
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
 type (
@@ -140,8 +141,8 @@ func (m *manager) GetWeather(ctx context.Context, req *GetWeatherRequest) (*GetW
 	return weatherSummary, nil
 }
 
-func (m *manager) RegisterGetWeatherTool() {
-	RegisterLocalTool(
+func RegisterGetWeatherTool() {
+	registerLocalTool(
 		"get_weather",
 		"Get weather information when you need it",
 		func(ctx context.Context, req struct {
@@ -149,6 +150,12 @@ func (m *manager) RegisterGetWeatherTool() {
 		}) (res struct {
 			*GetWeatherResponse
 		}, err error) {
+			var m LocalToolService
+			m, ok := ctx.Value(localToolServiceKey).(LocalToolService)
+			if !ok {
+				err = errors.New("local tool service not found")
+				return
+			}
 			res.GetWeatherResponse, err = m.GetWeather(ctx, req.GetWeatherRequest)
 			return
 		},

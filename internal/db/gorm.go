@@ -2,13 +2,14 @@ package db
 
 import (
 	"context"
+	"time"
+
 	"github.com/habiliai/agentruntime/config"
 	"github.com/habiliai/agentruntime/internal/di"
 	"github.com/habiliai/agentruntime/internal/mylog"
 	"github.com/pkg/errors"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"time"
 )
 
 var (
@@ -26,7 +27,7 @@ func OpenDB(databaseUrl string) (*gorm.DB, error) {
 
 func CloseDB(db *gorm.DB) error {
 	if db == nil {
-		return errors.Errorf("db is nil")
+		return nil
 	}
 	sqlDB, err := db.DB()
 	if err != nil {
@@ -40,13 +41,13 @@ func CloseDB(db *gorm.DB) error {
 }
 
 func init() {
-	di.Register(Key, func(c context.Context, env di.Env) (any, error) {
-		logger, err := di.Get[*mylog.Logger](c, mylog.Key)
+	di.Register(Key, func(ctx context.Context, c *di.Container) (any, error) {
+		logger, err := di.Get[*mylog.Logger](ctx, c, mylog.Key)
 		if err != nil {
 			return nil, err
 		}
 
-		cfg, err := di.Get[*config.NetworkConfig](c, config.NetworkConfigKey)
+		cfg, err := di.Get[*config.NetworkConfig](ctx, c, config.NetworkConfigKey)
 		if err != nil {
 			return nil, err
 		}
@@ -57,20 +58,20 @@ func init() {
 			return nil, err
 		}
 
-		if env == di.EnvTest {
+		if c.Env == di.EnvTest {
 			if err := DropAll(db); err != nil {
 				return nil, errors.Wrapf(err, "failed to drop database")
 			}
 			time.Sleep(500 * time.Millisecond)
 		}
-		if cfg.DatabaseAutoMigrate || env == di.EnvTest {
+		if cfg.DatabaseAutoMigrate || c.Env == di.EnvTest {
 			if err := AutoMigrate(db); err != nil {
 				return nil, errors.Wrapf(err, "failed to migrate database")
 			}
 		}
 
 		go func() {
-			<-c.Done()
+			<-ctx.Done()
 			if err := CloseDB(db); err != nil {
 				logger.Warn("failed to close database", "err", err)
 			}

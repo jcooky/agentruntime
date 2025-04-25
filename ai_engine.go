@@ -58,25 +58,25 @@ func (a *AIEngine) CreateAgentFromYaml(ctx context.Context, yamlFile io.Reader) 
 }
 
 func NewAIEngine(ctx context.Context, optionFuncs ...func(*AIEngine)) *AIEngine {
-	ctx = di.WithContainer(ctx, di.EnvProd)
+	container := di.NewContainer(di.EnvProd)
 	e := &AIEngine{}
 	for _, f := range optionFuncs {
 		f(e)
 	}
 	if e.openAIAPIKey != "" {
-		di.Set(ctx, config.OpenAIConfigKey, &config.OpenAIConfig{
+		di.Set(container, config.OpenAIConfigKey, &config.OpenAIConfig{
 			OpenAIApiKey: e.openAIAPIKey,
 		})
 	}
 	if e.logger != nil {
-		di.Set(ctx, mylog.Key, e.logger)
+		di.Set(container, mylog.Key, e.logger)
 	}
 	if e.toolConfig != nil {
-		di.Set(ctx, config.ToolConfigKey, e.toolConfig)
+		di.Set(container, config.ToolConfigKey, e.toolConfig)
 	}
 
-	e.engine = di.MustGet[engine.Engine](ctx, engine.Key)
-	e.toolManager = di.MustGet[tool.Manager](ctx, tool.ManagerKey)
+	e.engine = di.MustGet[engine.Engine](ctx, container, engine.Key)
+	e.toolManager = di.MustGet[tool.Manager](ctx, container, tool.ManagerKey)
 	return e
 }
 

@@ -2,14 +2,21 @@ package tool
 
 import (
 	"context"
+	"sync"
+
 	"github.com/firebase/genkit/go/ai"
 	"github.com/habiliai/agentruntime/config"
 	"github.com/habiliai/agentruntime/internal/mylog"
 	mcpclient "github.com/mark3labs/mcp-go/client"
-	"sync"
 )
 
 type (
+	LocalToolService interface {
+		GetWeather(ctx context.Context, req *GetWeatherRequest) (*GetWeatherResponse, error)
+		DoneAgent(_ context.Context, req *DoneAgentRequest) (*DoneAgentResponse, error)
+		Search(ctx context.Context, req *WebSearchRequest) ([]any, error)
+	}
+
 	manager struct {
 		logger *mylog.Logger
 		config *config.ToolConfig
@@ -17,6 +24,13 @@ type (
 		mcpClients map[string]mcpclient.MCPClient
 		mtx        sync.Mutex
 	}
+	LocalToolServiceKey string
+)
+
+var (
+	_                   LocalToolService    = (*manager)(nil)
+	_                   Manager             = (*manager)(nil)
+	localToolServiceKey LocalToolServiceKey = "agentruntime.local_tool_service"
 )
 
 func (m *manager) GetTool(_ context.Context, toolName string) ai.Tool {
@@ -48,11 +62,7 @@ func (m *manager) Close() {
 	}
 }
 
-var (
-	_ Manager = (*manager)(nil)
-)
-
-func RegisterLocalTool[In any, Out any](name string, description string, fn func(context.Context, In) (Out, error)) ai.Tool {
+func registerLocalTool[In any, Out any](name string, description string, fn func(context.Context, In) (Out, error)) ai.Tool {
 	return ai.DefineTool(
 		name,
 		description,
@@ -68,4 +78,8 @@ func RegisterLocalTool[In any, Out any](name string, description string, fn func
 			return out, err
 		},
 	)
+}
+
+func WithLocalToolService(ctx context.Context, toolService LocalToolService) context.Context {
+	return context.WithValue(ctx, localToolServiceKey, toolService)
 }

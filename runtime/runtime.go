@@ -2,6 +2,8 @@ package runtime
 
 import (
 	"context"
+	"strings"
+
 	"github.com/habiliai/agentruntime/config"
 	"github.com/habiliai/agentruntime/engine"
 	"github.com/habiliai/agentruntime/entity"
@@ -12,7 +14,6 @@ import (
 	"github.com/habiliai/agentruntime/thread"
 	"github.com/habiliai/agentruntime/tool"
 	"github.com/pkg/errors"
-	"strings"
 )
 
 type (
@@ -67,15 +68,15 @@ func (s *service) findAgentsByNames(names []string) ([]entity.Agent, error) {
 }
 
 func init() {
-	di.Register(ServiceKey, func(c context.Context, _ di.Env) (any, error) {
-		logger := di.MustGet[*mylog.Logger](c, mylog.Key)
+	di.Register(ServiceKey, func(c context.Context, container *di.Container) (any, error) {
+		logger := di.MustGet[*mylog.Logger](c, container, mylog.Key)
 
 		return &service{
 			logger:              logger,
-			runner:              di.MustGet[engine.Engine](c, engine.Key),
-			toolManager:         di.MustGet[tool.Manager](c, tool.ManagerKey),
-			threadManagerClient: di.MustGet[thread.ThreadManagerClient](c, thread.ClientKey),
-			networkClient:       di.MustGet[network.AgentNetworkClient](c, network.ClientKey),
+			runner:              di.MustGet[engine.Engine](c, container, engine.Key),
+			toolManager:         di.MustGet[tool.Manager](c, container, tool.ManagerKey),
+			threadManagerClient: di.MustGet[thread.ThreadManagerClient](c, container, thread.ClientKey),
+			networkClient:       di.MustGet[network.AgentNetworkClient](c, container, network.ClientKey),
 		}, nil
 	})
 }

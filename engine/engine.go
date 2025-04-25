@@ -2,6 +2,8 @@ package engine
 
 import (
 	"context"
+	"os"
+
 	"github.com/habiliai/agentruntime/config"
 	"github.com/habiliai/agentruntime/entity"
 	"github.com/habiliai/agentruntime/internal/di"
@@ -10,7 +12,6 @@ import (
 	goopenai "github.com/openai/openai-go"
 	"github.com/pkg/errors"
 	"github.com/yukinagae/genkit-go-plugins/plugins/openai"
-	"os"
 )
 
 type (
@@ -34,8 +35,8 @@ var (
 )
 
 func init() {
-	di.Register(Key, func(ctx context.Context, env di.Env) (any, error) {
-		conf := di.MustGet[*config.OpenAIConfig](ctx, config.OpenAIConfigKey)
+	di.Register(Key, func(ctx context.Context, c *di.Container) (any, error) {
+		conf := di.MustGet[*config.OpenAIConfig](ctx, c, config.OpenAIConfigKey)
 		os.Setenv("OPENAI_API_KEY", conf.OpenAIApiKey)
 
 		if !openai.IsDefinedModel(goopenai.ChatModelGPT4o) {
@@ -47,8 +48,8 @@ func init() {
 		}
 
 		return &engine{
-			logger:      di.MustGet[*mylog.Logger](ctx, mylog.Key),
-			toolManager: di.MustGet[tool.Manager](ctx, tool.ManagerKey),
+			logger:      di.MustGet[*mylog.Logger](ctx, c, mylog.Key),
+			toolManager: di.MustGet[tool.Manager](ctx, c, tool.ManagerKey),
 		}, nil
 	})
 }

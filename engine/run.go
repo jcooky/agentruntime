@@ -4,16 +4,18 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
+	"reflect"
+	"strings"
+	"text/template"
+
 	"github.com/firebase/genkit/go/ai"
 	"github.com/habiliai/agentruntime/entity"
 	myerrors "github.com/habiliai/agentruntime/errors"
+	"github.com/habiliai/agentruntime/internal/genkit/plugins/mcp"
 	"github.com/habiliai/agentruntime/internal/sliceutils"
 	"github.com/habiliai/agentruntime/tool"
 	"github.com/pkg/errors"
 	"github.com/yukinagae/genkit-go-plugins/plugins/openai"
-	"reflect"
-	"strings"
-	"text/template"
 )
 
 var (
@@ -140,6 +142,8 @@ func (s *engine) Run(
 	}
 
 	ctx = tool.WithEmptyCallDataStore(ctx)
+	ctx = mcp.WithMCPClientRegistry(ctx, s.toolManager)
+	ctx = tool.WithLocalToolService(ctx, s.toolManager)
 	var (
 		responseText string
 		err          error

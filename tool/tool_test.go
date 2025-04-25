@@ -1,11 +1,12 @@
 package tool_test
 
 import (
+	"testing"
+
 	"github.com/habiliai/agentruntime/internal/di"
 	"github.com/habiliai/agentruntime/internal/mytesting"
 	"github.com/habiliai/agentruntime/tool"
 	"github.com/stretchr/testify/suite"
-	"testing"
 )
 
 type ToolTestSuite struct {
@@ -16,13 +17,12 @@ type ToolTestSuite struct {
 
 func (s *ToolTestSuite) SetupTest() {
 	s.Suite.SetupTest()
-	s.Context = di.WithContainer(s.Context, di.EnvTest)
 
-	s.toolManager = di.MustGet[tool.Manager](s, tool.ManagerKey)
+	s.toolManager = di.MustGet[tool.Manager](s, s.Container, tool.ManagerKey)
 }
 
 func (s *ToolTestSuite) TearDownTest() {
-	defer s.Suite.TearDownTest()
+	s.Suite.TearDownTest()
 }
 
 func TestTool(t *testing.T) {

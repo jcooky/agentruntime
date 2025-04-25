@@ -1,7 +1,6 @@
 package di
 
 import (
-	"context"
 	"github.com/google/uuid"
 )
 
@@ -19,19 +18,13 @@ const (
 	EnvTest Env = "test"
 )
 
-var (
-	containerCtxKey = uuid.New()
-)
-
 func NewKey() ObjectKey {
 	return ObjectKey(uuid.New())
 }
 
-func WithContainer(ctx context.Context, env Env) context.Context {
-	container := &Container{
+func NewContainer(env Env) *Container {
+	return &Container{
 		Env:     env,
-		objects: map[ObjectKey]any{},
+		objects: make(map[ObjectKey]any),
 	}
-
-	return context.WithValue(ctx, containerCtxKey, container)
 }

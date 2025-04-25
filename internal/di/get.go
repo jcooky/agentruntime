@@ -3,16 +3,12 @@ package di
 import (
 	"context"
 	"fmt"
+
 	"github.com/pkg/errors"
 )
 
-func Get[T any](ctx context.Context, key ObjectKey) (res T, err error) {
-	c, ok := ctx.Value(containerCtxKey).(*Container)
-	if !ok {
-		err = errors.New("container not found")
-		return
-	}
-
+func Get[T any](ctx context.Context, c *Container, key ObjectKey) (res T, err error) {
+	var ok bool
 	res, ok = c.objects[key].(T)
 	if ok {
 		return
@@ -24,7 +20,7 @@ func Get[T any](ctx context.Context, key ObjectKey) (res T, err error) {
 		return
 	}
 
-	obj, err := fn(ctx, c.Env)
+	obj, err := fn(ctx, c)
 	if err != nil {
 		return
 	}
@@ -40,8 +36,8 @@ func Get[T any](ctx context.Context, key ObjectKey) (res T, err error) {
 	return
 }
 
-func MustGet[T any](c context.Context, key ObjectKey) T {
-	res, err := Get[T](c, key)
+func MustGet[T any](ctx context.Context, c *Container, key ObjectKey) T {
+	res, err := Get[T](ctx, c, key)
 	if err != nil {
 		panic(fmt.Sprintf("error: %+v", err))
 	}
@@ -49,11 +45,6 @@ func MustGet[T any](c context.Context, key ObjectKey) T {
 	return res
 }
 
-func Set[T any](ctx context.Context, key ObjectKey, obj T) {
-	c, ok := ctx.Value(containerCtxKey).(*Container)
-	if !ok {
-		panic("container not found")
-	}
-
+func Set[T any](c *Container, key ObjectKey, obj T) {
 	c.objects[key] = obj
 }

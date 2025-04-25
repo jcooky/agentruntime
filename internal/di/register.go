@@ -3,7 +3,7 @@ package di
 import "context"
 
 type (
-	RegisterFn func(ctx context.Context, env Env) (any, error)
+	RegisterFn func(ctx context.Context, c *Container) (any, error)
 )
 
 var (

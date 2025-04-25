@@ -3,7 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/habiliai/agentruntime/internal/di"
+	"io"
+	"slices"
+	"strconv"
+
 	"github.com/habiliai/agentruntime/internal/grpcutils"
 	"github.com/habiliai/agentruntime/internal/msgutils"
 	"github.com/habiliai/agentruntime/network"
@@ -14,9 +17,6 @@ import (
 	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
-	"io"
-	"slices"
-	"strconv"
 )
 
 func newConnectCmd() *cobra.Command {
@@ -43,8 +43,6 @@ func newConnectCmd() *cobra.Command {
 				return errors.WithStack(err)
 			}
 			defer conn.Close()
-
-			ctx = di.WithContainer(ctx, di.EnvProd)
 
 			threadManager := thread.NewThreadManagerClient(conn)
 			agentNetwork := network.NewAgentNetworkClient(conn)

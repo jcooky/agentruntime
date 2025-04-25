@@ -2,6 +2,10 @@ package network
 
 import (
 	"context"
+	"log/slog"
+	"strings"
+	"time"
+
 	"github.com/habiliai/agentruntime/entity"
 	"github.com/habiliai/agentruntime/internal/db"
 	"github.com/habiliai/agentruntime/internal/di"
@@ -12,9 +16,6 @@ import (
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-	"log/slog"
-	"strings"
-	"time"
 )
 
 type (
@@ -130,11 +131,11 @@ var (
 )
 
 func init() {
-	di.Register(ManagerKey, func(c context.Context, _ di.Env) (any, error) {
+	di.Register(ManagerKey, func(c context.Context, container *di.Container) (any, error) {
 		service := &service{
-			logger:      di.MustGet[*slog.Logger](c, mylog.Key),
-			db:          di.MustGet[*gorm.DB](c, db.Key),
-			toolManager: di.MustGet[tool.Manager](c, tool.ManagerKey),
+			logger:      di.MustGet[*slog.Logger](c, container, mylog.Key),
+			db:          di.MustGet[*gorm.DB](c, container, db.Key),
+			toolManager: di.MustGet[tool.Manager](c, container, tool.ManagerKey),
 		}
 
 		go service.runHealthChecker(c)

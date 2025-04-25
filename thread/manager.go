@@ -2,6 +2,8 @@ package thread
 
 import (
 	"context"
+	"strings"
+
 	"github.com/habiliai/agentruntime/entity"
 	myerrors "github.com/habiliai/agentruntime/errors"
 	"github.com/habiliai/agentruntime/internal/db"
@@ -10,7 +12,6 @@ import (
 	"github.com/pkg/errors"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
-	"strings"
 )
 
 type (
@@ -139,15 +140,15 @@ var (
 )
 
 func init() {
-	di.Register(ManagerKey, func(c context.Context, _ di.Env) (any, error) {
-		logger, err := di.Get[*mylog.Logger](c, mylog.Key)
+	di.Register(ManagerKey, func(c context.Context, container *di.Container) (any, error) {
+		logger, err := di.Get[*mylog.Logger](c, container, mylog.Key)
 		if err != nil {
 			return nil, err
 		}
 
 		return &manager{
 			logger: logger,
-			db:     di.MustGet[*gorm.DB](c, db.Key),
+			db:     di.MustGet[*gorm.DB](c, container, db.Key),
 		}, nil
 	})
 }

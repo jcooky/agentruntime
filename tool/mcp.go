@@ -4,13 +4,14 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
+	"strings"
+
 	"github.com/firebase/genkit/go/ai"
 	"github.com/habiliai/agentruntime/internal/genkit/plugins/mcp"
 	mcpclient "github.com/mark3labs/mcp-go/client"
 	mcpgo "github.com/mark3labs/mcp-go/mcp"
 	"github.com/pkg/errors"
-	"io"
-	"strings"
 )
 
 type RegisterMCPToolRequest struct {
@@ -18,6 +19,14 @@ type RegisterMCPToolRequest struct {
 	Command    string
 	Args       []string
 	Env        map[string]string
+}
+
+var (
+	_ mcp.MCPClientRegistry = (*manager)(nil)
+)
+
+func (m *manager) GetMCPClient(ctx context.Context, serverName string) (mcpclient.MCPClient, error) {
+	return m.mcpClients[serverName], nil
 }
 
 func (m *manager) RegisterMCPTool(ctx context.Context, req RegisterMCPToolRequest) (err error) {
@@ -70,7 +79,7 @@ func (m *manager) RegisterMCPTool(ctx context.Context, req RegisterMCPToolReques
 			m.logger.InfoContext(ctx, "tool already registered", "tool", tool.Name)
 			continue
 		}
-		if _, err := mcp.DefineTool(mcpClient, tool, func(ctx context.Context, in any, out *mcp.ToolResult) error {
+		if _, err := mcp.DefineTool(req.ServerName, tool, func(ctx context.Context, in any, out *mcp.ToolResult) error {
 			appendCallData(ctx, CallData{
 				Name:      tool.Name,
 				Arguments: in,

@@ -3,8 +3,9 @@ package mcp_test
 import (
 	"context"
 	"encoding/json"
-	"github.com/habiliai/agentruntime/internal/genkit/plugins/mcp"
 	"testing"
+
+	"github.com/habiliai/agentruntime/internal/genkit/plugins/mcp"
 
 	mcpclient "github.com/mark3labs/mcp-go/client"
 	mcpgo "github.com/mark3labs/mcp-go/mcp"
@@ -34,18 +35,24 @@ func TestMCPToolCall(t *testing.T) {
 		t.Fatalf("failed to list tools: %v", err)
 	}
 	var listDirTool mcpgo.Tool
+	r := &mcp.DefaultMCPClientRegistry{
+		Registry: map[string]mcpclient.MCPClient{
+			"default": c,
+		},
+	}
 	for _, tool := range listToolsRes.Tools {
 		if tool.Name == "list_directory" {
 			listDirTool = tool
 			break
 		}
 	}
-	tool, err := mcp.DefineTool(c, listDirTool, nil)
+	tool, err := mcp.DefineTool("default", listDirTool, nil)
 	if err != nil {
 		t.Fatalf("failed to define tool: %v", err)
 	}
 
 	t.Run("Run Tool", func(t *testing.T) {
+		ctx := mcp.WithMCPClientRegistry(ctx, r)
 		out, err := tool.Action().RunJSON(ctx, []byte(`{"path":"./"}`), nil)
 		if err != nil {
 			t.Fatalf("failed to run tool: %v", err)

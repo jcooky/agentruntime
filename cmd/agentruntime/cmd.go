@@ -2,6 +2,13 @@ package main
 
 import (
 	"fmt"
+	"net"
+	"os"
+	"os/signal"
+	"strings"
+	"syscall"
+	"time"
+
 	"github.com/habiliai/agentruntime/config"
 	di "github.com/habiliai/agentruntime/internal/di"
 	"github.com/habiliai/agentruntime/internal/grpcutils"
@@ -15,12 +22,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
-	"net"
-	"os"
-	"os/signal"
-	"strings"
-	"syscall"
-	"time"
 )
 
 func newCmd() *cobra.Command {
@@ -54,14 +55,14 @@ func newCmd() *cobra.Command {
 			}
 
 			ctx := cmd.Context()
-			ctx = di.WithContainer(ctx, di.EnvProd)
+			container := di.NewContainer(di.EnvProd)
 
 			// Initialize the container
-			cfg := di.MustGet[*config.RuntimeConfig](ctx, config.RuntimeConfigKey)
-			logger := di.MustGet[*mylog.Logger](ctx, mylog.Key)
-			runtimeService := di.MustGet[runtime.Service](ctx, runtime.ServiceKey)
-			runtimeServer := di.MustGet[runtime.AgentRuntimeServer](ctx, runtime.ServerKey)
-			toolManager := di.MustGet[tool.Manager](ctx, tool.ManagerKey)
+			cfg := di.MustGet[*config.RuntimeConfig](ctx, container, config.RuntimeConfigKey)
+			logger := di.MustGet[*mylog.Logger](ctx, container, mylog.Key)
+			runtimeService := di.MustGet[runtime.Service](ctx, container, runtime.ServiceKey)
+			runtimeServer := di.MustGet[runtime.AgentRuntimeServer](ctx, container, runtime.ServerKey)
+			toolManager := di.MustGet[tool.Manager](ctx, container, tool.ManagerKey)
 
 			logger.Debug("start agent-runtime", "config", cfg)
 
@@ -115,7 +116,7 @@ func newCmd() *cobra.Command {
 			logger.Info("Starting server", "host", cfg.Host, "port", cfg.Port)
 
 			server := grpc.NewServer(
-				grpc.UnaryInterceptor(grpcutils.NewUnaryServerInterceptor(ctx)),
+				grpc.UnaryInterceptor(grpcutils.NewUnaryServerInterceptor(ctx, container)),
 			)
 			grpc_health_v1.RegisterHealthServer(server, health.NewServer())
 			runtime.RegisterAgentRuntimeServer(server, runtimeServer)
@@ -130,7 +131,7 @@ func newCmd() *cobra.Command {
 			}()
 
 			// register agent server
-			agentManager := di.MustGet[network.AgentNetworkClient](ctx, network.ClientKey)
+			agentManager := di.MustGet[network.AgentNetworkClient](ctx, container, network.ClientKey)
 			if _, err = agentManager.RegisterAgent(ctx, &network.RegisterAgentRequest{
 				Addr:   cfg.RuntimeGrpcAddr,
 				Secure: false,

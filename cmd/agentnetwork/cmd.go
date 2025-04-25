@@ -2,10 +2,12 @@ package main
 
 import (
 	"fmt"
+	"net"
+
 	"github.com/habiliai/agentruntime/config"
 	"github.com/habiliai/agentruntime/internal/db"
 	"github.com/habiliai/agentruntime/internal/di"
-	interceptors "github.com/habiliai/agentruntime/internal/grpcutils"
+	"github.com/habiliai/agentruntime/internal/grpcutils"
 	"github.com/habiliai/agentruntime/internal/mylog"
 	"github.com/habiliai/agentruntime/network"
 	"github.com/habiliai/agentruntime/thread"
@@ -15,7 +17,6 @@ import (
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"gorm.io/gorm"
-	"net"
 )
 
 func newCmd() *cobra.Command {
@@ -39,14 +40,14 @@ func newNetworkServeCmd() *cobra.Command {
 		Short: "Serve the network",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			ctx = di.WithContainer(ctx, di.EnvProd)
+			container := di.NewContainer(di.EnvProd)
 
 			// Initialize the container
-			cfg := di.MustGet[*config.NetworkConfig](ctx, config.NetworkConfigKey)
-			logger := di.MustGet[*mylog.Logger](ctx, mylog.Key)
-			dbInstance := di.MustGet[*gorm.DB](ctx, db.Key)
-			threadManagerServer := di.MustGet[thread.ThreadManagerServer](ctx, thread.ManagerServerKey)
-			agentNetworkServer := di.MustGet[network.AgentNetworkServer](ctx, network.ManagerServerKey)
+			cfg := di.MustGet[*config.NetworkConfig](ctx, container, config.NetworkConfigKey)
+			logger := di.MustGet[*mylog.Logger](ctx, container, mylog.Key)
+			dbInstance := di.MustGet[*gorm.DB](ctx, container, db.Key)
+			threadManagerServer := di.MustGet[thread.ThreadManagerServer](ctx, container, thread.ManagerServerKey)
+			agentNetworkServer := di.MustGet[network.AgentNetworkServer](ctx, container, network.ManagerServerKey)
 
 			logger.Debug("start agent-runtime", "config", cfg)
 
@@ -65,7 +66,7 @@ func newNetworkServeCmd() *cobra.Command {
 			logger.Info("Starting server", "addr", cfg.Host, "port", cfg.Port)
 
 			server := grpc.NewServer(
-				grpc.UnaryInterceptor(interceptors.NewUnaryServerInterceptor(ctx)),
+				grpc.UnaryInterceptor(grpcutils.NewUnaryServerInterceptor(ctx, container)),
 			)
 			grpc_health_v1.RegisterHealthServer(server, health.NewServer())
 			thread.RegisterThreadManagerServer(server, threadManagerServer)

@@ -2,14 +2,15 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"strconv"
+
 	"github.com/gdamore/tcell/v2"
 	"github.com/habiliai/agentruntime/entity"
 	"github.com/habiliai/agentruntime/internal/di"
 	"github.com/habiliai/agentruntime/thread"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"log"
-	"strconv"
 )
 
 func newNetworkThreadCmd() *cobra.Command {
@@ -28,8 +29,9 @@ func newNetworkThreadCmd() *cobra.Command {
 			Short: "Create a thread",
 			RunE: func(cmd *cobra.Command, args []string) error {
 				ctx := cmd.Context()
+				container := di.NewContainer(di.EnvProd)
 
-				threadManager, err := di.Get[thread.Manager](ctx, thread.ManagerKey)
+				threadManager, err := di.Get[thread.Manager](ctx, container, thread.ManagerKey)
 				if err != nil {
 					return err
 				}
@@ -56,6 +58,7 @@ func newNetworkThreadCmd() *cobra.Command {
 			Short: "Add a message to a thread",
 			RunE: func(cmd *cobra.Command, args []string) error {
 				ctx := cmd.Context()
+				container := di.NewContainer(di.EnvProd)
 
 				if len(args) < 2 {
 					return errors.Errorf("thread-id and message are required")
@@ -68,7 +71,7 @@ func newNetworkThreadCmd() *cobra.Command {
 
 				message := args[1]
 
-				threadManager, err := di.Get[thread.Manager](ctx, thread.ManagerKey)
+				threadManager, err := di.Get[thread.Manager](ctx, container, thread.ManagerKey)
 				if err != nil {
 					return err
 				}
@@ -92,8 +95,9 @@ func newNetworkThreadCmd() *cobra.Command {
 			Short: "List threads",
 			RunE: func(cmd *cobra.Command, args []string) error {
 				ctx := cmd.Context()
+				container := di.NewContainer(di.EnvProd)
 
-				threadManager, err := di.Get[thread.Manager](ctx, thread.ManagerKey)
+				threadManager, err := di.Get[thread.Manager](ctx, container, thread.ManagerKey)
 				if err != nil {
 					return err
 				}
@@ -150,6 +154,7 @@ func newNetworkThreadCmd() *cobra.Command {
 			Short: "List messages in a thread",
 			RunE: func(cmd *cobra.Command, args []string) error {
 				ctx := cmd.Context()
+				container := di.NewContainer(di.EnvProd)
 
 				if len(args) < 1 {
 					return errors.Errorf("thread-id is required")
@@ -160,7 +165,7 @@ func newNetworkThreadCmd() *cobra.Command {
 					return errors.Errorf("thread-id must be an integer")
 				}
 
-				threadManager, err := di.Get[thread.Manager](ctx, thread.ManagerKey)
+				threadManager, err := di.Get[thread.Manager](ctx, container, thread.ManagerKey)
 				if err != nil {
 					return err
 				}

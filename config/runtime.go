@@ -2,6 +2,7 @@ package config
 
 import (
 	"context"
+
 	"github.com/habiliai/agentruntime/internal/di"
 )
 
@@ -41,7 +42,7 @@ func resolveRuntimeConfig(testing bool) (*RuntimeConfig, error) {
 }
 
 func init() {
-	di.Register(RuntimeConfigKey, func(ctx context.Context, env di.Env) (any, error) {
-		return resolveRuntimeConfig(env == di.EnvTest)
+	di.Register(RuntimeConfigKey, func(ctx context.Context, c *di.Container) (any, error) {
+		return resolveRuntimeConfig(c.Env == di.EnvTest)
 	})
 }

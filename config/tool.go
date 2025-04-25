@@ -2,6 +2,7 @@ package config
 
 import (
 	"context"
+
 	"github.com/habiliai/agentruntime/internal/di"
 )
 
@@ -13,16 +14,16 @@ type ToolConfig struct {
 var ToolConfigKey = di.NewKey()
 
 func init() {
-	di.Register(ToolConfigKey, func(ctx context.Context, env di.Env) (any, error) {
-		c := ToolConfig{
+	di.Register(ToolConfigKey, func(ctx context.Context, c *di.Container) (any, error) {
+		conf := ToolConfig{
 			OpenWeatherApiKey: "",
 			SerpApiKey:        "",
 		}
 
-		if err := resolveConfig(&c, env == di.EnvTest); err != nil {
+		if err := resolveConfig(&conf, c.Env == di.EnvTest); err != nil {
 			return nil, err
 		}
 
-		return &c, nil
+		return &conf, nil
 	})
 }

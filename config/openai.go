@@ -2,6 +2,7 @@ package config
 
 import (
 	"context"
+
 	"github.com/habiliai/agentruntime/internal/di"
 )
 
@@ -12,8 +13,8 @@ type OpenAIConfig struct {
 var OpenAIConfigKey = di.NewKey()
 
 func init() {
-	di.Register(OpenAIConfigKey, func(ctx context.Context, env di.Env) (any, error) {
+	di.Register(OpenAIConfigKey, func(ctx context.Context, c *di.Container) (any, error) {
 		conf := OpenAIConfig{}
-		return &conf, resolveConfig(&conf, env == di.EnvTest)
+		return &conf, resolveConfig(&conf, c.Env == di.EnvTest)
 	})
 }

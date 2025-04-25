@@ -1,13 +1,15 @@
 package runtime_test
 
 import (
+	"io"
+
 	"github.com/habiliai/agentruntime/entity"
+	"github.com/habiliai/agentruntime/network"
 	"github.com/habiliai/agentruntime/thread"
 	threadtest "github.com/habiliai/agentruntime/thread/test"
 	"github.com/mokiat/gog"
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"io"
 )
 
 func (s *AgentRuntimeTestSuite) TestRun() {
@@ -24,7 +26,7 @@ func (s *AgentRuntimeTestSuite) TestRun() {
 		Messages: []*thread.Message{
 			{
 				Id:      1,
-				Content: "Hello, what is the weather today?",
+				Content: "Hello, what is the weather today in Seoul?",
 				Sender:  "USER",
 			},
 		},
@@ -59,6 +61,17 @@ func (s *AgentRuntimeTestSuite) TestRun() {
 		MessageId: uint32(1),
 	}, nil).Once()
 	defer s.threadManager.AssertExpectations(s.T())
+	s.agentNetwork.On("GetAgentRuntimeInfo", mock.Anything, mock.MatchedBy(func(in *network.GetAgentRuntimeInfoRequest) bool {
+		return in.All != nil && *in.All
+	})).Return(&network.GetAgentRuntimeInfoResponse{
+		AgentRuntimeInfo: []*network.AgentRuntimeInfo{
+			{
+				Info: &network.AgentInfo{
+					Name: "agent1",
+				},
+			},
+		},
+	}, nil).Once()
 
 	s.Require().NoError(s.runtime.Run(s, uint(threadId), agents))
 }

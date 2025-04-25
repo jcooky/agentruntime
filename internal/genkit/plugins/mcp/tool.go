@@ -3,6 +3,8 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"errors"
+
 	"github.com/firebase/genkit/go/ai"
 	"github.com/firebase/genkit/go/core"
 	mcpclient "github.com/mark3labs/mcp-go/client"
@@ -12,6 +14,20 @@ import (
 type ToolResult struct {
 	Error  string          `json:"error,omitempty"`
 	Result json.RawMessage `json:"result,omitempty"`
+}
+
+type MCPClientRegistry interface {
+	GetMCPClient(ctx context.Context, serverName string) (mcpclient.MCPClient, error)
+}
+
+type DefaultMCPClientRegistry struct {
+	Registry map[string]mcpclient.MCPClient
+}
+
+var mcpClientRegistryKey = "mcp_client.registry"
+
+func (r *DefaultMCPClientRegistry) GetMCPClient(ctx context.Context, serverName string) (mcpclient.MCPClient, error) {
+	return r.Registry[serverName], nil
 }
 
 func (r *ToolResult) String() string {
@@ -25,7 +41,7 @@ func (r *ToolResult) String() string {
 }
 
 // DefineTool defines a tool function.
-func DefineTool(mcpClient mcpclient.MCPClient, mcpTool mcp.Tool, cb func(ctx context.Context, input any, output *ToolResult) error) (ai.Tool, error) {
+func DefineTool(serverName string, mcpTool mcp.Tool, cb func(ctx context.Context, input any, output *ToolResult) error) (ai.Tool, error) {
 	metadata := make(map[string]any)
 	metadata["type"] = "tool"
 	metadata["name"] = mcpTool.Name
@@ -42,6 +58,14 @@ func DefineTool(mcpClient mcpclient.MCPClient, mcpTool mcp.Tool, cb func(ctx con
 		metadata,
 		schema,
 		func(ctx context.Context, in any) (out *ToolResult, err error) {
+			registry, ok := ctx.Value(mcpClientRegistryKey).(MCPClientRegistry)
+			if !ok {
+				return nil, errors.New("mcp client registry not found")
+			}
+			mcpClient, err := registry.GetMCPClient(ctx, serverName)
+			if err != nil {
+				return nil, err
+			}
 			if err = mcpClient.Ping(ctx); err != nil {
 				return
 			}
@@ -75,4 +99,8 @@ func DefineTool(mcpClient mcpclient.MCPClient, mcpTool mcp.Tool, cb func(ctx con
 	)
 
 	return ai.LookupTool(mcpTool.Name), nil
+}
+
+func WithMCPClientRegistry(ctx context.Context, registry MCPClientRegistry) context.Context {
+	return context.WithValue(ctx, mcpClientRegistryKey, registry)
 }

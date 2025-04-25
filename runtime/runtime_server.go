@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"context"
+
 	"github.com/habiliai/agentruntime/internal/di"
 )
 
@@ -28,9 +29,9 @@ var (
 )
 
 func init() {
-	di.Register(ServerKey, func(c context.Context, _ di.Env) (any, error) {
+	di.Register(ServerKey, func(c context.Context, container *di.Container) (any, error) {
 		return &agentRuntimeServer{
-			runtime: di.MustGet[Service](c, ServiceKey),
+			runtime: di.MustGet[Service](c, container, ServiceKey),
 		}, nil
 	})
 }

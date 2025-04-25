@@ -2,6 +2,7 @@ package network
 
 import (
 	"context"
+
 	"github.com/habiliai/agentruntime/entity"
 	"github.com/habiliai/agentruntime/internal/di"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
@@ -71,9 +72,9 @@ var (
 )
 
 func init() {
-	di.Register(ManagerServerKey, func(c context.Context, _ di.Env) (any, error) {
+	di.Register(ManagerServerKey, func(c context.Context, container *di.Container) (any, error) {
 		return &networkServer{
-			service: di.MustGet[Service](c, ManagerKey),
+			service: di.MustGet[Service](c, container, ManagerKey),
 		}, nil
 	})
 }

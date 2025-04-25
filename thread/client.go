@@ -2,6 +2,7 @@ package thread
 
 import (
 	"context"
+
 	"github.com/habiliai/agentruntime/internal/di"
 	"github.com/habiliai/agentruntime/network"
 	"google.golang.org/grpc"
@@ -12,8 +13,8 @@ var (
 )
 
 func init() {
-	di.Register(ClientKey, func(ctx context.Context, _ di.Env) (any, error) {
-		clientConn, err := di.Get[*grpc.ClientConn](ctx, network.GrpcClientConnKey)
+	di.Register(ClientKey, func(ctx context.Context, container *di.Container) (any, error) {
+		clientConn, err := di.Get[*grpc.ClientConn](ctx, container, network.GrpcClientConnKey)
 		if err != nil {
 			return nil, err
 		}

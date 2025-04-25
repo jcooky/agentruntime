@@ -2,24 +2,26 @@ package network_test
 
 import (
 	"context"
+	"testing"
+
 	"github.com/habiliai/agentruntime/internal/di"
 	"github.com/habiliai/agentruntime/network"
 	"github.com/stretchr/testify/suite"
-	"testing"
 )
 
 type NetworkTestSuite struct {
 	suite.Suite
 	context.Context
 
-	manager network.Service
+	manager   network.Service
+	container *di.Container
 }
 
 func (s *NetworkTestSuite) SetupTest() {
 	s.Context = context.TODO()
-	s.Context = di.WithContainer(s.Context, di.EnvTest)
+	s.container = di.NewContainer(di.EnvTest)
 
-	s.manager = di.MustGet[network.Service](s.Context, network.ManagerKey)
+	s.manager = di.MustGet[network.Service](s.Context, s.container, network.ManagerKey)
 }
 
 func TestAgents(t *testing.T) {

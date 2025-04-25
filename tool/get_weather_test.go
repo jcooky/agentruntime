@@ -3,11 +3,12 @@ package tool_test
 import (
 	"context"
 	"fmt"
+	"os"
+	"testing"
+
 	di "github.com/habiliai/agentruntime/internal/di"
 	"github.com/habiliai/agentruntime/tool"
 	"github.com/stretchr/testify/require"
-	"os"
-	"testing"
 )
 
 func TestGetWeather(t *testing.T) {
@@ -16,9 +17,10 @@ func TestGetWeather(t *testing.T) {
 		t.Skip("OPENWEATHER_API_KEY 환경 변수가 설정되지 않았습니다")
 	}
 
-	ctx := di.WithContainer(context.TODO(), di.EnvTest)
+	ctx := context.TODO()
+	container := di.NewContainer(di.EnvTest)
 
-	s := di.MustGet[tool.Manager](ctx, tool.ManagerKey)
+	s := di.MustGet[tool.Manager](ctx, container, tool.ManagerKey)
 	getWeatherTool := s.GetTool(ctx, "get_weather")
 	res, err := getWeatherTool.RunRaw(ctx, map[string]any{
 		"location": "Seoul",

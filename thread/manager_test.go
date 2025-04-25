@@ -1,14 +1,15 @@
 package thread_test
 
 import (
+	"os"
+	"testing"
+
 	"github.com/habiliai/agentruntime/entity"
 	"github.com/habiliai/agentruntime/internal/di"
 	"github.com/habiliai/agentruntime/internal/mytesting"
 	"github.com/habiliai/agentruntime/thread"
 	"github.com/stretchr/testify/suite"
 	"gorm.io/datatypes"
-	"os"
-	"testing"
 )
 
 type ThreadManagerTestSuite struct {
@@ -21,7 +22,7 @@ func (s *ThreadManagerTestSuite) SetupTest() {
 	os.Setenv("ENV_TEST_FILE", "../.env.test")
 	s.Suite.SetupTest()
 
-	s.threadManager = di.MustGet[thread.Manager](s, thread.ManagerKey)
+	s.threadManager = di.MustGet[thread.Manager](s.Context, s.Container, thread.ManagerKey)
 }
 
 func (s *ThreadManagerTestSuite) TearDownTest() {
