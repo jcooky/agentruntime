@@ -63,6 +63,10 @@ func (m *manager) Close() {
 }
 
 func registerLocalTool[In any, Out any](name string, description string, fn func(context.Context, In) (Out, error)) ai.Tool {
+	tool := ai.LookupTool(name)
+	if tool.Action() != nil {
+		return tool
+	}
 	return ai.DefineTool(
 		name,
 		description,
