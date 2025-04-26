@@ -68,10 +68,10 @@ type (
 	}
 
 	RunResponse struct {
-		ToolCalls []RunResponseToolcall `json:"tool_calls"`
+		ToolCalls []ToolCall `json:"tool_calls"`
 	}
 
-	RunResponseToolcall struct {
+	ToolCall struct {
 		Name      string          `json:"name"`
 		Arguments json.RawMessage `json:"arguments"`
 		Result    json.RawMessage `json:"result"`
@@ -123,16 +123,6 @@ func (s *engine) Run(
 		tools = append(tools, v)
 	}
 
-	var promptBuf strings.Builder
-	if err := chatInstTmpl.Execute(&promptBuf, instValues); err != nil {
-		return nil, errors.Wrapf(err, "failed to execute template")
-	}
-	prompt := promptBuf.String()
-
-	s.logger.Debug("call agent runtime's run", "prompt", prompt)
-
-	model := openai.Model(agent.ModelName)
-
 	var config any
 	switch agent.ModelName {
 	case "o1", "o3-mini":
@@ -145,37 +135,25 @@ func (s *engine) Run(
 	ctx = mcp.WithMCPClientRegistry(ctx, s.toolManager)
 	ctx = tool.WithLocalToolService(ctx, s.toolManager)
 	var (
-		responseText string
-		err          error
-		resp         *ai.GenerateResponse
-		opts         []ai.GenerateOption
-		format       = ai.OutputFormatText
+		err error
 	)
-	if reflect.TypeOf(output).Elem().Kind() != reflect.String {
-		format = ai.OutputFormatJSON
-		opts = append(opts,
-			ai.WithOutputFormat(format),
-			ai.WithOutputSchema(output),
-		)
-	}
-	opts = append(opts,
-		ai.WithCandidates(1),
-		ai.WithSystemPrompt(agent.System),
-		ai.WithTextPrompt(prompt),
-		ai.WithConfig(config),
-		ai.WithTools(tools...),
-	)
-
 	for i := 0; i < 3; i++ {
-		resp, err = ai.Generate(
+		_, err = s.Generate(
 			ctx,
-			model,
-			opts...,
+			GenerateRequest{
+				Vars:             instValues,
+				PromptTmpl:       chatInst,
+				Model:            agent.ModelName,
+				SystemPromptTmpl: agent.System,
+			},
+			output,
+			ai.WithCandidates(1),
+			ai.WithConfig(config),
+			ai.WithTools(tools...),
 		)
 		if err != nil {
 			s.logger.Warn("failed to generate", "err", err)
 		} else {
-			responseText = resp.Text()
 			break
 		}
 	}
@@ -183,22 +161,10 @@ func (s *engine) Run(
 		return nil, errors.Wrapf(err, "failed to generate")
 	}
 
-	if format == ai.OutputFormatJSON {
-		if err := json.Unmarshal([]byte(responseText), output); err != nil {
-			return nil, errors.Wrapf(err, "failed to unmarshal response")
-		}
-	} else {
-		o, ok := output.(*string)
-		if !ok {
-			return nil, errors.Errorf("output is not a string pointer")
-		}
-		*o = responseText
-	}
-
 	var res RunResponse
 	toolCallData := tool.GetCallData(ctx)
 	for _, data := range toolCallData {
-		tc := RunResponseToolcall{
+		tc := ToolCall{
 			Name: data.Name,
 		}
 

@@ -27,7 +27,7 @@ func (s *EngineTestSuite) TestRun() {
 	if !s.Len(resp.ToolCalls, 2) {
 		s.T().FailNow()
 	}
-	toolCallNames := gog.Map(resp.ToolCalls, func(tc engine.RunResponseToolcall) string {
+	toolCallNames := gog.Map(resp.ToolCalls, func(tc engine.ToolCall) string {
 		return tc.Name
 	})
 	s.Require().Contains(toolCallNames, "done_agent")

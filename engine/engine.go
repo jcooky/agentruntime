@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 
+	"github.com/firebase/genkit/go/ai"
 	"github.com/habiliai/agentruntime/config"
 	"github.com/habiliai/agentruntime/entity"
 	"github.com/habiliai/agentruntime/internal/di"
@@ -21,6 +22,8 @@ type (
 			ac config.AgentConfig,
 		) (*entity.Agent, error)
 		Run(ctx context.Context, req RunRequest, output any) (*RunResponse, error)
+		Generate(ctx context.Context, req GenerateRequest, output any, opts ...ai.GenerateOption) (*ai.GenerateResponse, error)
+		Embed(ctx context.Context, texts ...string) ([][]float32, error)
 	}
 
 	engine struct {

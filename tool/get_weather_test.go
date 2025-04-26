@@ -6,7 +6,9 @@ import (
 	"os"
 	"testing"
 
-	di "github.com/habiliai/agentruntime/internal/di"
+	"github.com/mitchellh/mapstructure"
+
+	"github.com/habiliai/agentruntime/internal/di"
 	"github.com/habiliai/agentruntime/tool"
 	"github.com/stretchr/testify/require"
 )
@@ -22,6 +24,7 @@ func TestGetWeather(t *testing.T) {
 
 	s := di.MustGet[tool.Manager](ctx, container, tool.ManagerKey)
 	getWeatherTool := s.GetTool(ctx, "get_weather")
+	ctx = tool.WithLocalToolService(ctx, s)
 	res, err := getWeatherTool.RunRaw(ctx, map[string]any{
 		"location": "Seoul",
 		"date":     "2023-10-01",
@@ -29,8 +32,8 @@ func TestGetWeather(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	weatherSummary, ok := res.(*tool.GetWeatherResponse)
-	require.True(t, ok)
+	var weatherSummary tool.GetWeatherResponse
+	require.NoError(t, mapstructure.Decode(res, &weatherSummary))
 
 	t.Logf("contents: %v", weatherSummary)
 

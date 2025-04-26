@@ -5,6 +5,7 @@ import (
 	"io"
 	"log/slog"
 
+	"github.com/firebase/genkit/go/ai"
 	"github.com/habiliai/agentruntime/config"
 	"github.com/habiliai/agentruntime/engine"
 	"github.com/habiliai/agentruntime/entity"
@@ -14,15 +15,16 @@ import (
 )
 
 type (
-	RunRequest     = engine.RunRequest
-	RunResponse    = engine.RunResponse
-	Conversation   = engine.Conversation
-	ToolCall       = engine.RunResponseToolcall
-	Agent          = entity.Agent
-	Participant    = engine.Participant
-	MessageExample = entity.MessageExample
-	Tool           = entity.Tool
-	ToolConfig     = config.ToolConfig
+	RunRequest      = engine.RunRequest
+	RunResponse     = engine.RunResponse
+	Conversation    = engine.Conversation
+	ToolCall        = engine.ToolCall
+	Agent           = entity.Agent
+	Participant     = engine.Participant
+	MessageExample  = entity.MessageExample
+	Tool            = entity.Tool
+	ToolConfig      = config.ToolConfig
+	GenerateRequest = engine.GenerateRequest
 
 	AIEngine struct {
 		engine      engine.Engine
@@ -33,6 +35,14 @@ type (
 		logger       *slog.Logger
 	}
 )
+
+func (a *AIEngine) Generate(ctx context.Context, req GenerateRequest, out any, opts ...ai.GenerateOption) (*ai.GenerateResponse, error) {
+	return a.engine.Generate(ctx, req, out, opts...)
+}
+
+func (a *AIEngine) Embed(ctx context.Context, texts ...string) ([][]float32, error) {
+	return a.engine.Embed(ctx, texts...)
+}
 
 func (a *AIEngine) Run(ctx context.Context, req RunRequest, out any) (*RunResponse, error) {
 	return a.engine.Run(ctx, req, out)
