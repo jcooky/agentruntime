@@ -12,11 +12,18 @@ import (
 )
 
 type (
+	EvaluatorResponse struct {
+		Score      float32  `json:"score" jsonschema_description:"Score of the response. 0.0 is the worst, 1.0 is the best"`
+		Reason     string   `json:"reason" jsonschema_description:"Reason of the score. It should be a short sentence."`
+		Suggestion []string `json:"suggestion" jsonschema_description:"Suggestion to improve the response. It should be a short sentence."`
+	}
 	GenerateRequest struct {
-		Vars             any
-		PromptTmpl       string
-		SystemPromptTmpl string
-		Model            string
+		Vars                any
+		PromptTmpl          string
+		SystemPromptTmpl    string
+		Model               string
+		EvaluatorPromptTmpl string
+		NumRetries          int
 	}
 )
 
@@ -65,6 +72,38 @@ func (e *engine) Generate(
 	resp, err := ai.Generate(ctx, model, opts...)
 	if err != nil {
 		return nil, err
+	}
+
+	for i := 0; i < req.NumRetries; i++ {
+		var answer EvaluatorResponse
+		options := []ai.GenerateOption{
+			ai.WithTextPrompt("Please evaluate it."),
+			ai.WithHistory(resp.History()...),
+			ai.WithOutputFormat(ai.OutputFormatJSON),
+			ai.WithOutputSchema(&answer),
+		}
+		if i == 0 {
+			options = append(options, ai.WithSystemPrompt(req.EvaluatorPromptTmpl))
+		}
+		evalRes, err := ai.Generate(ctx, model, options...)
+		if err != nil {
+			return nil, err
+		}
+		if err := evalRes.UnmarshalOutput(&answer); err != nil {
+			return nil, err
+		}
+		if answer.Score >= 0.95 {
+			break
+		}
+		resp, err = ai.Generate(ctx, model,
+			ai.WithTextPrompt("Please fix it."),
+			ai.WithHistory(evalRes.History()...),
+			ai.WithOutputFormat(ai.OutputFormatJSON),
+			ai.WithOutputSchema(out),
+		)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if isObjectOutput {

@@ -141,10 +141,12 @@ func (s *engine) Run(
 		_, err = s.Generate(
 			ctx,
 			GenerateRequest{
-				Vars:             instValues,
-				PromptTmpl:       chatInst,
-				Model:            agent.ModelName,
-				SystemPromptTmpl: agent.System,
+				Vars:                instValues,
+				PromptTmpl:          chatInst,
+				Model:               agent.ModelName,
+				SystemPromptTmpl:    agent.System,
+				EvaluatorPromptTmpl: agent.Evaluator.Prompt,
+				NumRetries:          agent.Evaluator.NumRetries,
 			},
 			output,
 			ai.WithCandidates(1),

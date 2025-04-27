@@ -9,6 +9,7 @@ type Agent struct {
 	Lore            []string           `json:"lore"`
 	MessageExamples [][]MessageExample `json:"message_examples"`
 	Knowledge       []map[string]any   `json:"knowledge"`
+	Evaluator       AgentEvaluator     `json:"evaluator"`
 
 	Tools []Tool `json:"tools"`
 
@@ -24,4 +25,9 @@ type MessageExample struct {
 	User    string   `json:"user"`
 	Text    string   `json:"text"`
 	Actions []string `json:"actions"`
+}
+
+type AgentEvaluator struct {
+	Prompt     string `json:"prompt"`
+	NumRetries int    `json:"num_retries"`
 }
