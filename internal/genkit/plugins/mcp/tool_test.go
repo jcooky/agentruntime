@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/firebase/genkit/go/genkit"
 	"github.com/habiliai/agentruntime/internal/genkit/plugins/mcp"
 
 	mcpclient "github.com/mark3labs/mcp-go/client"
@@ -13,6 +14,10 @@ import (
 
 func TestMCPToolCall(t *testing.T) {
 	ctx := context.TODO()
+	g, err := genkit.Init(ctx)
+	if err != nil {
+		t.Fatalf("failed to create genkit: %v", err)
+	}
 
 	c, err := mcpclient.NewStdioMCPClient("npx", []string{}, "-y", "@modelcontextprotocol/server-filesystem", ".")
 	if err != nil {
@@ -35,32 +40,26 @@ func TestMCPToolCall(t *testing.T) {
 		t.Fatalf("failed to list tools: %v", err)
 	}
 	var listDirTool mcpgo.Tool
-	r := &mcp.DefaultMCPClientRegistry{
-		Registry: map[string]mcpclient.MCPClient{
-			"default": c,
-		},
-	}
 	for _, tool := range listToolsRes.Tools {
 		if tool.Name == "list_directory" {
 			listDirTool = tool
 			break
 		}
 	}
-	tool, err := mcp.DefineTool("default", listDirTool, nil)
+	tool, err := mcp.DefineTool(g, c, listDirTool, nil)
 	if err != nil {
 		t.Fatalf("failed to define tool: %v", err)
 	}
 
 	t.Run("Run Tool", func(t *testing.T) {
-		ctx := mcp.WithMCPClientRegistry(ctx, r)
-		out, err := tool.Action().RunJSON(ctx, []byte(`{"path":"./"}`), nil)
+		out, err := tool.RunRaw(ctx, json.RawMessage(`{"path":"./"}`))
 		if err != nil {
 			t.Fatalf("failed to run tool: %v", err)
 		}
 
-		var output mcp.ToolResult
-		if err := json.Unmarshal(out, &output); err != nil {
-			t.Fatalf("failed to unmarshal result: %v", err)
+		output, ok := out.(map[string]any)
+		if !ok {
+			t.Fatalf("result is not a ToolResult")
 		}
 
 		t.Logf("result: %+v", output)

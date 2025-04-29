@@ -11,11 +11,10 @@ import (
 	"github.com/firebase/genkit/go/ai"
 	"github.com/habiliai/agentruntime/entity"
 	myerrors "github.com/habiliai/agentruntime/errors"
-	"github.com/habiliai/agentruntime/internal/genkit/plugins/mcp"
+	"github.com/habiliai/agentruntime/internal/genkit/plugins/openai"
 	"github.com/habiliai/agentruntime/internal/sliceutils"
 	"github.com/habiliai/agentruntime/tool"
 	"github.com/pkg/errors"
-	"github.com/yukinagae/genkit-go-plugins/plugins/openai"
 )
 
 var (
@@ -103,7 +102,7 @@ func (s *engine) Run(
 	}
 
 	// build available actions
-	tools := make([]ai.Tool, 0, len(agent.Tools))
+	tools := make([]ai.ToolRef, 0, len(agent.Tools))
 	for _, tool := range agent.Tools {
 		instValues.AvailableActions = append(instValues.AvailableActions, AvailableAction{
 			Action:      tool.Name,
@@ -113,9 +112,9 @@ func (s *engine) Run(
 		toolNames := strings.SplitN(tool.Name, "/", 2)
 		var v ai.Tool
 		if len(toolNames) == 1 {
-			v = s.toolManager.GetTool(ctx, tool.Name)
+			v = s.toolManager.GetTool(tool.Name)
 		} else {
-			v = s.toolManager.GetMCPTool(ctx, toolNames[0], toolNames[1])
+			v = s.toolManager.GetMCPTool(toolNames[0], toolNames[1])
 		}
 		if v == nil {
 			return nil, errors.Wrapf(myerrors.ErrInvalidConfig, "invalid tool name %s", tool.Name)
@@ -125,22 +124,20 @@ func (s *engine) Run(
 
 	var config any
 	switch agent.ModelName {
-	case "o1", "o3-mini":
+	case "o1", "o3-mini", "o3", "o4-mini":
 		config = openai.GenerationReasoningConfig{
 			ReasoningEffort: "high",
 		}
 	}
 
 	ctx = tool.WithEmptyCallDataStore(ctx)
-	ctx = mcp.WithMCPClientRegistry(ctx, s.toolManager)
-	ctx = tool.WithLocalToolService(ctx, s.toolManager)
 	var (
 		err error
 	)
 	for i := 0; i < 3; i++ {
 		_, err = s.Generate(
 			ctx,
-			GenerateRequest{
+			&GenerateRequest{
 				Vars:                instValues,
 				PromptTmpl:          chatInst,
 				Model:               agent.ModelName,
@@ -149,7 +146,6 @@ func (s *engine) Run(
 				NumRetries:          agent.Evaluator.NumRetries,
 			},
 			output,
-			ai.WithCandidates(1),
 			ai.WithConfig(config),
 			ai.WithTools(tools...),
 		)

@@ -2,12 +2,13 @@ package engine
 
 import (
 	"context"
+	"strings"
+
 	"github.com/firebase/genkit/go/ai"
 	"github.com/habiliai/agentruntime/config"
 	"github.com/habiliai/agentruntime/entity"
 	myerrors "github.com/habiliai/agentruntime/errors"
 	"github.com/pkg/errors"
-	"strings"
 )
 
 func (s *engine) NewAgentFromConfig(
@@ -41,7 +42,7 @@ func (s *engine) NewAgentFromConfig(
 	for _, agentTool := range ac.Tools {
 		toolNames := strings.SplitN(agentTool, "/", 2)
 		if len(toolNames) == 1 {
-			v := s.toolManager.GetTool(ctx, toolNames[0])
+			v := s.toolManager.GetTool(toolNames[0])
 			if v == nil {
 				return nil, errors.Wrapf(myerrors.ErrInvalidConfig, "invalid tool name %s", agentTool)
 			}
@@ -54,7 +55,7 @@ func (s *engine) NewAgentFromConfig(
 			if toolNames[1] == "*" {
 				tools = append(tools, s.toolManager.GetMCPTools(ctx, toolNames[0])...)
 			} else {
-				tools = append(tools, s.toolManager.GetMCPTool(ctx, toolNames[0], toolNames[1]))
+				tools = append(tools, s.toolManager.GetMCPTool(toolNames[0], toolNames[1]))
 			}
 			for _, v := range tools {
 				if v == nil {

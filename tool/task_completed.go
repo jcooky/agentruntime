@@ -2,7 +2,6 @@ package tool
 
 import (
 	"context"
-	"errors"
 )
 
 type (
@@ -24,8 +23,9 @@ func (m *manager) DoneAgent(_ context.Context, req *DoneAgentRequest) (*DoneAgen
 	}, nil
 }
 
-func RegisterDoneTool() {
+func (m *manager) registerDoneTool() {
 	registerLocalTool(
+		m,
 		"done_agent",
 		"Mark the current task as completed when you've fulfilled all requirements",
 		func(ctx context.Context, req struct {
@@ -33,12 +33,6 @@ func RegisterDoneTool() {
 		}) (res struct {
 			*DoneAgentResponse
 		}, err error) {
-			var m LocalToolService
-			m, ok := ctx.Value(localToolServiceKey).(LocalToolService)
-			if !ok {
-				err = errors.New("local tool service not found")
-				return
-			}
 			res.DoneAgentResponse, err = m.DoneAgent(ctx, req.DoneAgentRequest)
 			return
 		},

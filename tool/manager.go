@@ -3,20 +3,20 @@ package tool
 import (
 	"context"
 
+	"github.com/firebase/genkit/go/genkit"
+
 	"github.com/firebase/genkit/go/ai"
 	"github.com/habiliai/agentruntime/config"
 	"github.com/habiliai/agentruntime/internal/di"
-	"github.com/habiliai/agentruntime/internal/genkit/plugins/mcp"
+	mygenkit "github.com/habiliai/agentruntime/internal/genkit"
 	"github.com/habiliai/agentruntime/internal/mylog"
 	mcpclient "github.com/mark3labs/mcp-go/client"
 )
 
 type (
 	Manager interface {
-		mcp.MCPClientRegistry
-		LocalToolService
-		GetTool(ctx context.Context, toolName string) ai.Tool
-		GetMCPTool(ctx context.Context, serverName, toolName string) ai.Tool
+		GetTool(toolName string) ai.Tool
+		GetMCPTool(serverName, toolName string) ai.Tool
 		GetMCPTools(ctx context.Context, serverName string) []ai.Tool
 		RegisterMCPTool(ctx context.Context, req RegisterMCPToolRequest) error
 	}
@@ -37,6 +37,7 @@ func init() {
 			logger:     di.MustGet[*mylog.Logger](ctx, container, mylog.Key),
 			config:     conf,
 			mcpClients: make(map[string]mcpclient.MCPClient),
+			genkit:     di.MustGet[*genkit.Genkit](ctx, container, mygenkit.Key),
 		}
 
 		go func() {
@@ -44,9 +45,9 @@ func init() {
 			s.Close()
 		}()
 
-		RegisterGetWeatherTool()
-		RegisterDoneTool()
-		RegisterWebSearchTool()
+		s.registerGetWeatherTool()
+		s.registerDoneTool()
+		s.registerWebSearchTool()
 
 		return s, nil
 	})

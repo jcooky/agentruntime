@@ -2,9 +2,10 @@ package mcp
 
 import (
 	"encoding/json"
+	"strings"
+
 	"github.com/invopop/jsonschema"
 	"github.com/mark3labs/mcp-go/mcp"
-	"strings"
 )
 
 func makeInputSchema(

@@ -4,11 +4,14 @@ import (
 	"context"
 	"html/template"
 	"reflect"
+	"slices"
 	"strings"
 
+	"github.com/firebase/genkit/go/genkit"
+
 	"github.com/firebase/genkit/go/ai"
+	"github.com/habiliai/agentruntime/internal/genkit/plugins/openai"
 	"github.com/pkg/errors"
-	"github.com/yukinagae/genkit-go-plugins/plugins/openai"
 )
 
 type (
@@ -27,79 +30,100 @@ type (
 	}
 )
 
+func withoutPurposeOutput(history []*ai.Message) []*ai.Message {
+	newHistory := slices.Clone(history)
+	for _, hist := range newHistory {
+		for i, c := range hist.Content {
+			if c.Metadata != nil && c.Metadata["purpose"] == "output" {
+				hist.Content = slices.Delete(hist.Content, i, i+1)
+				break
+			}
+		}
+	}
+
+	return newHistory
+}
+
 func (e *engine) Generate(
 	ctx context.Context,
-	req GenerateRequest,
+	req *GenerateRequest,
 	out any,
 	opts ...ai.GenerateOption,
-) (*ai.GenerateResponse, error) {
+) (*ai.ModelResponse, error) {
 	if out == nil {
 		return nil, errors.New("output is nil")
 	}
 	isObjectOutput := reflect.TypeOf(out).Elem().Kind() != reflect.String
 
 	if req.PromptTmpl != "" {
-		var prompt strings.Builder
-		promptTmpl, err := template.New("").Funcs(funcMap()).Parse(req.PromptTmpl)
-		if err != nil {
-			return nil, err
-		}
+		opts = append(opts, ai.WithPromptFn(func(ctx context.Context, _ any) (string, error) {
+			var prompt strings.Builder
+			promptTmpl, err := template.New("").Funcs(funcMap()).Parse(req.PromptTmpl)
+			if err != nil {
+				return "", err
+			}
 
-		if err := promptTmpl.Execute(&prompt, req.Vars); err != nil {
-			return nil, err
-		}
-		opts = append(opts, ai.WithTextPrompt(prompt.String()))
+			if err := promptTmpl.Execute(&prompt, req.Vars); err != nil {
+				return "", err
+			}
+			return prompt.String(), nil
+		}))
 	}
 
 	if req.SystemPromptTmpl != "" {
-		var systemPrompt strings.Builder
-		systemPromptTmpl, err := template.New("").Funcs(funcMap()).Parse(req.SystemPromptTmpl)
-		if err != nil {
-			return nil, err
-		}
-		if err := systemPromptTmpl.Execute(&systemPrompt, req.Vars); err != nil {
-			return nil, err
-		}
+		opts = append(opts, ai.WithSystemFn(func(ctx context.Context, _ any) (string, error) {
+			var systemPrompt strings.Builder
+			systemPromptTmpl, err := template.New("").Funcs(funcMap()).Parse(req.SystemPromptTmpl)
+			if err != nil {
+				return "", err
+			}
+			if err := systemPromptTmpl.Execute(&systemPrompt, req.Vars); err != nil {
+				return "", err
+			}
 
-		opts = append(opts, ai.WithSystemPrompt(systemPrompt.String()))
+			return systemPrompt.String(), nil
+		}))
 	}
 
 	if isObjectOutput {
-		opts = append(opts, ai.WithOutputSchema(out), ai.WithOutputFormat(ai.OutputFormatJSON))
+		opts = append(opts, ai.WithOutputType(out))
 	}
 
-	model := openai.Model(req.Model)
-	resp, err := ai.Generate(ctx, model, opts...)
+	model := openai.Model(e.genkit, req.Model)
+	opts = append(opts, ai.WithModel(model))
+
+	resp, err := genkit.Generate(ctx, e.genkit, opts...)
 	if err != nil {
 		return nil, err
 	}
 
 	for i := 0; i < req.NumRetries; i++ {
-		var answer EvaluatorResponse
 		options := []ai.GenerateOption{
-			ai.WithTextPrompt("Please evaluate it."),
-			ai.WithHistory(resp.History()...),
-			ai.WithOutputFormat(ai.OutputFormatJSON),
-			ai.WithOutputSchema(&answer),
+			ai.WithModel(model),
+			ai.WithPrompt("Please evaluate it."),
+			ai.WithMessages(withoutPurposeOutput(resp.History())...),
+			ai.WithMaxTurns(100),
 		}
 		if i == 0 {
-			options = append(options, ai.WithSystemPrompt(req.EvaluatorPromptTmpl))
+			options = append(options, ai.WithSystem(req.EvaluatorPromptTmpl))
 		}
-		evalRes, err := ai.Generate(ctx, model, options...)
+		answer, evalRes, err := genkit.GenerateData[EvaluatorResponse](ctx, e.genkit, options...)
 		if err != nil {
-			return nil, err
-		}
-		if err := evalRes.UnmarshalOutput(&answer); err != nil {
 			return nil, err
 		}
 		if answer.Score >= 0.95 {
 			break
 		}
-		resp, err = ai.Generate(ctx, model,
-			ai.WithTextPrompt("Please fix it."),
-			ai.WithHistory(evalRes.History()...),
-			ai.WithOutputFormat(ai.OutputFormatJSON),
-			ai.WithOutputSchema(out),
+		e.logger.Info("retrying", "score", answer.Score, "reason", answer.Reason, "suggestion", answer.Suggestion)
+
+		resp, err = genkit.Generate(
+			ctx,
+			e.genkit,
+			ai.WithModel(model),
+			ai.WithPrompt("Please fix it."),
+			ai.WithMessages(withoutPurposeOutput(evalRes.History())...),
+			ai.WithOutputType(out),
+			ai.WithMaxTurns(100),
 		)
 		if err != nil {
 			return nil, err
@@ -107,7 +131,7 @@ func (e *engine) Generate(
 	}
 
 	if isObjectOutput {
-		if err := resp.UnmarshalOutput(out); err != nil {
+		if err := resp.Output(out); err != nil {
 			return nil, err
 		}
 	} else {

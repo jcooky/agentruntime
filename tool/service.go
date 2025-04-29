@@ -4,6 +4,8 @@ import (
 	"context"
 	"sync"
 
+	"github.com/firebase/genkit/go/genkit"
+
 	"github.com/firebase/genkit/go/ai"
 	"github.com/habiliai/agentruntime/config"
 	"github.com/habiliai/agentruntime/internal/mylog"
@@ -11,47 +13,30 @@ import (
 )
 
 type (
-	LocalToolService interface {
-		GetWeather(ctx context.Context, req *GetWeatherRequest) (*GetWeatherResponse, error)
-		DoneAgent(_ context.Context, req *DoneAgentRequest) (*DoneAgentResponse, error)
-		Search(ctx context.Context, req *WebSearchRequest) ([]any, error)
-	}
-
 	manager struct {
 		logger *mylog.Logger
 		config *config.ToolConfig
 
 		mcpClients map[string]mcpclient.MCPClient
 		mtx        sync.Mutex
+		genkit     *genkit.Genkit
 	}
-	LocalToolServiceKey string
 )
 
 var (
-	_                   LocalToolService    = (*manager)(nil)
-	_                   Manager             = (*manager)(nil)
-	localToolServiceKey LocalToolServiceKey = "agentruntime.local_tool_service"
+	_ Manager = (*manager)(nil)
 )
 
-func (m *manager) GetTool(_ context.Context, toolName string) ai.Tool {
-	tool := ai.LookupTool(toolName)
-	if tool.Action() == nil {
-		return nil
-	}
-
-	return tool
+func (m *manager) GetTool(toolName string) ai.Tool {
+	return genkit.LookupTool(m.genkit, toolName)
 }
 
-func (m *manager) GetMCPTool(_ context.Context, serverName, toolName string) ai.Tool {
+func (m *manager) GetMCPTool(serverName, toolName string) ai.Tool {
 	if _, ok := m.mcpClients[serverName]; !ok {
 		return nil
 	}
 
-	tool := ai.LookupTool(toolName)
-	if tool.Action() == nil {
-		return nil
-	}
-	return tool
+	return genkit.LookupTool(m.genkit, toolName)
 }
 
 func (m *manager) Close() {
@@ -62,15 +47,17 @@ func (m *manager) Close() {
 	}
 }
 
-func registerLocalTool[In any, Out any](name string, description string, fn func(context.Context, In) (Out, error)) ai.Tool {
-	tool := ai.LookupTool(name)
-	if tool.Action() != nil {
+func registerLocalTool[In any, Out any](m *manager, name string, description string, fn func(context.Context, In) (Out, error)) ai.Tool {
+	tool := m.GetTool(name)
+	if tool != nil {
 		return tool
 	}
-	return ai.DefineTool(
+
+	return genkit.DefineTool(
+		m.genkit,
 		name,
 		description,
-		func(ctx context.Context, input In) (Out, error) {
+		func(ctx *ai.ToolContext, input In) (Out, error) {
 			out, err := fn(ctx, input)
 			if err == nil {
 				appendCallData(ctx, CallData{
@@ -82,8 +69,4 @@ func registerLocalTool[In any, Out any](name string, description string, fn func
 			return out, err
 		},
 	)
-}
-
-func WithLocalToolService(ctx context.Context, toolService LocalToolService) context.Context {
-	return context.WithValue(ctx, localToolServiceKey, toolService)
 }

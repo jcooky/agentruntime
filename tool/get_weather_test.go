@@ -23,8 +23,7 @@ func TestGetWeather(t *testing.T) {
 	container := di.NewContainer(di.EnvTest)
 
 	s := di.MustGet[tool.Manager](ctx, container, tool.ManagerKey)
-	getWeatherTool := s.GetTool(ctx, "get_weather")
-	ctx = tool.WithLocalToolService(ctx, s)
+	getWeatherTool := s.GetTool("get_weather")
 	res, err := getWeatherTool.RunRaw(ctx, map[string]any{
 		"location": "Seoul",
 		"date":     "2023-10-01",

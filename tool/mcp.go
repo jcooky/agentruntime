@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"github.com/firebase/genkit/go/genkit"
 	"io"
 	"strings"
 
@@ -19,14 +20,6 @@ type RegisterMCPToolRequest struct {
 	Command    string
 	Args       []string
 	Env        map[string]string
-}
-
-var (
-	_ mcp.MCPClientRegistry = (*manager)(nil)
-)
-
-func (m *manager) GetMCPClient(ctx context.Context, serverName string) (mcpclient.MCPClient, error) {
-	return m.mcpClients[serverName], nil
 }
 
 func (m *manager) RegisterMCPTool(ctx context.Context, req RegisterMCPToolRequest) (err error) {
@@ -75,11 +68,11 @@ func (m *manager) RegisterMCPTool(ctx context.Context, req RegisterMCPToolReques
 		return errors.Wrapf(err, "failed to list tools")
 	}
 	for _, tool := range listToolsResult.Tools {
-		if ai.LookupTool(tool.Name).Action() != nil {
+		if genkit.LookupTool(m.genkit, tool.Name) != nil {
 			m.logger.InfoContext(ctx, "tool already registered", "tool", tool.Name)
 			continue
 		}
-		if _, err := mcp.DefineTool(req.ServerName, tool, func(ctx context.Context, in any, out *mcp.ToolResult) error {
+		if _, err := mcp.DefineTool(m.genkit, mcpClient, tool, func(ctx *ai.ToolContext, in any, out *mcp.ToolResult) error {
 			appendCallData(ctx, CallData{
 				Name:      tool.Name,
 				Arguments: in,
@@ -108,7 +101,7 @@ func (m *manager) GetMCPTools(ctx context.Context, mcpServerName string) []ai.To
 
 	var tools []ai.Tool
 	for _, tool := range listToolsResult.Tools {
-		if t := ai.LookupTool(tool.Name); t != nil {
+		if t := genkit.LookupTool(m.genkit, tool.Name); t != nil {
 			tools = append(tools, t)
 		}
 	}

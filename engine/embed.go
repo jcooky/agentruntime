@@ -4,16 +4,16 @@ import (
 	"context"
 
 	"github.com/firebase/genkit/go/ai"
-	"github.com/yukinagae/genkit-go-plugins/plugins/openai"
+	"github.com/habiliai/agentruntime/internal/genkit/plugins/openai"
 )
 
 func (e *engine) Embed(
 	ctx context.Context,
 	texts ...string,
 ) ([][]float32, error) {
-	embedder := openai.Embedder("text-embedding-3-small")
+	embedder := openai.Embedder(e.genkit, "text-embedding-3-small")
 
-	resp, err := ai.Embed(ctx, embedder, ai.WithEmbedText(texts...))
+	resp, err := ai.Embed(ctx, embedder, ai.WithTextDocs(texts...))
 	if err != nil {
 		return nil, err
 	}

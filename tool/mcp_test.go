@@ -13,7 +13,7 @@ func (s *ToolTestSuite) TestToolByMCP() {
 		},
 	}))
 
-	tool := s.toolManager.GetMCPTool(s, "filesystem", "list_directory")
+	tool := s.toolManager.GetMCPTool("filesystem", "list_directory")
 	s.NotNil(tool)
 
 	s.Equal("list_directory", tool.Definition().Name)

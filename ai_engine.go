@@ -36,8 +36,8 @@ type (
 	}
 )
 
-func (a *AIEngine) Generate(ctx context.Context, req GenerateRequest, out any, opts ...ai.GenerateOption) (*ai.GenerateResponse, error) {
-	return a.engine.Generate(ctx, req, out, opts...)
+func (a *AIEngine) Generate(ctx context.Context, req GenerateRequest, out any, opts ...ai.GenerateOption) (*ai.ModelResponse, error) {
+	return a.engine.Generate(ctx, &req, out, opts...)
 }
 
 func (a *AIEngine) Embed(ctx context.Context, texts ...string) ([][]float32, error) {

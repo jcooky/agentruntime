@@ -2,6 +2,7 @@ package engine_test
 
 import (
 	"context"
+
 	"github.com/habiliai/agentruntime/engine"
 )
 
@@ -11,7 +12,7 @@ func (s *EngineTestSuite) TestGenerate() {
 	var out string
 	resp, err := s.engine.Generate(
 		ctx,
-		engine.GenerateRequest{
+		&engine.GenerateRequest{
 			PromptTmpl: "Hello, world!",
 			Model:      "gpt-4o",
 		},

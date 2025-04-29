@@ -27,19 +27,14 @@ func (m *manager) Search(ctx context.Context, req *WebSearchRequest) ([]any, err
 	return results, nil
 }
 
-func RegisterWebSearchTool() {
+func (m *manager) registerWebSearchTool() {
 	registerLocalTool(
+		m,
 		"web_search",
 		"Search the web for information",
 		func(ctx context.Context, in struct {
 			*WebSearchRequest
 		}) (res []any, err error) {
-			var m LocalToolService
-			m, ok := ctx.Value(localToolServiceKey).(LocalToolService)
-			if !ok {
-				err = errors.New("local tool service not found")
-				return
-			}
 			res, err = m.Search(ctx, in.WebSearchRequest)
 			return
 		},
