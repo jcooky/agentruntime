@@ -3,15 +3,13 @@ package openai
 import (
 	"context"
 	"fmt"
-	"github.com/firebase/genkit/go/core"
-	"os"
-
-	"github.com/firebase/genkit/go/genkit"
-
 	"github.com/firebase/genkit/go/ai"
-
+	"github.com/firebase/genkit/go/genkit"
+	"github.com/habiliai/agentruntime/internal/genkit/plugins/internal/config"
+	"github.com/habiliai/agentruntime/internal/genkit/plugins/internal/openaiapi"
 	goopenai "github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
+	"os"
 )
 
 const (
@@ -22,15 +20,15 @@ const (
 
 var (
 	knownCaps = map[string]ai.ModelSupports{
-		"o3":                          BasicText,
-		"o4-mini":                     BasicText,
-		goopenai.ChatModelO3Mini:      BasicText,
-		goopenai.ChatModelO1:          BasicText,
-		goopenai.ChatModelGPT4o:       Multimodal,
-		goopenai.ChatModelGPT4oMini:   Multimodal,
-		goopenai.ChatModelGPT4Turbo:   Multimodal,
-		goopenai.ChatModelGPT4:        BasicText,
-		goopenai.ChatModelGPT3_5Turbo: BasicText,
+		"o3":                          config.BasicText,
+		"o4-mini":                     config.BasicText,
+		goopenai.ChatModelO3Mini:      config.BasicText,
+		goopenai.ChatModelO1:          config.BasicText,
+		goopenai.ChatModelGPT4o:       config.Multimodal,
+		goopenai.ChatModelGPT4oMini:   config.Multimodal,
+		goopenai.ChatModelGPT4Turbo:   config.Multimodal,
+		goopenai.ChatModelGPT4:        config.BasicText,
+		goopenai.ChatModelGPT3_5Turbo: config.BasicText,
 	}
 
 	modelsSupportingResponseFormats = []string{
@@ -88,64 +86,14 @@ func (o *Plugin) Init(_ context.Context, g *genkit.Genkit) (err error) {
 	)
 
 	for model, caps := range knownCaps {
-		defineModel(g, &client, model, caps)
+		openaiapi.DefineModel(g, &client, labelPrefix, provider, model, caps)
 	}
 
 	for _, e := range knownEmbedders {
-		defineEmbedder(g, &client, e)
+		openaiapi.DefineEmbedder(g, &client, provider, e)
 	}
 
 	return nil
-}
-
-// requires state.mu
-func defineModel(g *genkit.Genkit, client *goopenai.Client, name string, caps ai.ModelSupports) ai.Model {
-	meta := &ai.ModelInfo{
-		Label:    labelPrefix + " - " + name,
-		Supports: &caps,
-	}
-	return genkit.DefineModel(
-		g,
-		provider,
-		name,
-		meta,
-		func(ctx context.Context, req *ai.ModelRequest, _ core.StreamCallback[*ai.ModelResponseChunk]) (*ai.ModelResponse, error) {
-			return generate(ctx, client, name, req)
-		},
-	)
-}
-
-// requires state.mu
-func defineEmbedder(g *genkit.Genkit, client *goopenai.Client, name string) ai.Embedder {
-	return genkit.DefineEmbedder(g, provider, name, func(ctx context.Context, input *ai.EmbedRequest) (*ai.EmbedResponse, error) {
-		var data goopenai.EmbeddingNewParamsInputUnion
-		for _, doc := range input.Input {
-			for _, p := range doc.Content {
-				data.OfArrayOfStrings = append(data.OfArrayOfStrings, p.Text)
-			}
-		}
-
-		params := goopenai.EmbeddingNewParams{
-			Input:          data,
-			Model:          name,
-			EncodingFormat: goopenai.EmbeddingNewParamsEncodingFormatFloat,
-		}
-
-		embRes, err := client.Embeddings.New(ctx, params)
-		if err != nil {
-			return nil, err
-		}
-
-		var res ai.EmbedResponse
-		for _, emb := range embRes.Data {
-			embedding := make([]float32, len(emb.Embedding))
-			for i, val := range emb.Embedding {
-				embedding[i] = float32(val)
-			}
-			res.Embeddings = append(res.Embeddings, &ai.Embedding{Embedding: embedding})
-		}
-		return &res, nil
-	})
 }
 
 // Model returns the [ai.Model] with the given name.
@@ -158,31 +106,4 @@ func Model(g *genkit.Genkit, name string) ai.Model {
 // It returns nil if the embedder was not defined.
 func Embedder(g *genkit.Genkit, name string) ai.Embedder {
 	return genkit.LookupEmbedder(g, provider, name)
-}
-
-func generate(
-	ctx context.Context,
-	client *goopenai.Client,
-	model string,
-	input *ai.ModelRequest,
-) (*ai.ModelResponse, error) {
-	req, err := convertRequest(model, input)
-	if err != nil {
-		return nil, err
-	}
-
-	res, err := client.Chat.Completions.New(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-
-	jsonMode := false
-	if input.Output != nil &&
-		input.Output.Format == ai.OutputFormatJSON {
-		jsonMode = true
-	}
-
-	r := translateResponse(res, jsonMode)
-	r.Request = input
-	return r, nil
 }

@@ -1,5 +1,5 @@
 name: Alice Habili
-model: gpt-4o
+model: openai/gpt-4o
 system: Take a deep breath and relax. I am here to help you.
 tools: [get_weather, done_agent]
 bio:

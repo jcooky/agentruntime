@@ -10,7 +10,6 @@ import (
 	"github.com/firebase/genkit/go/genkit"
 
 	"github.com/firebase/genkit/go/ai"
-	"github.com/habiliai/agentruntime/internal/genkit/plugins/openai"
 	"github.com/pkg/errors"
 )
 
@@ -89,8 +88,12 @@ func (e *engine) Generate(
 		opts = append(opts, ai.WithOutputType(out))
 	}
 
-	model := openai.Model(e.genkit, req.Model)
-	opts = append(opts, ai.WithModel(model))
+	modelName := req.Model
+	modelNamePieces := strings.SplitN(modelName, "/", 2)
+	if len(modelNamePieces) == 1 {
+		modelName = "openai/" + req.Model
+	}
+	opts = append(opts, ai.WithModelName(modelName))
 
 	resp, err := genkit.Generate(ctx, e.genkit, opts...)
 	if err != nil {
@@ -99,7 +102,7 @@ func (e *engine) Generate(
 
 	for i := 0; i < req.NumRetries; i++ {
 		options := []ai.GenerateOption{
-			ai.WithModel(model),
+			ai.WithModelName(modelName),
 			ai.WithPrompt("Please evaluate it."),
 			ai.WithMessages(withoutPurposeOutput(resp.History())...),
 			ai.WithMaxTurns(100),
@@ -119,7 +122,7 @@ func (e *engine) Generate(
 		resp, err = genkit.Generate(
 			ctx,
 			e.genkit,
-			ai.WithModel(model),
+			ai.WithModelName(modelName),
 			ai.WithPrompt("Please fix it."),
 			ai.WithMessages(withoutPurposeOutput(evalRes.History())...),
 			ai.WithOutputType(out),

@@ -32,6 +32,7 @@ type (
 
 		toolConfig   *ToolConfig
 		openAIAPIKey string
+		xaiAPIKey    string
 		logger       *slog.Logger
 	}
 )
@@ -75,7 +76,12 @@ func NewAIEngine(ctx context.Context, optionFuncs ...func(*AIEngine)) *AIEngine 
 	}
 	if e.openAIAPIKey != "" {
 		di.Set(container, config.OpenAIConfigKey, &config.OpenAIConfig{
-			OpenAIApiKey: e.openAIAPIKey,
+			APIKey: e.openAIAPIKey,
+		})
+	}
+	if e.xaiAPIKey != "" {
+		di.Set(container, config.XAIConfigKey, &config.XAIConfig{
+			APIKey: e.xaiAPIKey,
 		})
 	}
 	if e.logger != nil {
@@ -99,6 +105,12 @@ func WithOpenAIAPIKey(apiKey string) func(e *AIEngine) {
 func WithLogger(logger *slog.Logger) func(e *AIEngine) {
 	return func(e *AIEngine) {
 		e.logger = logger
+	}
+}
+
+func WithXAIAPIKey(apiKey string) func(e *AIEngine) {
+	return func(e *AIEngine) {
+		e.xaiAPIKey = apiKey
 	}
 }
 

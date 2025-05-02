@@ -1,11 +1,10 @@
-package openai
+package openaiapi
 
 import (
 	"encoding/json"
 	"fmt"
-	"slices"
-
 	"github.com/firebase/genkit/go/ai"
+	"github.com/habiliai/agentruntime/internal/genkit/plugins/internal/config"
 	goopenai "github.com/openai/openai-go"
 	"github.com/openai/openai-go/shared"
 )
@@ -30,31 +29,40 @@ func convertRequest(model string, input *ai.ModelRequest) (goopenai.ChatCompleti
 		chatCompletionRequest.Tools = tools
 	}
 
-	if c, ok := input.Config.(*ai.GenerationCommonConfig); ok && c != nil {
-		if c.MaxOutputTokens != 0 {
-			chatCompletionRequest.MaxCompletionTokens = goopenai.Opt(int64(c.MaxOutputTokens))
-		}
-		if len(c.StopSequences) > 0 {
-			chatCompletionRequest.Stop = goopenai.ChatCompletionNewParamsStopUnion{
-				OfChatCompletionNewsStopArray: c.StopSequences,
+	jsonBytes, err := json.Marshal(input.Config)
+	if err != nil {
+		return goopenai.ChatCompletionNewParams{}, err
+	}
+	{
+		var c ai.GenerationCommonConfig
+		if err := json.Unmarshal(jsonBytes, &c); err == nil {
+			if c.MaxOutputTokens != 0 {
+				chatCompletionRequest.MaxCompletionTokens = goopenai.Opt(int64(c.MaxOutputTokens))
+			}
+			if len(c.StopSequences) > 0 {
+				chatCompletionRequest.Stop = goopenai.ChatCompletionNewParamsStopUnion{
+					OfChatCompletionNewsStopArray: c.StopSequences,
+				}
+			}
+			if c.Temperature != 0 {
+				chatCompletionRequest.Temperature = goopenai.Opt(c.Temperature)
+			}
+			if c.TopP != 0 {
+				chatCompletionRequest.TopP = goopenai.Opt(c.TopP)
 			}
 		}
-		if c.Temperature != 0 {
-			chatCompletionRequest.Temperature = goopenai.Opt(c.Temperature)
-		}
-		if c.TopP != 0 {
-			chatCompletionRequest.TopP = goopenai.Opt(c.TopP)
-		}
 	}
-	if c, ok := input.Config.(*GenerationReasoningConfig); ok && c != nil {
-		if c.ReasoningEffort != "" {
-			chatCompletionRequest.ReasoningEffort = goopenai.ReasoningEffort(c.ReasoningEffort)
+	{
+		var c config.GenerationReasoningConfig
+		if err := json.Unmarshal(jsonBytes, &c); err == nil {
+			if c.ReasoningEffort != "" {
+				chatCompletionRequest.ReasoningEffort = goopenai.ReasoningEffort(c.ReasoningEffort)
+			}
 		}
 	}
 
 	if input.Output != nil &&
-		input.Output.Format != "" &&
-		slices.Contains(modelsSupportingResponseFormats, model) {
+		input.Output.Format != "" {
 		switch input.Output.Format {
 		case ai.OutputFormatJSON:
 			chatCompletionRequest.ResponseFormat = goopenai.ChatCompletionNewParamsResponseFormatUnion{

@@ -3,6 +3,7 @@ package entity
 type Agent struct {
 	Name            string             `json:"name"`
 	ModelName       string             `json:"model_name"`
+	ModelConfig     map[string]any     `json:"model_config"`
 	System          string             `json:"system"`
 	Role            string             `json:"role"`
 	Bio             []string           `json:"bio"`

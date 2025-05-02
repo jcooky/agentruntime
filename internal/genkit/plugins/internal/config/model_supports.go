@@ -1,9 +1,8 @@
-package openai
+package config
 
 import "github.com/firebase/genkit/go/ai"
 
 var (
-	// BasicText describes model capabilities for text-only GPT models.
 	BasicText = ai.ModelSupports{
 		Multiturn:  true,
 		Tools:      true,
@@ -11,7 +10,6 @@ var (
 		Media:      false,
 	}
 
-	//  Multimodal describes model capabilities for multimodal GPT models.
 	Multimodal = ai.ModelSupports{
 		Multiturn:  true,
 		Tools:      true,

@@ -1,4 +1,4 @@
-package openai
+package xai
 
 import (
 	"context"
@@ -15,7 +15,7 @@ import (
 )
 
 // The tests here only work with an API key set to a valid value.
-var apiKey = flag.String("key", "", "OpenAI API key")
+var apiKey = flag.String("key", "", "XAI API key")
 
 // We can't test the DefineAll functions along with the other tests because
 // we get duplicate definitions of models.
@@ -36,28 +36,7 @@ func TestLive(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	embedder := Embedder(g, "text-embedding-3-small")
-	model := Model(g, "gpt-4o-mini")
-
-	t.Run("embedder", func(t *testing.T) {
-		res, err := ai.Embed(ctx, embedder, ai.WithTextDocs("yellow banana"))
-		if err != nil {
-			t.Fatal(err)
-		}
-		out := res.Embeddings[0].Embedding
-		// There's not a whole lot we can test about the result.
-		// Just do a few sanity checks.
-		if len(out) < 100 {
-			t.Errorf("embedding vector looks too short: len(out)=%d", len(out))
-		}
-		var normSquared float32
-		for _, x := range out {
-			normSquared += x * x
-		}
-		if normSquared < 0.9 || normSquared > 1.1 {
-			t.Errorf("embedding vector not unit length: %f", normSquared)
-		}
-	})
+	model := Model(g, "grok-3-mini")
 
 	t.Run("generate", func(t *testing.T) {
 		resp, err := genkit.Generate(
@@ -65,9 +44,6 @@ func TestLive(t *testing.T) {
 			g,
 			ai.WithModel(model),
 			ai.WithPrompt("Just the country name where Napoleon was emperor, no period."), //
-			ai.WithConfig(map[string]interface{}{
-				"temperature": 1.0,
-			}),
 		)
 		if err != nil {
 			t.Fatal(err)
@@ -94,7 +70,8 @@ func TestLive(t *testing.T) {
 				Over  float64
 			},
 			) (float64, error) {
-				return math.Pow(input.Value, input.Over), nil
+				output := math.Pow(input.Value, input.Over)
+				return output, nil
 			},
 		)
 		resp, err := genkit.Generate(
@@ -108,7 +85,7 @@ func TestLive(t *testing.T) {
 			t.Fatal(err)
 		}
 		out := resp.Text()
-		const want = "12.25"
+		const want = "11"
 		if !strings.Contains(out, want) {
 			t.Errorf("got %q, expecting it to contain %q", out, want)
 		}

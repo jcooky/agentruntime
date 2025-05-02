@@ -6,6 +6,7 @@ import (
 	"github.com/habiliai/agentruntime/config"
 	"github.com/habiliai/agentruntime/internal/di"
 	"github.com/habiliai/agentruntime/internal/genkit/plugins/openai"
+	"github.com/habiliai/agentruntime/internal/genkit/plugins/xai"
 	"github.com/habiliai/agentruntime/internal/mylog"
 	"github.com/pkg/errors"
 	"log/slog"
@@ -17,14 +18,33 @@ var (
 
 func init() {
 	di.Register(Key, func(ctx context.Context, c *di.Container) (any, error) {
-		conf := di.MustGet[*config.OpenAIConfig](ctx, c, config.OpenAIConfigKey)
+		var (
+			plugins      []genkit.Plugin
+			defaultModel string
+		)
+		{
+			conf := di.MustGet[*config.OpenAIConfig](ctx, c, config.OpenAIConfigKey)
+			if conf.APIKey != "" {
+				plugins = append(plugins, &openai.Plugin{
+					APIKey: conf.APIKey,
+				})
+			}
+			defaultModel = "openai/gpt-4o"
+		}
+		{
+			conf := di.MustGet[*config.XAIConfig](ctx, c, config.XAIConfigKey)
+			if conf.APIKey != "" {
+				plugins = append(plugins, &xai.Plugin{
+					APIKey: conf.APIKey,
+				})
+			}
+			defaultModel = "xai/grok-3"
+		}
 		logger := di.MustGet[*slog.Logger](ctx, c, mylog.Key)
 		g, err := genkit.Init(
 			ctx,
-			genkit.WithPlugins(&openai.Plugin{
-				APIKey: conf.OpenAIApiKey,
-			}),
-			genkit.WithDefaultModel("openai/gpt-4o"),
+			genkit.WithPlugins(plugins...),
+			genkit.WithDefaultModel(defaultModel),
 		)
 
 		genkit.RegisterSpanProcessor(g, &loggingSpanProcessor{logger: logger})

@@ -11,7 +11,6 @@ import (
 	"github.com/firebase/genkit/go/ai"
 	"github.com/habiliai/agentruntime/entity"
 	myerrors "github.com/habiliai/agentruntime/errors"
-	"github.com/habiliai/agentruntime/internal/genkit/plugins/openai"
 	"github.com/habiliai/agentruntime/internal/sliceutils"
 	"github.com/habiliai/agentruntime/tool"
 	"github.com/pkg/errors"
@@ -122,14 +121,6 @@ func (s *engine) Run(
 		tools = append(tools, v)
 	}
 
-	var config any
-	switch agent.ModelName {
-	case "o1", "o3-mini", "o3", "o4-mini":
-		config = openai.GenerationReasoningConfig{
-			ReasoningEffort: "high",
-		}
-	}
-
 	ctx = tool.WithEmptyCallDataStore(ctx)
 	var (
 		err error
@@ -146,7 +137,7 @@ func (s *engine) Run(
 				NumRetries:          agent.Evaluator.NumRetries,
 			},
 			output,
-			ai.WithConfig(config),
+			ai.WithConfig(agent.ModelConfig),
 			ai.WithTools(tools...),
 		)
 		if err != nil {
