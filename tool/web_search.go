@@ -31,7 +31,7 @@ func (m *manager) registerWebSearchTool() {
 	registerLocalTool(
 		m,
 		"web_search",
-		"Search the web for information",
+		"Use when you need to search the web or find information online.",
 		func(ctx context.Context, in struct {
 			*WebSearchRequest
 		}) (res []any, err error) {
