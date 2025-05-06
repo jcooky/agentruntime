@@ -29,8 +29,8 @@ type (
 		Result    any    `json:"result"`
 	}
 	Conversation struct {
-		User    string   `json:"user"`
-		Text    string   `json:"text"`
+		User    string   `json:"user,omitempty"`
+		Text    string   `json:"text,omitempty"`
 		Actions []Action `json:"actions,omitempty"`
 	}
 

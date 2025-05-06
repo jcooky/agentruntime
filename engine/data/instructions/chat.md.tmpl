@@ -33,10 +33,12 @@ About {{ .Agent.Name }}:
 {{ .Agent.MessageExamples | toJson }}
 ```
 
+{{- if .RecentConversations }}
 # Recent Conversations
 ```json
 {{ .RecentConversations | toJson }}
 ```
+{{- end }}
 
 # Available Actions
 ```json
@@ -45,7 +47,6 @@ About {{ .Agent.Name }}:
 
 # Instructions
 - Write the next message for {{ .Agent.Name }}.
-
-The “action” field should be one of the options in [Available Actions] and the "text" field should be the response you want to send.
-
-See recent conversations. And generate a response.
+{{- if .RecentConversations }}
+- See recent conversations. And generate a response.
+{{- end }}
