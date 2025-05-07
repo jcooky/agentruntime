@@ -7,8 +7,9 @@ import (
 )
 
 type LogConfig struct {
-	LogLevel   string `env:"LOG_LEVEL"`
-	LogHandler string `env:"LOG_HANDLER"`
+	LogLevel     string `env:"LOG_LEVEL"`
+	LogHandler   string `env:"LOG_HANDLER"`
+	TraceVerbose bool   `env:"TRACE_VERBOSE"`
 }
 
 var LogConfigKey = di.NewKey()

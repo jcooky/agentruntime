@@ -40,6 +40,7 @@ func init() {
 			}
 			defaultModel = "xai/grok-3"
 		}
+		logConf := di.MustGet[*config.LogConfig](ctx, c, config.LogConfigKey)
 		logger := di.MustGet[*slog.Logger](ctx, c, mylog.Key)
 		g, err := genkit.Init(
 			ctx,
@@ -47,7 +48,12 @@ func init() {
 			genkit.WithDefaultModel(defaultModel),
 		)
 
-		genkit.RegisterSpanProcessor(g, &loggingSpanProcessor{logger: logger})
+		genkit.RegisterSpanProcessor(g,
+			&loggingSpanProcessor{
+				verbose: logConf.TraceVerbose,
+				logger:  logger,
+			},
+		)
 
 		return g, errors.Wrapf(err, "failed to init genkit")
 	})

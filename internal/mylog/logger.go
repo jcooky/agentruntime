@@ -15,20 +15,23 @@ var (
 	Key = di.NewKey()
 )
 
-func NewLogger(logLevel string, logHandler string) *Logger {
-	var slogLevel slog.Level
+func ToLogLevel(logLevel string) slog.Level {
 	switch logLevel {
 	case "debug":
-		slogLevel = slog.LevelDebug
+		return slog.LevelDebug
 	case "info":
-		slogLevel = slog.LevelInfo
+		return slog.LevelInfo
 	case "warn":
-		slogLevel = slog.LevelWarn
+		return slog.LevelWarn
 	case "error":
-		slogLevel = slog.LevelError
+		return slog.LevelError
 	default:
-		slogLevel = slog.LevelInfo
+		return slog.LevelInfo
 	}
+}
+
+func NewLogger(logLevel string, logHandler string) *Logger {
+	slogLevel := ToLogLevel(logLevel)
 
 	var handler slog.Handler
 	switch logHandler {

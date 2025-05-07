@@ -34,6 +34,7 @@ type (
 		openAIAPIKey string
 		xaiAPIKey    string
 		logger       *slog.Logger
+		traceVerbose bool
 	}
 )
 
@@ -90,6 +91,11 @@ func NewAIEngine(ctx context.Context, optionFuncs ...func(*AIEngine)) *AIEngine 
 	if e.toolConfig != nil {
 		di.Set(container, config.ToolConfigKey, e.toolConfig)
 	}
+	if e.traceVerbose {
+		di.Set(container, config.LogConfigKey, &config.LogConfig{
+			TraceVerbose: e.traceVerbose,
+		})
+	}
 
 	e.engine = di.MustGet[engine.Engine](ctx, container, engine.Key)
 	e.toolManager = di.MustGet[tool.Manager](ctx, container, tool.ManagerKey)
@@ -105,6 +111,12 @@ func WithOpenAIAPIKey(apiKey string) func(e *AIEngine) {
 func WithLogger(logger *slog.Logger) func(e *AIEngine) {
 	return func(e *AIEngine) {
 		e.logger = logger
+	}
+}
+
+func WithTraceVerbose(traceVerbose bool) func(e *AIEngine) {
+	return func(e *AIEngine) {
+		e.traceVerbose = traceVerbose
 	}
 }
 
