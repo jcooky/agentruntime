@@ -23,9 +23,6 @@ func convertRequest(model string, input *ai.ModelRequest) (goopenai.ChatCompleti
 	chatCompletionRequest := goopenai.ChatCompletionNewParams{
 		Model:    model,
 		Messages: messages,
-		ToolChoice: goopenai.ChatCompletionToolChoiceOptionUnionParam{
-			OfAuto: goopenai.Opt("auto"),
-		},
 	}
 
 	if len(tools) > 0 {

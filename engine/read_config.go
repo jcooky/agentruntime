@@ -24,6 +24,7 @@ func (s *engine) NewAgentFromConfig(
 	a.Lore = ac.Lore
 	a.MessageExamples = make([][]entity.MessageExample, 0, len(ac.MessageExamples))
 	a.ModelName = ac.Model
+	a.ModelConfig = ac.ModelConfig
 	if a.ModelName == "" {
 		a.ModelName = "gpt-4o"
 	}
