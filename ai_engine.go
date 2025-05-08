@@ -2,6 +2,7 @@ package agentruntime
 
 import (
 	"context"
+	"github.com/jcooky/go-din"
 	"io"
 	"log/slog"
 
@@ -9,7 +10,6 @@ import (
 	"github.com/habiliai/agentruntime/config"
 	"github.com/habiliai/agentruntime/engine"
 	"github.com/habiliai/agentruntime/entity"
-	"github.com/habiliai/agentruntime/internal/di"
 	"github.com/habiliai/agentruntime/internal/mylog"
 	"github.com/habiliai/agentruntime/tool"
 )
@@ -70,35 +70,35 @@ func (a *AIEngine) CreateAgentFromYaml(ctx context.Context, yamlFile io.Reader) 
 }
 
 func NewAIEngine(ctx context.Context, optionFuncs ...func(*AIEngine)) *AIEngine {
-	container := di.NewContainer(di.EnvProd)
+	c := din.NewContainer(ctx, din.EnvProd)
 	e := &AIEngine{}
 	for _, f := range optionFuncs {
 		f(e)
 	}
 	if e.openAIAPIKey != "" {
-		di.Set(container, config.OpenAIConfigKey, &config.OpenAIConfig{
+		din.SetT[*config.OpenAIConfig](c, &config.OpenAIConfig{
 			APIKey: e.openAIAPIKey,
 		})
 	}
 	if e.xaiAPIKey != "" {
-		di.Set(container, config.XAIConfigKey, &config.XAIConfig{
+		din.SetT[*config.XAIConfig](c, &config.XAIConfig{
 			APIKey: e.xaiAPIKey,
 		})
 	}
 	if e.logger != nil {
-		di.Set(container, mylog.Key, e.logger)
+		din.Set(c, mylog.Key, e.logger)
 	}
 	if e.toolConfig != nil {
-		di.Set(container, config.ToolConfigKey, e.toolConfig)
+		din.SetT[*config.ToolConfig](c, e.toolConfig)
 	}
 	if e.traceVerbose {
-		di.Set(container, config.LogConfigKey, &config.LogConfig{
+		din.SetT[*config.LogConfig](c, &config.LogConfig{
 			TraceVerbose: e.traceVerbose,
 		})
 	}
 
-	e.engine = di.MustGet[engine.Engine](ctx, container, engine.Key)
-	e.toolManager = di.MustGet[tool.Manager](ctx, container, tool.ManagerKey)
+	e.engine = din.MustGetT[engine.Engine](c)
+	e.toolManager = din.MustGetT[tool.Manager](c)
 	return e
 }
 

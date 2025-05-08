@@ -2,9 +2,10 @@ package grpcutils
 
 import (
 	"context"
+	"github.com/jcooky/go-din"
+	"log/slog"
 
 	myerrors "github.com/habiliai/agentruntime/errors"
-	"github.com/habiliai/agentruntime/internal/di"
 	"github.com/habiliai/agentruntime/internal/mylog"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
@@ -12,11 +13,11 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func handleError(ctx context.Context, c *di.Container, err error) error {
+func handleError(c *din.Container, err error) error {
 	if err == nil {
 		return nil
 	}
-	logger := di.MustGet[*mylog.Logger](ctx, c, mylog.Key)
+	logger := din.MustGet[*mylog.Logger](c, mylog.Key)
 
 	logger.Error("error in gRPC handler", "err", err)
 	if errors.Is(err, myerrors.ErrNotFound) {
@@ -28,14 +29,14 @@ func handleError(ctx context.Context, c *di.Container, err error) error {
 	}
 }
 
-func NewUnaryServerInterceptor(ctx context.Context, c *di.Container) func(context.Context, any, *grpc.UnaryServerInfo, grpc.UnaryHandler) (resp any, err error) {
-	logger := di.MustGet[*mylog.Logger](ctx, c, mylog.Key)
+func NewUnaryServerInterceptor(c *din.Container) func(context.Context, any, *grpc.UnaryServerInfo, grpc.UnaryHandler) (resp any, err error) {
+	logger := din.MustGet[*slog.Logger](c, mylog.Key)
 	return func(_ context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
 		logger.Info("[gRPC] call", "path", info.FullMethod)
 
-		resp, err = handler(ctx, req)
+		resp, err = handler(c, req)
 
-		err = handleError(ctx, c, err)
+		err = handleError(c, err)
 		return
 	}
 }

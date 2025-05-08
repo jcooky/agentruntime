@@ -1,9 +1,7 @@
 package config
 
 import (
-	"context"
-
-	"github.com/habiliai/agentruntime/internal/di"
+	"github.com/jcooky/go-din"
 )
 
 type LogConfig struct {
@@ -12,14 +10,12 @@ type LogConfig struct {
 	TraceVerbose bool   `env:"TRACE_VERBOSE"`
 }
 
-var LogConfigKey = di.NewKey()
-
 func init() {
-	di.Register(LogConfigKey, func(ctx context.Context, c *di.Container) (any, error) {
+	din.RegisterT(func(c *din.Container) (*LogConfig, error) {
 		config := LogConfig{
 			LogLevel:   "debug",
 			LogHandler: "default",
 		}
-		return &config, resolveConfig(&config, c.Env == di.EnvTest)
+		return &config, resolveConfig(&config, c.Env == din.EnvTest)
 	})
 }

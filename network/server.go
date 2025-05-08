@@ -2,10 +2,10 @@ package network
 
 import (
 	"context"
+	"github.com/jcooky/go-din"
 
 	"github.com/habiliai/agentruntime/entity"
-	"github.com/habiliai/agentruntime/internal/di"
-	emptypb "google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type networkServer struct {
@@ -66,15 +66,10 @@ func (s *networkServer) DeregisterAgent(ctx context.Context, req *DeregisterAgen
 	return &emptypb.Empty{}, nil
 }
 
-var (
-	_                AgentNetworkServer = (*networkServer)(nil)
-	ManagerServerKey                    = di.NewKey()
-)
-
 func init() {
-	di.Register(ManagerServerKey, func(c context.Context, container *di.Container) (any, error) {
+	din.RegisterT(func(c *din.Container) (AgentNetworkServer, error) {
 		return &networkServer{
-			service: di.MustGet[Service](c, container, ManagerKey),
+			service: din.MustGetT[Service](c),
 		}, nil
 	})
 }

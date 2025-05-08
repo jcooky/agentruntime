@@ -1,9 +1,7 @@
 package config
 
 import (
-	"context"
-
-	"github.com/habiliai/agentruntime/internal/di"
+	"github.com/jcooky/go-din"
 )
 
 type ToolConfig struct {
@@ -11,19 +9,17 @@ type ToolConfig struct {
 	SerpApiKey        string `env:"SERP_API_KEY"`
 }
 
-var ToolConfigKey = di.NewKey()
-
 func init() {
-	di.Register(ToolConfigKey, func(ctx context.Context, c *di.Container) (any, error) {
-		conf := ToolConfig{
+	din.RegisterT(func(c *din.Container) (*ToolConfig, error) {
+		conf := &ToolConfig{
 			OpenWeatherApiKey: "",
 			SerpApiKey:        "",
 		}
 
-		if err := resolveConfig(&conf, c.Env == di.EnvTest); err != nil {
+		if err := resolveConfig(conf, c.Env == din.EnvTest); err != nil {
 			return nil, err
 		}
 
-		return &conf, nil
+		return conf, nil
 	})
 }

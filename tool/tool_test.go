@@ -1,9 +1,9 @@
 package tool_test
 
 import (
+	"github.com/jcooky/go-din"
 	"testing"
 
-	"github.com/habiliai/agentruntime/internal/di"
 	"github.com/habiliai/agentruntime/internal/mytesting"
 	"github.com/habiliai/agentruntime/tool"
 	"github.com/stretchr/testify/suite"
@@ -18,7 +18,7 @@ type ToolTestSuite struct {
 func (s *ToolTestSuite) SetupTest() {
 	s.Suite.SetupTest()
 
-	s.toolManager = di.MustGet[tool.Manager](s, s.Container, tool.ManagerKey)
+	s.toolManager = din.MustGetT[tool.Manager](s.Container)
 }
 
 func (s *ToolTestSuite) TearDownTest() {

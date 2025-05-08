@@ -2,8 +2,7 @@ package runtime
 
 import (
 	"context"
-
-	"github.com/habiliai/agentruntime/internal/di"
+	"github.com/jcooky/go-din"
 )
 
 type agentRuntimeServer struct {
@@ -24,14 +23,13 @@ func (a *agentRuntimeServer) Run(ctx context.Context, req *RunRequest) (*RunResp
 }
 
 var (
-	_         AgentRuntimeServer = (*agentRuntimeServer)(nil)
-	ServerKey                    = di.NewKey()
+	_ AgentRuntimeServer = (*agentRuntimeServer)(nil)
 )
 
 func init() {
-	di.Register(ServerKey, func(c context.Context, container *di.Container) (any, error) {
+	din.RegisterT(func(c *din.Container) (AgentRuntimeServer, error) {
 		return &agentRuntimeServer{
-			runtime: di.MustGet[Service](c, container, ServiceKey),
+			runtime: din.MustGetT[Service](c),
 		}, nil
 	})
 }

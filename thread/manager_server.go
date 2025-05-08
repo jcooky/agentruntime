@@ -3,9 +3,9 @@ package thread
 import (
 	"context"
 	"encoding/json"
+	"github.com/jcooky/go-din"
 
 	"github.com/habiliai/agentruntime/entity"
-	"github.com/habiliai/agentruntime/internal/di"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -136,15 +136,10 @@ func (m *managerServer) AddMessage(ctx context.Context, request *AddMessageReque
 	}, nil
 }
 
-var (
-	_                ThreadManagerServer = (*managerServer)(nil)
-	ManagerServerKey                     = di.NewKey()
-)
-
 func init() {
-	di.Register(ManagerServerKey, func(ctx context.Context, container *di.Container) (any, error) {
+	din.RegisterT(func(c *din.Container) (ThreadManagerServer, error) {
 		return &managerServer{
-			manager: di.MustGet[Manager](ctx, container, ManagerKey),
+			manager: din.MustGetT[Manager](c),
 		}, nil
 	})
 }

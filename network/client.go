@@ -1,22 +1,20 @@
 package network
 
 import (
-	"context"
+	"github.com/jcooky/go-din"
 
 	"github.com/habiliai/agentruntime/config"
-	"github.com/habiliai/agentruntime/internal/di"
 	"github.com/habiliai/agentruntime/internal/grpcutils"
 	"google.golang.org/grpc"
 )
 
 var (
-	GrpcClientConnKey = di.NewKey()
-	ClientKey         = di.NewKey()
+	GrpcClientConnKey = din.NewRandomName()
 )
 
 func init() {
-	di.Register(GrpcClientConnKey, func(ctx context.Context, c *di.Container) (any, error) {
-		conf, err := di.Get[*config.RuntimeConfig](ctx, c, config.RuntimeConfigKey)
+	din.Register(GrpcClientConnKey, func(c *din.Container) (any, error) {
+		conf, err := din.GetT[*config.RuntimeConfig](c)
 		if err != nil {
 			return nil, err
 		}
@@ -27,14 +25,14 @@ func init() {
 		}
 
 		go func() {
-			<-ctx.Done()
+			<-c.Done()
 			client.Close()
 		}()
 
 		return client, nil
 	})
-	di.Register(ClientKey, func(ctx context.Context, c *di.Container) (any, error) {
-		clientConn, err := di.Get[*grpc.ClientConn](ctx, c, GrpcClientConnKey)
+	din.RegisterT(func(c *din.Container) (AgentNetworkClient, error) {
+		clientConn, err := din.Get[*grpc.ClientConn](c, GrpcClientConnKey)
 		if err != nil {
 			return nil, err
 		}

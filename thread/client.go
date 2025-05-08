@@ -1,20 +1,15 @@
 package thread
 
 import (
-	"context"
+	"github.com/jcooky/go-din"
 
-	"github.com/habiliai/agentruntime/internal/di"
 	"github.com/habiliai/agentruntime/network"
 	"google.golang.org/grpc"
 )
 
-var (
-	ClientKey = di.NewKey()
-)
-
 func init() {
-	di.Register(ClientKey, func(ctx context.Context, container *di.Container) (any, error) {
-		clientConn, err := di.Get[*grpc.ClientConn](ctx, container, network.GrpcClientConnKey)
+	din.RegisterT(func(c *din.Container) (ThreadManagerClient, error) {
+		clientConn, err := din.Get[*grpc.ClientConn](c, network.GrpcClientConnKey)
 		if err != nil {
 			return nil, err
 		}

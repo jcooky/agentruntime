@@ -1,27 +1,28 @@
 package network_test
 
 import (
-	"context"
+	"github.com/habiliai/agentruntime/internal/mytesting"
+	"github.com/jcooky/go-din"
 	"testing"
 
-	"github.com/habiliai/agentruntime/internal/di"
 	"github.com/habiliai/agentruntime/network"
 	"github.com/stretchr/testify/suite"
 )
 
 type NetworkTestSuite struct {
-	suite.Suite
-	context.Context
+	mytesting.Suite
 
-	manager   network.Service
-	container *di.Container
+	manager network.Service
 }
 
 func (s *NetworkTestSuite) SetupTest() {
-	s.Context = context.TODO()
-	s.container = di.NewContainer(di.EnvTest)
+	s.Suite.SetupTest()
 
-	s.manager = di.MustGet[network.Service](s.Context, s.container, network.ManagerKey)
+	s.manager = din.MustGetT[network.Service](s.Container)
+}
+
+func (s *NetworkTestSuite) TearDownTest() {
+	s.Suite.TearDownTest()
 }
 
 func TestAgents(t *testing.T) {

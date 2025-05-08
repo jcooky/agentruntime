@@ -2,12 +2,13 @@ package thread
 
 import (
 	"context"
+	"github.com/jcooky/go-din"
+	"log/slog"
 	"strings"
 
 	"github.com/habiliai/agentruntime/entity"
 	myerrors "github.com/habiliai/agentruntime/errors"
 	"github.com/habiliai/agentruntime/internal/db"
-	"github.com/habiliai/agentruntime/internal/di"
 	"github.com/habiliai/agentruntime/internal/mylog"
 	"github.com/pkg/errors"
 	"gorm.io/datatypes"
@@ -134,21 +135,16 @@ func (s *manager) CreateThread(ctx context.Context, instruction string) (*entity
 	return &thread, nil
 }
 
-var (
-	ManagerKey         = di.NewKey()
-	_          Manager = (*manager)(nil)
-)
-
 func init() {
-	di.Register(ManagerKey, func(c context.Context, container *di.Container) (any, error) {
-		logger, err := di.Get[*mylog.Logger](c, container, mylog.Key)
+	din.RegisterT(func(c *din.Container) (Manager, error) {
+		logger, err := din.Get[*slog.Logger](c, mylog.Key)
 		if err != nil {
 			return nil, err
 		}
 
 		return &manager{
 			logger: logger,
-			db:     di.MustGet[*gorm.DB](c, container, db.Key),
+			db:     din.MustGet[*gorm.DB](c, db.Key),
 		}, nil
 	})
 }

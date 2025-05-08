@@ -3,12 +3,12 @@ package tool_test
 import (
 	"context"
 	"fmt"
+	"github.com/jcooky/go-din"
 	"os"
 	"testing"
 
 	"github.com/mitchellh/mapstructure"
 
-	"github.com/habiliai/agentruntime/internal/di"
 	"github.com/habiliai/agentruntime/tool"
 	"github.com/stretchr/testify/require"
 )
@@ -20,9 +20,9 @@ func TestGetWeather(t *testing.T) {
 	}
 
 	ctx := context.TODO()
-	container := di.NewContainer(di.EnvTest)
+	container := din.NewContainer(ctx, din.EnvTest)
 
-	s := di.MustGet[tool.Manager](ctx, container, tool.ManagerKey)
+	s := din.MustGetT[tool.Manager](container)
 	getWeatherTool := s.GetTool("get_weather")
 	res, err := getWeatherTool.RunRaw(ctx, map[string]any{
 		"location": "Seoul",

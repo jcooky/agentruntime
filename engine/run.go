@@ -4,22 +4,19 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
-	"reflect"
-	"strings"
-	"text/template"
-
 	"github.com/firebase/genkit/go/ai"
 	"github.com/habiliai/agentruntime/entity"
 	myerrors "github.com/habiliai/agentruntime/errors"
 	"github.com/habiliai/agentruntime/internal/sliceutils"
 	"github.com/habiliai/agentruntime/tool"
 	"github.com/pkg/errors"
+	"reflect"
+	"strings"
 )
 
 var (
 	//go:embed data/instructions/chat.md.tmpl
-	chatInst     string
-	chatInstTmpl = template.Must(template.New("chatInst").Funcs(funcMap()).Parse(chatInst))
+	chatInst string
 )
 
 type (

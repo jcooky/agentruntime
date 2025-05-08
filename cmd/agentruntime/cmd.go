@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"github.com/jcooky/go-din"
+	"log/slog"
 	"net"
 	"os"
 	"os/signal"
@@ -10,7 +12,6 @@ import (
 	"time"
 
 	"github.com/habiliai/agentruntime/config"
-	di "github.com/habiliai/agentruntime/internal/di"
 	"github.com/habiliai/agentruntime/internal/grpcutils"
 	"github.com/habiliai/agentruntime/internal/mylog"
 	"github.com/habiliai/agentruntime/network"
@@ -54,15 +55,14 @@ func newCmd() *cobra.Command {
 				}
 			}
 
-			ctx := cmd.Context()
-			container := di.NewContainer(di.EnvProd)
+			c := din.NewContainer(cmd.Context(), din.EnvProd)
 
 			// Initialize the container
-			cfg := di.MustGet[*config.RuntimeConfig](ctx, container, config.RuntimeConfigKey)
-			logger := di.MustGet[*mylog.Logger](ctx, container, mylog.Key)
-			runtimeService := di.MustGet[runtime.Service](ctx, container, runtime.ServiceKey)
-			runtimeServer := di.MustGet[runtime.AgentRuntimeServer](ctx, container, runtime.ServerKey)
-			toolManager := di.MustGet[tool.Manager](ctx, container, tool.ManagerKey)
+			cfg := din.MustGetT[*config.RuntimeConfig](c)
+			logger := din.MustGet[*slog.Logger](c, mylog.Key)
+			runtimeService := din.MustGetT[runtime.Service](c)
+			runtimeServer := din.MustGetT[runtime.AgentRuntimeServer](c)
+			toolManager := din.MustGetT[tool.Manager](c)
 
 			logger.Debug("start agent-runtime", "config", cfg)
 
@@ -79,7 +79,7 @@ func newCmd() *cobra.Command {
 					if _, ok := mcpServerChecklist[name]; ok {
 						continue
 					}
-					if err := toolManager.RegisterMCPTool(ctx, tool.RegisterMCPToolRequest{
+					if err := toolManager.RegisterMCPTool(c, tool.RegisterMCPToolRequest{
 						ServerName: name,
 						Command:    mcpServer.Command,
 						Args:       mcpServer.Args,
@@ -93,7 +93,7 @@ func newCmd() *cobra.Command {
 			// save agents from config files
 			var agentInfo []*network.AgentInfo
 			for _, ac := range agentConfigs {
-				a, err := runtimeService.RegisterAgent(ctx, ac)
+				a, err := runtimeService.RegisterAgent(c, ac)
 				if err != nil {
 					return err
 				}
@@ -108,7 +108,7 @@ func newCmd() *cobra.Command {
 
 			// prepare to listen the grpc server
 			lc := net.ListenConfig{}
-			listener, err := lc.Listen(ctx, "tcp", fmt.Sprintf("%s:%d", cfg.Host, cfg.Port))
+			listener, err := lc.Listen(c, "tcp", fmt.Sprintf("%s:%d", cfg.Host, cfg.Port))
 			if err != nil {
 				return errors.Wrapf(err, "failed to listen on %s:%d", cfg.Host, cfg.Port)
 			}
@@ -116,7 +116,7 @@ func newCmd() *cobra.Command {
 			logger.Info("Starting server", "host", cfg.Host, "port", cfg.Port)
 
 			server := grpc.NewServer(
-				grpc.UnaryInterceptor(grpcutils.NewUnaryServerInterceptor(ctx, container)),
+				grpc.UnaryInterceptor(grpcutils.NewUnaryServerInterceptor(c)),
 			)
 			grpc_health_v1.RegisterHealthServer(server, health.NewServer())
 			runtime.RegisterAgentRuntimeServer(server, runtimeServer)
@@ -131,8 +131,8 @@ func newCmd() *cobra.Command {
 			}()
 
 			// register agent server
-			agentManager := di.MustGet[network.AgentNetworkClient](ctx, container, network.ClientKey)
-			if _, err = agentManager.RegisterAgent(ctx, &network.RegisterAgentRequest{
+			agentManager := din.MustGetT[network.AgentNetworkClient](c)
+			if _, err = agentManager.RegisterAgent(c, &network.RegisterAgentRequest{
 				Addr:   cfg.RuntimeGrpcAddr,
 				Secure: false,
 				Info:   agentInfo,
@@ -144,7 +144,7 @@ func newCmd() *cobra.Command {
 				return i.Name
 			})
 			defer func() {
-				if _, err := agentManager.DeregisterAgent(ctx, &network.DeregisterAgentRequest{
+				if _, err := agentManager.DeregisterAgent(c, &network.DeregisterAgentRequest{
 					Names: agentNames,
 				}); err != nil {
 					logger.Warn("failed to deregister agent", "err", err)
@@ -155,10 +155,10 @@ func newCmd() *cobra.Command {
 				defer ticker.Stop()
 				for {
 					select {
-					case <-ctx.Done():
+					case <-c.Done():
 						return
 					case <-ticker.C:
-						if _, err := agentManager.CheckLive(ctx, &network.CheckLiveRequest{
+						if _, err := agentManager.CheckLive(c, &network.CheckLiveRequest{
 							Names: agentNames,
 						}); err != nil {
 							logger.Warn("failed to check live", "err", err)

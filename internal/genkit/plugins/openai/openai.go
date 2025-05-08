@@ -31,17 +31,6 @@ var (
 		goopenai.ChatModelGPT3_5Turbo: config.BasicText,
 	}
 
-	modelsSupportingResponseFormats = []string{
-		goopenai.ChatModelO3Mini,
-		goopenai.ChatModelO1,
-		goopenai.ChatModelGPT4o,
-		goopenai.ChatModelGPT4oMini,
-		goopenai.ChatModelGPT4Turbo,
-		goopenai.ChatModelGPT3_5Turbo,
-		"o3",
-		"o4-mini",
-	}
-
 	knownEmbedders = []string{
 		goopenai.EmbeddingModelTextEmbedding3Small,
 		goopenai.EmbeddingModelTextEmbedding3Large,

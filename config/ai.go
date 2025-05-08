@@ -1,9 +1,7 @@
 package config
 
 import (
-	"context"
-
-	"github.com/habiliai/agentruntime/internal/di"
+	"github.com/jcooky/go-din"
 )
 
 type (
@@ -15,18 +13,13 @@ type (
 	}
 )
 
-var (
-	OpenAIConfigKey = di.NewKey()
-	XAIConfigKey    = di.NewKey()
-)
-
 func init() {
-	di.Register(OpenAIConfigKey, func(ctx context.Context, c *di.Container) (any, error) {
+	din.RegisterT(func(c *din.Container) (*OpenAIConfig, error) {
 		conf := &OpenAIConfig{}
-		return conf, resolveConfig(conf, c.Env == di.EnvTest)
+		return conf, resolveConfig(conf, c.Env == din.EnvTest)
 	})
-	di.Register(XAIConfigKey, func(ctx context.Context, c *di.Container) (any, error) {
+	din.RegisterT(func(c *din.Container) (*XAIConfig, error) {
 		conf := &XAIConfig{}
-		return conf, resolveConfig(conf, c.Env == di.EnvTest)
+		return conf, resolveConfig(conf, c.Env == din.EnvTest)
 	})
 }

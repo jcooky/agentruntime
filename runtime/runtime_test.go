@@ -1,16 +1,16 @@
 package runtime_test
 
 import (
+	"github.com/habiliai/agentruntime/network"
+	"github.com/habiliai/agentruntime/thread"
+	"github.com/jcooky/go-din"
 	"os"
 	"testing"
 
 	"github.com/habiliai/agentruntime/config"
-	"github.com/habiliai/agentruntime/internal/di"
 	"github.com/habiliai/agentruntime/internal/mytesting"
-	"github.com/habiliai/agentruntime/network"
 	networktest "github.com/habiliai/agentruntime/network/test"
 	"github.com/habiliai/agentruntime/runtime"
-	"github.com/habiliai/agentruntime/thread"
 	threadtest "github.com/habiliai/agentruntime/thread/test"
 	"github.com/stretchr/testify/suite"
 )
@@ -34,16 +34,16 @@ func (s *AgentRuntimeTestSuite) SetupTest() {
 	s.Require().NoError(err)
 
 	s.threadManager = &threadtest.ThreadManagerClientMock{}
-	di.Set(s.Container, thread.ClientKey, s.threadManager)
+	din.SetT[thread.ThreadManagerClient](s.Container, s.threadManager)
 	s.agentNetwork = &networktest.AgentNetworkClientMock{}
-	di.Set(s.Container, network.ClientKey, s.agentNetwork)
-	s.runtime = di.MustGet[runtime.Service](s.Context, s.Container, runtime.ServiceKey)
+	din.SetT[network.AgentNetworkClient](s.Container, s.agentNetwork)
+	s.runtime = din.MustGetT[runtime.Service](s.Container)
 
 	s.Require().NoError(err)
 }
 
 func (s *AgentRuntimeTestSuite) TearDownTest() {
-	defer s.Suite.TearDownTest()
+	s.Suite.TearDownTest()
 }
 
 func TestAgentRuntime(t *testing.T) {

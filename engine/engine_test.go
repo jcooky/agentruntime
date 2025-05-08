@@ -2,13 +2,13 @@ package engine_test
 
 import (
 	_ "embed"
+	"github.com/jcooky/go-din"
 	"os"
 	"strings"
 	"testing"
 
 	"github.com/habiliai/agentruntime/config"
 	"github.com/habiliai/agentruntime/engine"
-	"github.com/habiliai/agentruntime/internal/di"
 	"github.com/habiliai/agentruntime/internal/mytesting"
 	"github.com/stretchr/testify/suite"
 )
@@ -32,7 +32,11 @@ func (s *EngineTestSuite) SetupTest() {
 	s.agentConfig, err = config.LoadAgentFromFile(strings.NewReader(test1AgentYaml))
 	s.Require().NoError(err)
 
-	s.engine = di.MustGet[engine.Engine](s.Context, s.Container, engine.Key)
+	s.engine = din.MustGetT[engine.Engine](s.Container)
+}
+
+func (s *EngineTestSuite) TearDownTest() {
+	s.Suite.TearDownTest()
 }
 
 func TestRunner(t *testing.T) {

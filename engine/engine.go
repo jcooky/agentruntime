@@ -4,11 +4,11 @@ import (
 	"context"
 	"github.com/firebase/genkit/go/genkit"
 	mygenkit "github.com/habiliai/agentruntime/internal/genkit"
+	"github.com/jcooky/go-din"
 
 	"github.com/firebase/genkit/go/ai"
 	"github.com/habiliai/agentruntime/config"
 	"github.com/habiliai/agentruntime/entity"
-	"github.com/habiliai/agentruntime/internal/di"
 	"github.com/habiliai/agentruntime/internal/mylog"
 	"github.com/habiliai/agentruntime/tool"
 )
@@ -31,17 +31,12 @@ type (
 	}
 )
 
-var (
-	_   Engine = (*engine)(nil)
-	Key        = di.NewKey()
-)
-
 func init() {
-	di.Register(Key, func(ctx context.Context, c *di.Container) (any, error) {
+	din.RegisterT(func(c *din.Container) (Engine, error) {
 		return &engine{
-			logger:      di.MustGet[*mylog.Logger](ctx, c, mylog.Key),
-			toolManager: di.MustGet[tool.Manager](ctx, c, tool.ManagerKey),
-			genkit:      di.MustGet[*genkit.Genkit](ctx, c, mygenkit.Key),
+			logger:      din.MustGet[*mylog.Logger](c, mylog.Key),
+			toolManager: din.MustGetT[tool.Manager](c),
+			genkit:      din.MustGet[*genkit.Genkit](c, mygenkit.Key),
 		}, nil
 	})
 }

@@ -2,13 +2,13 @@ package network
 
 import (
 	"context"
+	"github.com/jcooky/go-din"
 	"log/slog"
 	"strings"
 	"time"
 
 	"github.com/habiliai/agentruntime/entity"
 	"github.com/habiliai/agentruntime/internal/db"
-	"github.com/habiliai/agentruntime/internal/di"
 	"github.com/habiliai/agentruntime/internal/mylog"
 	"github.com/habiliai/agentruntime/internal/stringslices"
 	"github.com/habiliai/agentruntime/tool"
@@ -126,16 +126,12 @@ func (s *service) GetAllAgentRuntimeInfo(ctx context.Context) ([]entity.AgentRun
 	return agentRuntimes, nil
 }
 
-var (
-	ManagerKey = di.NewKey()
-)
-
 func init() {
-	di.Register(ManagerKey, func(c context.Context, container *di.Container) (any, error) {
+	din.RegisterT(func(c *din.Container) (Service, error) {
 		service := &service{
-			logger:      di.MustGet[*slog.Logger](c, container, mylog.Key),
-			db:          di.MustGet[*gorm.DB](c, container, db.Key),
-			toolManager: di.MustGet[tool.Manager](c, container, tool.ManagerKey),
+			logger:      din.MustGet[*slog.Logger](c, mylog.Key),
+			db:          din.MustGet[*gorm.DB](c, db.Key),
+			toolManager: din.MustGetT[tool.Manager](c),
 		}
 
 		go service.runHealthChecker(c)

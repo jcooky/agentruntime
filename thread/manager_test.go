@@ -1,11 +1,13 @@
 package thread_test
 
 import (
+	"github.com/habiliai/agentruntime/internal/db"
+	"github.com/jcooky/go-din"
+	"gorm.io/gorm"
 	"os"
 	"testing"
 
 	"github.com/habiliai/agentruntime/entity"
-	"github.com/habiliai/agentruntime/internal/di"
 	"github.com/habiliai/agentruntime/internal/mytesting"
 	"github.com/habiliai/agentruntime/thread"
 	"github.com/stretchr/testify/suite"
@@ -16,17 +18,19 @@ type ThreadManagerTestSuite struct {
 	mytesting.Suite
 
 	threadManager thread.Manager
+	DB            *gorm.DB
 }
 
 func (s *ThreadManagerTestSuite) SetupTest() {
 	os.Setenv("ENV_TEST_FILE", "../.env.test")
 	s.Suite.SetupTest()
 
-	s.threadManager = di.MustGet[thread.Manager](s.Context, s.Container, thread.ManagerKey)
+	s.threadManager = din.MustGetT[thread.Manager](s.Container)
+	s.DB = din.MustGet[*gorm.DB](s.Container, db.Key)
 }
 
 func (s *ThreadManagerTestSuite) TearDownTest() {
-	defer s.Suite.TearDownTest()
+	s.Suite.TearDownTest()
 }
 
 func (s *ThreadManagerTestSuite) TestGetMessagesInThread() {

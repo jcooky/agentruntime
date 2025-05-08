@@ -2,12 +2,12 @@ package main
 
 import (
 	"fmt"
+	"github.com/jcooky/go-din"
 	"log"
 	"strconv"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/habiliai/agentruntime/entity"
-	"github.com/habiliai/agentruntime/internal/di"
 	"github.com/habiliai/agentruntime/thread"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -28,15 +28,14 @@ func newNetworkThreadCmd() *cobra.Command {
 			Use:   "create",
 			Short: "Create a thread",
 			RunE: func(cmd *cobra.Command, args []string) error {
-				ctx := cmd.Context()
-				container := di.NewContainer(di.EnvProd)
+				c := din.NewContainer(cmd.Context(), din.EnvProd)
 
-				threadManager, err := di.Get[thread.Manager](ctx, container, thread.ManagerKey)
+				threadManager, err := din.GetT[thread.Manager](c)
 				if err != nil {
 					return err
 				}
 
-				thread, err := threadManager.CreateThread(ctx, kvargs.instruction)
+				thread, err := threadManager.CreateThread(c, kvargs.instruction)
 				if err != nil {
 					return err
 				}
@@ -57,8 +56,7 @@ func newNetworkThreadCmd() *cobra.Command {
 			Use:   "add-message <thread-id> <message>",
 			Short: "Add a message to a thread",
 			RunE: func(cmd *cobra.Command, args []string) error {
-				ctx := cmd.Context()
-				container := di.NewContainer(di.EnvProd)
+				c := din.NewContainer(cmd.Context(), din.EnvProd)
 
 				if len(args) < 2 {
 					return errors.Errorf("thread-id and message are required")
@@ -71,12 +69,12 @@ func newNetworkThreadCmd() *cobra.Command {
 
 				message := args[1]
 
-				threadManager, err := di.Get[thread.Manager](ctx, container, thread.ManagerKey)
+				threadManager, err := din.GetT[thread.Manager](c)
 				if err != nil {
 					return err
 				}
 
-				if _, err := threadManager.AddMessage(ctx, uint(threadId), "USER", entity.MessageContent{
+				if _, err := threadManager.AddMessage(c, uint(threadId), "USER", entity.MessageContent{
 					Text: message,
 				}); err != nil {
 					return err
@@ -94,10 +92,9 @@ func newNetworkThreadCmd() *cobra.Command {
 			Use:   "list",
 			Short: "List threads",
 			RunE: func(cmd *cobra.Command, args []string) error {
-				ctx := cmd.Context()
-				container := di.NewContainer(di.EnvProd)
+				c := din.NewContainer(cmd.Context(), din.EnvProd)
 
-				threadManager, err := di.Get[thread.Manager](ctx, container, thread.ManagerKey)
+				threadManager, err := din.GetT[thread.Manager](c)
 				if err != nil {
 					return err
 				}
@@ -126,8 +123,8 @@ func newNetworkThreadCmd() *cobra.Command {
 
 				printText(screen, 0, 0, "Press Enter to load more posts. Press ESC to exit.")
 
-				return listScreen(ctx, screen, ListScreenRequest{}, func() ([]string, error) {
-					threads, err := threadManager.GetThreads(ctx, cursor, limit)
+				return listScreen(c, screen, ListScreenRequest{}, func() ([]string, error) {
+					threads, err := threadManager.GetThreads(c, cursor, limit)
 					if err != nil {
 						return nil, err
 					}
@@ -153,8 +150,7 @@ func newNetworkThreadCmd() *cobra.Command {
 			Use:   "list-messages <thread-id>",
 			Short: "List messages in a thread",
 			RunE: func(cmd *cobra.Command, args []string) error {
-				ctx := cmd.Context()
-				container := di.NewContainer(di.EnvProd)
+				c := din.NewContainer(cmd.Context(), din.EnvProd)
 
 				if len(args) < 1 {
 					return errors.Errorf("thread-id is required")
@@ -165,7 +161,7 @@ func newNetworkThreadCmd() *cobra.Command {
 					return errors.Errorf("thread-id must be an integer")
 				}
 
-				threadManager, err := di.Get[thread.Manager](ctx, container, thread.ManagerKey)
+				threadManager, err := din.GetT[thread.Manager](c)
 				if err != nil {
 					return err
 				}
@@ -187,8 +183,8 @@ func newNetworkThreadCmd() *cobra.Command {
 					cursor uint = 0
 					limit  uint = 10
 				)
-				return listScreen(ctx, screen, ListScreenRequest{}, func() ([]string, error) {
-					messages, err := threadManager.GetMessages(ctx, uint(threadId), "ASC", cursor, limit)
+				return listScreen(c, screen, ListScreenRequest{}, func() ([]string, error) {
+					messages, err := threadManager.GetMessages(c, uint(threadId), "ASC", cursor, limit)
 					if err != nil {
 						return nil, err
 					}

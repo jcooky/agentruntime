@@ -1,9 +1,7 @@
 package config
 
 import (
-	"context"
-
-	"github.com/habiliai/agentruntime/internal/di"
+	"github.com/jcooky/go-din"
 )
 
 type NetworkConfig struct {
@@ -14,33 +12,22 @@ type NetworkConfig struct {
 	DatabaseAutoMigrate bool   `env:"DATABASE_AUTO_MIGRATE"`
 }
 
-var (
-	NetworkConfigKey = di.NewKey()
-)
-
-func resolveNetworkConfig(testing bool) (*NetworkConfig, error) {
-	c := NetworkConfig{
-		LogConfig: LogConfig{
-			LogLevel:   "debug",
-			LogHandler: "default",
-		},
-		Host:                "0.0.0.0",
-		Port:                9080,
-		DatabaseUrl:         "postgres://postgres:postgres@localhost:5432/test?search_path=agentruntime",
-		DatabaseAutoMigrate: true,
-	}
-
-	if err := resolveConfig(&c, testing); err != nil {
-		return nil, err
-	}
-
-	return &c, nil
-}
-
 func init() {
-	di.Register(NetworkConfigKey, func(ctx context.Context, c *di.Container) (any, error) {
-		return resolveNetworkConfig(
-			c.Env == di.EnvTest,
+	din.RegisterT(func(c *din.Container) (*NetworkConfig, error) {
+		conf := &NetworkConfig{
+			LogConfig: LogConfig{
+				LogLevel:   "debug",
+				LogHandler: "default",
+			},
+			Host:                "0.0.0.0",
+			Port:                9080,
+			DatabaseUrl:         "postgres://postgres:postgres@localhost:5432/test?search_path=agentruntime",
+			DatabaseAutoMigrate: true,
+		}
+
+		return conf, resolveConfig(
+			conf,
+			c.Env == din.EnvTest,
 		)
 	})
 }

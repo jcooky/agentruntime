@@ -1,18 +1,17 @@
 package mylog
 
 import (
-	"context"
+	"github.com/jcooky/go-din"
 	"log/slog"
 	"os"
 
 	"github.com/habiliai/agentruntime/config"
-	"github.com/habiliai/agentruntime/internal/di"
 )
 
 type Logger = slog.Logger
 
 var (
-	Key = di.NewKey()
+	Key = din.NewRandomName()
 )
 
 func ToLogLevel(logLevel string) slog.Level {
@@ -48,8 +47,8 @@ func NewLogger(logLevel string, logHandler string) *Logger {
 }
 
 func init() {
-	di.Register(Key, func(c context.Context, container *di.Container) (any, error) {
-		conf, err := di.Get[*config.LogConfig](c, container, config.LogConfigKey)
+	din.Register(Key, func(c *din.Container) (any, error) {
+		conf, err := din.GetT[*config.LogConfig](c)
 		if err != nil {
 			return nil, err
 		}

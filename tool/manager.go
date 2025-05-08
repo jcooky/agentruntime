@@ -2,12 +2,13 @@ package tool
 
 import (
 	"context"
+	"github.com/jcooky/go-din"
+	"log/slog"
 
 	"github.com/firebase/genkit/go/genkit"
 
 	"github.com/firebase/genkit/go/ai"
 	"github.com/habiliai/agentruntime/config"
-	"github.com/habiliai/agentruntime/internal/di"
 	mygenkit "github.com/habiliai/agentruntime/internal/genkit"
 	"github.com/habiliai/agentruntime/internal/mylog"
 	mcpclient "github.com/mark3labs/mcp-go/client"
@@ -22,26 +23,22 @@ type (
 	}
 )
 
-var (
-	ManagerKey = di.NewKey()
-)
-
 func init() {
-	di.Register(ManagerKey, func(ctx context.Context, container *di.Container) (any, error) {
-		conf, err := di.Get[*config.ToolConfig](ctx, container, config.ToolConfigKey)
+	din.RegisterT(func(c *din.Container) (Manager, error) {
+		conf, err := din.GetT[*config.ToolConfig](c)
 		if err != nil {
 			return nil, err
 		}
 
 		s := &manager{
-			logger:     di.MustGet[*mylog.Logger](ctx, container, mylog.Key),
+			logger:     din.MustGet[*slog.Logger](c, mylog.Key),
 			config:     conf,
 			mcpClients: make(map[string]mcpclient.MCPClient),
-			genkit:     di.MustGet[*genkit.Genkit](ctx, container, mygenkit.Key),
+			genkit:     din.MustGet[*genkit.Genkit](c, mygenkit.Key),
 		}
 
 		go func() {
-			<-ctx.Done()
+			<-c.Done()
 			s.Close()
 		}()
 

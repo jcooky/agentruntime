@@ -2,12 +2,13 @@ package runtime
 
 import (
 	"context"
+	"github.com/jcooky/go-din"
+	"log/slog"
 	"strings"
 
 	"github.com/habiliai/agentruntime/config"
 	"github.com/habiliai/agentruntime/engine"
 	"github.com/habiliai/agentruntime/entity"
-	"github.com/habiliai/agentruntime/internal/di"
 	"github.com/habiliai/agentruntime/internal/mylog"
 	"github.com/habiliai/agentruntime/internal/stringslices"
 	"github.com/habiliai/agentruntime/network"
@@ -36,8 +37,7 @@ type (
 )
 
 var (
-	_          Service = (*service)(nil)
-	ServiceKey         = di.NewKey()
+	_ Service = (*service)(nil)
 )
 
 func (s *service) findAgentsByNames(names []string) ([]entity.Agent, error) {
@@ -68,15 +68,15 @@ func (s *service) findAgentsByNames(names []string) ([]entity.Agent, error) {
 }
 
 func init() {
-	di.Register(ServiceKey, func(c context.Context, container *di.Container) (any, error) {
-		logger := di.MustGet[*mylog.Logger](c, container, mylog.Key)
+	din.RegisterT(func(c *din.Container) (Service, error) {
+		logger := din.MustGet[*slog.Logger](c, mylog.Key)
 
 		return &service{
 			logger:              logger,
-			runner:              di.MustGet[engine.Engine](c, container, engine.Key),
-			toolManager:         di.MustGet[tool.Manager](c, container, tool.ManagerKey),
-			threadManagerClient: di.MustGet[thread.ThreadManagerClient](c, container, thread.ClientKey),
-			networkClient:       di.MustGet[network.AgentNetworkClient](c, container, network.ClientKey),
+			runner:              din.MustGetT[engine.Engine](c),
+			toolManager:         din.MustGetT[tool.Manager](c),
+			threadManagerClient: din.MustGetT[thread.ThreadManagerClient](c),
+			networkClient:       din.MustGetT[network.AgentNetworkClient](c),
 		}, nil
 	})
 }

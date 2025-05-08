@@ -1,11 +1,10 @@
 package db
 
 import (
-	"context"
+	"github.com/jcooky/go-din"
 	"time"
 
 	"github.com/habiliai/agentruntime/config"
-	"github.com/habiliai/agentruntime/internal/di"
 	"github.com/habiliai/agentruntime/internal/mylog"
 	"github.com/pkg/errors"
 	"gorm.io/driver/postgres"
@@ -13,7 +12,7 @@ import (
 )
 
 var (
-	Key = di.NewKey()
+	Key = din.NewRandomName()
 )
 
 func OpenDB(databaseUrl string) (*gorm.DB, error) {
@@ -41,13 +40,13 @@ func CloseDB(db *gorm.DB) error {
 }
 
 func init() {
-	di.Register(Key, func(ctx context.Context, c *di.Container) (any, error) {
-		logger, err := di.Get[*mylog.Logger](ctx, c, mylog.Key)
+	din.Register(Key, func(c *din.Container) (any, error) {
+		logger, err := din.Get[*mylog.Logger](c, mylog.Key)
 		if err != nil {
 			return nil, err
 		}
 
-		cfg, err := di.Get[*config.NetworkConfig](ctx, c, config.NetworkConfigKey)
+		cfg, err := din.GetT[*config.NetworkConfig](c)
 		if err != nil {
 			return nil, err
 		}
@@ -58,20 +57,20 @@ func init() {
 			return nil, err
 		}
 
-		if c.Env == di.EnvTest {
+		if c.Env == din.EnvTest {
 			if err := DropAll(db); err != nil {
 				return nil, errors.Wrapf(err, "failed to drop database")
 			}
 			time.Sleep(500 * time.Millisecond)
 		}
-		if cfg.DatabaseAutoMigrate || c.Env == di.EnvTest {
+		if cfg.DatabaseAutoMigrate || c.Env == din.EnvTest {
 			if err := AutoMigrate(db); err != nil {
 				return nil, errors.Wrapf(err, "failed to migrate database")
 			}
 		}
 
 		go func() {
-			<-ctx.Done()
+			<-c.Done()
 			if err := CloseDB(db); err != nil {
 				logger.Warn("failed to close database", "err", err)
 			}

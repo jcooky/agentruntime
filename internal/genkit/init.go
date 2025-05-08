@@ -1,49 +1,48 @@
 package genkit
 
 import (
-	"context"
 	"github.com/firebase/genkit/go/genkit"
 	"github.com/habiliai/agentruntime/config"
-	"github.com/habiliai/agentruntime/internal/di"
 	"github.com/habiliai/agentruntime/internal/genkit/plugins/openai"
 	"github.com/habiliai/agentruntime/internal/genkit/plugins/xai"
 	"github.com/habiliai/agentruntime/internal/mylog"
+	"github.com/jcooky/go-din"
 	"github.com/pkg/errors"
 	"log/slog"
 )
 
 var (
-	Key = di.NewKey()
+	Key = din.NewRandomName()
 )
 
 func init() {
-	di.Register(Key, func(ctx context.Context, c *di.Container) (any, error) {
+	din.Register(Key, func(c *din.Container) (any, error) {
 		var (
 			plugins      []genkit.Plugin
 			defaultModel string
 		)
 		{
-			conf := di.MustGet[*config.OpenAIConfig](ctx, c, config.OpenAIConfigKey)
+			conf := din.MustGetT[*config.OpenAIConfig](c)
 			if conf.APIKey != "" {
 				plugins = append(plugins, &openai.Plugin{
 					APIKey: conf.APIKey,
 				})
+				defaultModel = "openai/gpt-4o"
 			}
-			defaultModel = "openai/gpt-4o"
 		}
 		{
-			conf := di.MustGet[*config.XAIConfig](ctx, c, config.XAIConfigKey)
+			conf := din.MustGetT[*config.XAIConfig](c)
 			if conf.APIKey != "" {
 				plugins = append(plugins, &xai.Plugin{
 					APIKey: conf.APIKey,
 				})
+				defaultModel = "xai/grok-3"
 			}
-			defaultModel = "xai/grok-3"
 		}
-		logConf := di.MustGet[*config.LogConfig](ctx, c, config.LogConfigKey)
-		logger := di.MustGet[*slog.Logger](ctx, c, mylog.Key)
+		logConf := din.MustGetT[*config.LogConfig](c)
+		logger := din.MustGet[*slog.Logger](c, mylog.Key)
 		g, err := genkit.Init(
-			ctx,
+			c,
 			genkit.WithPlugins(plugins...),
 			genkit.WithDefaultModel(defaultModel),
 		)
