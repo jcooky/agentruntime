@@ -1,14 +1,15 @@
 package genkit
 
 import (
+	"log/slog"
+
 	"github.com/firebase/genkit/go/genkit"
 	"github.com/habiliai/agentruntime/config"
+	"github.com/habiliai/agentruntime/errors"
 	"github.com/habiliai/agentruntime/internal/genkit/plugins/openai"
 	"github.com/habiliai/agentruntime/internal/genkit/plugins/xai"
 	"github.com/habiliai/agentruntime/internal/mylog"
 	"github.com/jcooky/go-din"
-	"github.com/pkg/errors"
-	"log/slog"
 )
 
 var (

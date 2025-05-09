@@ -2,10 +2,10 @@ package mcp
 
 import (
 	"encoding/json"
-	"github.com/firebase/genkit/go/genkit"
 
 	"github.com/firebase/genkit/go/ai"
-	mcpclient "github.com/mark3labs/mcp-go/client"
+	"github.com/firebase/genkit/go/genkit"
+	"github.com/mark3labs/mcp-go/client"
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
@@ -25,7 +25,7 @@ func (r *ToolResult) String() string {
 }
 
 // DefineTool defines a tool function.
-func DefineTool(g *genkit.Genkit, client mcpclient.MCPClient, mcpTool mcp.Tool, cb func(ctx *ai.ToolContext, input any, output *ToolResult) error) (ai.Tool, error) {
+func DefineTool(g *genkit.Genkit, client client.MCPClient, mcpTool mcp.Tool, cb func(ctx *ai.ToolContext, input any, output *ToolResult) error) (ai.Tool, error) {
 	schema, err := makeInputSchema(mcpTool.InputSchema)
 	if err != nil {
 		return nil, err

@@ -4,14 +4,14 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
-	"github.com/firebase/genkit/go/ai"
-	"github.com/habiliai/agentruntime/entity"
-	myerrors "github.com/habiliai/agentruntime/errors"
-	"github.com/habiliai/agentruntime/internal/sliceutils"
-	"github.com/habiliai/agentruntime/tool"
-	"github.com/pkg/errors"
 	"reflect"
 	"strings"
+
+	"github.com/firebase/genkit/go/ai"
+	"github.com/habiliai/agentruntime/entity"
+	"github.com/habiliai/agentruntime/errors"
+	"github.com/habiliai/agentruntime/internal/sliceutils"
+	"github.com/habiliai/agentruntime/internal/tool"
 )
 
 var (
@@ -113,7 +113,7 @@ func (s *engine) Run(
 			v = s.toolManager.GetMCPTool(toolNames[0], toolNames[1])
 		}
 		if v == nil {
-			return nil, errors.Wrapf(myerrors.ErrInvalidConfig, "invalid tool name %s", tool.Name)
+			return nil, errors.Wrapf(errors.ErrInvalidConfig, "invalid tool name %s", tool.Name)
 		}
 		tools = append(tools, v)
 	}

@@ -7,8 +7,7 @@ import (
 	"github.com/firebase/genkit/go/ai"
 	"github.com/habiliai/agentruntime/config"
 	"github.com/habiliai/agentruntime/entity"
-	myerrors "github.com/habiliai/agentruntime/errors"
-	"github.com/pkg/errors"
+	"github.com/habiliai/agentruntime/errors"
 )
 
 func (s *engine) NewAgentFromConfig(
@@ -45,7 +44,7 @@ func (s *engine) NewAgentFromConfig(
 		if len(toolNames) == 1 {
 			v := s.toolManager.GetTool(toolNames[0])
 			if v == nil {
-				return nil, errors.Wrapf(myerrors.ErrInvalidConfig, "invalid tool name %s", agentTool)
+				return nil, errors.Wrapf(errors.ErrInvalidConfig, "invalid tool name %s", agentTool)
 			}
 			a.Tools = append(a.Tools, entity.Tool{
 				Name:        v.Definition().Name,
@@ -60,7 +59,7 @@ func (s *engine) NewAgentFromConfig(
 			}
 			for _, v := range tools {
 				if v == nil {
-					return nil, errors.Wrapf(myerrors.ErrInvalidConfig, "invalid tool name %s", agentTool)
+					return nil, errors.Wrapf(errors.ErrInvalidConfig, "invalid tool name %s", agentTool)
 				}
 				a.Tools = append(a.Tools, entity.Tool{
 					Name:        v.Definition().Name,
@@ -68,7 +67,7 @@ func (s *engine) NewAgentFromConfig(
 				})
 			}
 		} else {
-			return nil, errors.Wrapf(myerrors.ErrInvalidConfig, "invalid tool name %s", agentTool)
+			return nil, errors.Wrapf(errors.ErrInvalidConfig, "invalid tool name %s", agentTool)
 		}
 	}
 

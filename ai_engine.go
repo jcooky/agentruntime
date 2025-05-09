@@ -2,16 +2,17 @@ package agentruntime
 
 import (
 	"context"
-	"github.com/jcooky/go-din"
 	"io"
 	"log/slog"
+
+	"github.com/jcooky/go-din"
 
 	"github.com/firebase/genkit/go/ai"
 	"github.com/habiliai/agentruntime/config"
 	"github.com/habiliai/agentruntime/engine"
 	"github.com/habiliai/agentruntime/entity"
 	"github.com/habiliai/agentruntime/internal/mylog"
-	"github.com/habiliai/agentruntime/tool"
+	"github.com/habiliai/agentruntime/internal/tool"
 )
 
 type (

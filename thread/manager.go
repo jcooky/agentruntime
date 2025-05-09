@@ -10,7 +10,7 @@ import (
 	myerrors "github.com/habiliai/agentruntime/errors"
 	"github.com/habiliai/agentruntime/internal/db"
 	"github.com/habiliai/agentruntime/internal/mylog"
-	"github.com/pkg/errors"
+	"github.com/habiliai/agentruntime/errors"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )

@@ -2,21 +2,16 @@ package main
 
 import (
 	"fmt"
-	"github.com/jcooky/go-din"
-	"net"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/habiliai/agentruntime/config"
-	"github.com/habiliai/agentruntime/internal/db"
-	"github.com/habiliai/agentruntime/internal/grpcutils"
 	"github.com/habiliai/agentruntime/internal/mylog"
-	"github.com/habiliai/agentruntime/network"
-	"github.com/habiliai/agentruntime/thread"
-	"github.com/pkg/errors"
+	"github.com/habiliai/agentruntime/jsonrpc"
+	"github.com/jcooky/go-din"
 	"github.com/spf13/cobra"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/health"
-	"google.golang.org/grpc/health/grpc_health_v1"
-	"gorm.io/gorm"
 )
 
 func newCmd() *cobra.Command {
@@ -40,44 +35,30 @@ func newNetworkServeCmd() *cobra.Command {
 		Short: "Serve the network",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			c := din.NewContainer(cmd.Context(), din.EnvProd)
+			onSig := make(chan os.Signal, 3)
+			defer close(onSig)
+			signal.Notify(onSig, syscall.SIGINT, syscall.SIGTERM, syscall.SIGABRT)
 
 			// Initialize the container
 			cfg := din.MustGetT[*config.NetworkConfig](c)
 			logger := din.MustGet[*mylog.Logger](c, mylog.Key)
-			dbInstance := din.MustGet[*gorm.DB](c, db.Key)
-			threadManagerServer := din.MustGetT[thread.ThreadManagerServer](c)
-			agentNetworkServer := din.MustGetT[network.AgentNetworkServer](c)
 
-			logger.Debug("start agent-runtime", "config", cfg)
+			logger.Debug("start agent-network", "config", cfg)
 
-			// auto migrate the database
-			if err := db.AutoMigrate(dbInstance); err != nil {
-				return errors.Wrapf(err, "failed to migrate database")
+			server := http.Server{
+				Addr:    fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
+				Handler: jsonrpc.NewHandler(c, jsonrpc.WithNetwork()),
 			}
-
-			// prepare to listen the grpc server
-			lc := net.ListenConfig{}
-			listener, err := lc.Listen(c, "tcp", fmt.Sprintf("%s:%d", cfg.Host, cfg.Port))
-			if err != nil {
-				return errors.Wrapf(err, "failed to listen on %s:%d", cfg.Host, cfg.Port)
-			}
-
-			logger.Info("Starting server", "addr", cfg.Host, "port", cfg.Port)
-
-			server := grpc.NewServer(
-				grpc.UnaryInterceptor(grpcutils.NewUnaryServerInterceptor(c)),
-			)
-			grpc_health_v1.RegisterHealthServer(server, health.NewServer())
-			thread.RegisterThreadManagerServer(server, threadManagerServer)
-			network.RegisterAgentNetworkServer(server, agentNetworkServer)
 
 			go func() {
-				<-c.Done()
-				server.GracefulStop()
+				<-onSig
+				if err := server.Shutdown(c); err != nil {
+					logger.Error("failed to shutdown server", "err", err)
+				}
 			}()
 
-			// start the grpc server
-			return server.Serve(listener)
+			logger.Info("Starting server", "addr", cfg.Host, "port", cfg.Port)
+			return server.ListenAndServe()
 		},
 	}
 }

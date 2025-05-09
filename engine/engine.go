@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+
 	"github.com/firebase/genkit/go/genkit"
 	mygenkit "github.com/habiliai/agentruntime/internal/genkit"
 	"github.com/jcooky/go-din"
@@ -10,7 +11,7 @@ import (
 	"github.com/habiliai/agentruntime/config"
 	"github.com/habiliai/agentruntime/entity"
 	"github.com/habiliai/agentruntime/internal/mylog"
-	"github.com/habiliai/agentruntime/tool"
+	"github.com/habiliai/agentruntime/internal/tool"
 )
 
 type (

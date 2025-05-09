@@ -1,10 +1,11 @@
 package entity
 
 import (
-	"github.com/pkg/errors"
+	"time"
+
+	"github.com/habiliai/agentruntime/errors"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
-	"time"
 )
 
 type AgentRuntime struct {

@@ -2,17 +2,18 @@ package network
 
 import (
 	"context"
-	"github.com/jcooky/go-din"
 	"log/slog"
 	"strings"
 	"time"
 
+	"github.com/jcooky/go-din"
+
 	"github.com/habiliai/agentruntime/entity"
+	"github.com/habiliai/agentruntime/errors"
 	"github.com/habiliai/agentruntime/internal/db"
 	"github.com/habiliai/agentruntime/internal/mylog"
 	"github.com/habiliai/agentruntime/internal/stringslices"
-	"github.com/habiliai/agentruntime/tool"
-	"github.com/pkg/errors"
+	"github.com/habiliai/agentruntime/internal/tool"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"

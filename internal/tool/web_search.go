@@ -3,7 +3,7 @@ package tool
 import (
 	"context"
 
-	"github.com/pkg/errors"
+	"github.com/habiliai/agentruntime/errors"
 	g "github.com/serpapi/google-search-results-golang"
 )
 

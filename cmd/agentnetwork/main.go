@@ -4,12 +4,10 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/signal"
-	"syscall"
 )
 
 func main() {
-	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGABRT)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	if err := newCmd().ExecuteContext(ctx); err != nil {

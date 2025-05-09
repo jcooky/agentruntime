@@ -1,12 +1,13 @@
 package db
 
 import (
-	"github.com/jcooky/go-din"
 	"time"
 
+	"github.com/jcooky/go-din"
+
 	"github.com/habiliai/agentruntime/config"
+	"github.com/habiliai/agentruntime/errors"
 	"github.com/habiliai/agentruntime/internal/mylog"
-	"github.com/pkg/errors"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )

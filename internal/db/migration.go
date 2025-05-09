@@ -2,7 +2,7 @@ package db
 
 import (
 	"github.com/habiliai/agentruntime/entity"
-	"github.com/pkg/errors"
+	"github.com/habiliai/agentruntime/errors"
 	"gorm.io/gorm"
 )
 

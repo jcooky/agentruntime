@@ -2,19 +2,19 @@ package runtime
 
 import (
 	"context"
-	"github.com/jcooky/go-din"
 	"log/slog"
 	"strings"
 
 	"github.com/habiliai/agentruntime/config"
 	"github.com/habiliai/agentruntime/engine"
 	"github.com/habiliai/agentruntime/entity"
+	"github.com/habiliai/agentruntime/errors"
 	"github.com/habiliai/agentruntime/internal/mylog"
 	"github.com/habiliai/agentruntime/internal/stringslices"
+	"github.com/habiliai/agentruntime/internal/tool"
 	"github.com/habiliai/agentruntime/network"
 	"github.com/habiliai/agentruntime/thread"
-	"github.com/habiliai/agentruntime/tool"
-	"github.com/pkg/errors"
+	"github.com/jcooky/go-din"
 )
 
 type (
@@ -27,12 +27,12 @@ type (
 		findAgentsByNames(names []string) ([]entity.Agent, error)
 	}
 	service struct {
-		logger              *mylog.Logger
-		toolManager         tool.Manager
-		agents              []entity.Agent
-		threadManagerClient thread.ThreadManagerClient
-		networkClient       network.AgentNetworkClient
-		runner              engine.Engine
+		logger        *mylog.Logger
+		toolManager   tool.Manager
+		agents        []entity.Agent
+		networkClient network.JsonRpcClient
+		threadClient  thread.JsonRpcClient
+		runner        engine.Engine
 	}
 )
 
@@ -72,11 +72,11 @@ func init() {
 		logger := din.MustGet[*slog.Logger](c, mylog.Key)
 
 		return &service{
-			logger:              logger,
-			runner:              din.MustGetT[engine.Engine](c),
-			toolManager:         din.MustGetT[tool.Manager](c),
-			threadManagerClient: din.MustGetT[thread.ThreadManagerClient](c),
-			networkClient:       din.MustGetT[network.AgentNetworkClient](c),
+			logger:        logger,
+			runner:        din.MustGetT[engine.Engine](c),
+			toolManager:   din.MustGetT[tool.Manager](c),
+			networkClient: din.MustGetT[network.JsonRpcClient](c),
+			threadClient:  din.MustGetT[thread.JsonRpcClient](c),
 		}, nil
 	})
 }

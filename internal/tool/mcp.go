@@ -4,15 +4,13 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"github.com/firebase/genkit/go/genkit"
 	"io"
 	"strings"
 
 	"github.com/firebase/genkit/go/ai"
+	"github.com/firebase/genkit/go/genkit"
+	"github.com/habiliai/agentruntime/errors"
 	"github.com/habiliai/agentruntime/internal/genkit/plugins/mcp"
-	mcpclient "github.com/mark3labs/mcp-go/client"
-	mcpgo "github.com/mark3labs/mcp-go/mcp"
-	"github.com/pkg/errors"
 )
 
 type RegisterMCPToolRequest struct {
@@ -33,7 +31,7 @@ func (m *manager) RegisterMCPTool(ctx context.Context, req RegisterMCPToolReques
 
 	mcpClient, ok := m.mcpClients[req.ServerName]
 	if !ok {
-		c, err := mcpclient.NewStdioMCPClient(req.Command, envs, req.Args...)
+		c, err := mcp.NewStdioMCPClient(req.Command, envs, req.Args...)
 		if err != nil {
 			return fmt.Errorf("failed to create MCP client: %w", err)
 		}
@@ -53,8 +51,8 @@ func (m *manager) RegisterMCPTool(ctx context.Context, req RegisterMCPToolReques
 			}
 		}(c.Stderr())
 
-		initRequest := mcpgo.InitializeRequest{}
-		initRequest.Params.ProtocolVersion = mcpgo.LATEST_PROTOCOL_VERSION
+		initRequest := mcp.InitializeRequest{}
+		initRequest.Params.ProtocolVersion = mcp.LATEST_PROTOCOL_VERSION
 		if _, err := c.Initialize(ctx, initRequest); err != nil {
 			return errors.Wrapf(err, "failed to initialize MCP client")
 		}
@@ -63,7 +61,7 @@ func (m *manager) RegisterMCPTool(ctx context.Context, req RegisterMCPToolReques
 		mcpClient = c
 	}
 
-	listToolsResult, err := mcpClient.ListTools(ctx, mcpgo.ListToolsRequest{})
+	listToolsResult, err := mcpClient.ListTools(ctx, mcp.ListToolsRequest{})
 	if err != nil {
 		return errors.Wrapf(err, "failed to list tools")
 	}
@@ -93,7 +91,7 @@ func (m *manager) GetMCPTools(ctx context.Context, mcpServerName string) []ai.To
 		return nil
 	}
 
-	listToolsResult, err := client.ListTools(ctx, mcpgo.ListToolsRequest{})
+	listToolsResult, err := client.ListTools(ctx, mcp.ListToolsRequest{})
 	if err != nil {
 		m.logger.Error("failed to list tools", "err", err)
 		return nil

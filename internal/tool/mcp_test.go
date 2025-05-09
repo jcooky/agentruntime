@@ -1,7 +1,7 @@
 package tool_test
 
 import (
-	"github.com/habiliai/agentruntime/tool"
+	"github.com/habiliai/agentruntime/internal/tool"
 )
 
 func (s *ToolTestSuite) TestToolByMCP() {

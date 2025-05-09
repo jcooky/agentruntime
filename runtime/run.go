@@ -3,62 +3,63 @@ package runtime
 import (
 	"context"
 	_ "embed"
+	"slices"
+
 	"github.com/habiliai/agentruntime/engine"
 	"github.com/habiliai/agentruntime/entity"
+	"github.com/habiliai/agentruntime/errors"
 	"github.com/habiliai/agentruntime/network"
 	"github.com/habiliai/agentruntime/thread"
 	"github.com/mokiat/gog"
-	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
-	"io"
-	"slices"
 )
+
+func (s *service) getAllMessages(
+	ctx context.Context,
+	threadId uint,
+) (res []*thread.Message, err error) {
+	var (
+		reply *thread.GetMessagesResponse
+		req   = &thread.GetMessagesRequest{
+			ThreadId: uint32(threadId),
+		}
+	)
+	for {
+		if reply, err = s.threadClient.GetMessages(ctx, req); err != nil {
+			return nil, errors.Wrapf(err, "failed to get messages")
+		}
+		if len(reply.Messages) == 0 {
+			break
+		}
+
+		res = append(res, reply.Messages...)
+		req.Cursor = reply.NextCursor
+	}
+
+	return
+}
 
 func (s *service) Run(
 	ctx context.Context,
 	threadId uint,
 	agents []entity.Agent,
 ) error {
-	thr, err := s.threadManagerClient.GetThread(ctx, &thread.GetThreadRequest{
+	thr, err := s.threadClient.GetThread(ctx, &thread.GetThreadRequest{
 		ThreadId: uint32(threadId),
 	})
 	if err != nil {
 		return errors.Wrapf(err, "failed to get thread")
 	}
 
-	var messages []*thread.Message
-	{
-		ctx, cancel := context.WithCancel(ctx)
-		defer cancel()
-
-		messagesStream, err := s.threadManagerClient.GetMessages(ctx, &thread.GetMessagesRequest{
-			ThreadId: uint32(threadId),
-		})
-		if err != nil {
-			return errors.Wrapf(err, "failed to get messages")
-		}
-
-		for {
-			resp, err := messagesStream.Recv()
-			if err == io.EOF {
-				break
-			} else if err != nil {
-				return errors.Wrapf(err, "failed to receive messages")
-			}
-
-			for _, msg := range resp.Messages {
-				if msg.Sender == "USER" {
-					continue
-				}
-			}
-			messages = append(messages, resp.Messages...)
-		}
+	messages, err := s.getAllMessages(ctx, threadId)
+	if err != nil {
+		return err
 	}
 
 	slices.SortStableFunc(messages, func(a, b *thread.Message) int {
-		if a.CreatedAt.AsTime().Before(b.CreatedAt.AsTime()) {
+		if a.CreatedAt.Before(b.CreatedAt) {
 			return -1
-		} else if a.CreatedAt.AsTime().After(b.CreatedAt.AsTime()) {
+		} else if a.CreatedAt.After(b.CreatedAt) {
 			return 1
 		} else {
 			return 0
@@ -66,7 +67,7 @@ func (s *service) Run(
 	})
 
 	agentRuntimeInfo, err := s.networkClient.GetAgentRuntimeInfo(ctx, &network.GetAgentRuntimeInfoRequest{
-		All: gog.PtrOf(true),
+		All: true,
 	})
 	if err != nil {
 		return errors.Wrapf(err, "failed to get agent runtime info")
@@ -86,7 +87,7 @@ func (s *service) Run(
 		history = append(history, engine.Conversation{
 			User: msg.Sender,
 			Text: msg.Content,
-			Actions: gog.Map(msg.ToolCalls, func(tc *thread.Message_ToolCall) engine.Action {
+			Actions: gog.Map(msg.ToolCalls, func(tc *thread.MessageToolCall) engine.Action {
 				return engine.Action{
 					Name:      tc.Name,
 					Arguments: tc.Arguments,
@@ -126,7 +127,7 @@ func (s *service) Run(
 			}
 
 			for _, toolCall := range resp.ToolCalls {
-				tc := thread.Message_ToolCall{
+				tc := thread.MessageToolCall{
 					Name:      toolCall.Name,
 					Arguments: string(toolCall.Arguments),
 					Result:    string(toolCall.Result),
@@ -135,7 +136,8 @@ func (s *service) Run(
 				req.ToolCalls = append(req.ToolCalls, &tc)
 			}
 
-			if _, err := s.threadManagerClient.AddMessage(ctx, req); err != nil {
+			// add message to thread
+			if _, err := s.threadClient.AddMessage(ctx, req); err != nil {
 				return errors.Wrapf(err, "failed to add message")
 			}
 

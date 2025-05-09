@@ -1,15 +1,13 @@
 package runtime_test
 
 import (
-	"io"
+	"time"
 
 	"github.com/habiliai/agentruntime/entity"
 	"github.com/habiliai/agentruntime/network"
 	"github.com/habiliai/agentruntime/thread"
-	threadtest "github.com/habiliai/agentruntime/thread/test"
 	"github.com/mokiat/gog"
 	"github.com/stretchr/testify/mock"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func (s *AgentRuntimeTestSuite) TestRun() {
@@ -21,8 +19,18 @@ func (s *AgentRuntimeTestSuite) TestRun() {
 		agents = append(agents, *ag)
 	}
 
-	getMessagesStreamMock := &threadtest.MockGetMessagesClient{}
-	getMessagesStreamMock.On("Recv").Return(&thread.GetMessagesResponse{
+	threadId := uint32(1)
+	s.threadManager.On("GetThread", mock.Anything, mock.MatchedBy(func(in *thread.GetThreadRequest) bool {
+		return in.ThreadId == threadId
+	})).Return(&thread.Thread{
+		Id:          uint32(threadId),
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+		Instruction: "# Mission: AI agents dialogue with user",
+	}, nil).Once()
+	s.threadManager.On("GetMessages", mock.Anything, mock.MatchedBy(func(in *thread.GetMessagesRequest) bool {
+		return in.ThreadId == threadId
+	})).Return(&thread.GetMessagesResponse{
 		Messages: []*thread.Message{
 			{
 				Id:      1,
@@ -30,28 +38,20 @@ func (s *AgentRuntimeTestSuite) TestRun() {
 				Sender:  "USER",
 			},
 		},
-	}, nil).Once()
-	getMessagesStreamMock.On("Recv").Return(&thread.GetMessagesResponse{}, io.EOF).Once()
-	defer getMessagesStreamMock.AssertExpectations(s.T())
-
-	threadId := uint32(1)
-	s.threadManager.On("GetThread", mock.Anything, mock.MatchedBy(func(in *thread.GetThreadRequest) bool {
-		return in.ThreadId == threadId
-	})).Return(&thread.Thread{
-		Id:          uint32(threadId),
-		CreatedAt:   timestamppb.Now(),
-		UpdatedAt:   timestamppb.Now(),
-		Instruction: "# Mission: AI agents dialogue with user",
+		NextCursor: 1,
 	}, nil).Once()
 	s.threadManager.On("GetMessages", mock.Anything, mock.MatchedBy(func(in *thread.GetMessagesRequest) bool {
-		return in.ThreadId == threadId
-	})).Return(getMessagesStreamMock, nil).Once()
+		return in.ThreadId == threadId && in.Cursor == 1
+	})).Return(&thread.GetMessagesResponse{
+		Messages:   nil,
+		NextCursor: 2,
+	}, nil).Once()
 	s.threadManager.On("AddMessage", mock.Anything, mock.MatchedBy(func(in *thread.AddMessageRequest) bool {
 		s.T().Logf(">> AddMessage: %v\n", in)
 		if !s.Len(in.ToolCalls, 2) {
 			return false
 		}
-		toolCallNames := gog.Map(in.ToolCalls, func(tc *thread.Message_ToolCall) string {
+		toolCallNames := gog.Map(in.ToolCalls, func(tc *thread.MessageToolCall) string {
 			return tc.Name
 		})
 		return s.Contains(toolCallNames, "done_agent") &&
@@ -62,7 +62,7 @@ func (s *AgentRuntimeTestSuite) TestRun() {
 	}, nil).Once()
 	defer s.threadManager.AssertExpectations(s.T())
 	s.agentNetwork.On("GetAgentRuntimeInfo", mock.Anything, mock.MatchedBy(func(in *network.GetAgentRuntimeInfoRequest) bool {
-		return in.All != nil && *in.All
+		return in.All
 	})).Return(&network.GetAgentRuntimeInfoResponse{
 		AgentRuntimeInfo: []*network.AgentRuntimeInfo{
 			{

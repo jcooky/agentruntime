@@ -3,7 +3,7 @@ package config
 import (
 	goconfig "github.com/golobby/config/v3"
 	"github.com/golobby/config/v3/pkg/feeder"
-	"github.com/pkg/errors"
+	"github.com/habiliai/agentruntime/errors"
 	"os"
 )
 

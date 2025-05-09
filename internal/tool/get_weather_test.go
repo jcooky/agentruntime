@@ -3,13 +3,12 @@ package tool_test
 import (
 	"context"
 	"fmt"
-	"github.com/jcooky/go-din"
 	"os"
 	"testing"
 
+	"github.com/habiliai/agentruntime/internal/tool"
+	"github.com/jcooky/go-din"
 	"github.com/mitchellh/mapstructure"
-
-	"github.com/habiliai/agentruntime/tool"
 	"github.com/stretchr/testify/require"
 )
 

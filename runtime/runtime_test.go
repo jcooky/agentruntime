@@ -1,11 +1,12 @@
 package runtime_test
 
 import (
+	"os"
+	"testing"
+
 	"github.com/habiliai/agentruntime/network"
 	"github.com/habiliai/agentruntime/thread"
 	"github.com/jcooky/go-din"
-	"os"
-	"testing"
 
 	"github.com/habiliai/agentruntime/config"
 	"github.com/habiliai/agentruntime/internal/mytesting"
@@ -20,8 +21,8 @@ type AgentRuntimeTestSuite struct {
 
 	agents        []config.AgentConfig
 	runtime       runtime.Service
-	threadManager *threadtest.ThreadManagerClientMock
-	agentNetwork  *networktest.AgentNetworkClientMock
+	threadManager *threadtest.JsonRpcClient
+	agentNetwork  *networktest.JsonRpcClient
 }
 
 func (s *AgentRuntimeTestSuite) SetupTest() {
@@ -33,10 +34,10 @@ func (s *AgentRuntimeTestSuite) SetupTest() {
 	s.agents, err = config.LoadAgentsFromFiles([]string{"./testdata/test1.agent.yaml"})
 	s.Require().NoError(err)
 
-	s.threadManager = &threadtest.ThreadManagerClientMock{}
-	din.SetT[thread.ThreadManagerClient](s.Container, s.threadManager)
-	s.agentNetwork = &networktest.AgentNetworkClientMock{}
-	din.SetT[network.AgentNetworkClient](s.Container, s.agentNetwork)
+	s.threadManager = &threadtest.JsonRpcClient{}
+	din.SetT[thread.JsonRpcClient](s.Container, s.threadManager)
+	s.agentNetwork = &networktest.JsonRpcClient{}
+	din.SetT[network.JsonRpcClient](s.Container, s.agentNetwork)
 	s.runtime = din.MustGetT[runtime.Service](s.Container)
 
 	s.Require().NoError(err)

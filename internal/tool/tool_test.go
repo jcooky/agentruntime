@@ -1,11 +1,11 @@
 package tool_test
 
 import (
-	"github.com/jcooky/go-din"
 	"testing"
 
 	"github.com/habiliai/agentruntime/internal/mytesting"
-	"github.com/habiliai/agentruntime/tool"
+	"github.com/habiliai/agentruntime/internal/tool"
+	"github.com/jcooky/go-din"
 	"github.com/stretchr/testify/suite"
 )
 

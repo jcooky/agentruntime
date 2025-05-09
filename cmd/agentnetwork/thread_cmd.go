@@ -9,7 +9,7 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/habiliai/agentruntime/entity"
 	"github.com/habiliai/agentruntime/thread"
-	"github.com/pkg/errors"
+	"github.com/habiliai/agentruntime/errors"
 	"github.com/spf13/cobra"
 )
 

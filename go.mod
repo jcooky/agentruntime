@@ -16,7 +16,10 @@ require (
 	github.com/goccy/go-yaml v1.17.1
 	github.com/golobby/config/v3 v3.4.2
 	github.com/google/uuid v1.6.0
+	github.com/gorilla/handlers v1.5.2
+	github.com/gorilla/rpc v1.2.1
 	github.com/invopop/jsonschema v0.13.0
+	github.com/jcooky/go-din v0.1.3-0.20250508191945-d09320f30cd8
 	github.com/lmittmann/tint v1.0.7
 	github.com/mark3labs/mcp-go v0.23.1
 	github.com/mitchellh/mapstructure v1.5.0
@@ -27,10 +30,9 @@ require (
 	github.com/serpapi/google-search-results-golang v0.0.0-20240325113416-ec93f510648e
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0
+	github.com/ybbus/jsonrpc/v3 v3.1.6
 	go.opentelemetry.io/otel/sdk v1.29.0
 	golang.org/x/sync v0.12.0
-	google.golang.org/grpc v1.66.2
-	google.golang.org/protobuf v1.34.2
 	gorm.io/datatypes v1.2.5
 	gorm.io/driver/postgres v1.5.11
 	gorm.io/gorm v1.25.12
@@ -50,6 +52,7 @@ require (
 	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/containerd/console v1.0.4 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/gdamore/encoding v1.0.1 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
@@ -65,7 +68,6 @@ require (
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/pgx/v5 v5.7.2 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
-	github.com/jcooky/go-din v0.1.3-0.20250508191945-d09320f30cd8 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/lithammer/fuzzysearch v1.1.8 // indirect
@@ -96,11 +98,9 @@ require (
 	go.opentelemetry.io/otel/trace v1.29.0 // indirect
 	golang.org/x/crypto v0.36.0 // indirect
 	golang.org/x/exp v0.0.0-20240318143956-a85f2c67cd81 // indirect
-	golang.org/x/net v0.38.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect
 	golang.org/x/term v0.30.0 // indirect
 	golang.org/x/text v0.23.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240903143218-8af14fe29dc1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gorm.io/driver/mysql v1.5.7 // indirect
 )

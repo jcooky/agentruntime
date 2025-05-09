@@ -8,9 +8,9 @@ import (
 	"strings"
 
 	"github.com/firebase/genkit/go/genkit"
+	"github.com/habiliai/agentruntime/errors"
 
 	"github.com/firebase/genkit/go/ai"
-	"github.com/pkg/errors"
 )
 
 type (

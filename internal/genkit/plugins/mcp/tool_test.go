@@ -7,9 +7,6 @@ import (
 
 	"github.com/firebase/genkit/go/genkit"
 	"github.com/habiliai/agentruntime/internal/genkit/plugins/mcp"
-
-	mcpclient "github.com/mark3labs/mcp-go/client"
-	mcpgo "github.com/mark3labs/mcp-go/mcp"
 )
 
 func TestMCPToolCall(t *testing.T) {
@@ -19,15 +16,15 @@ func TestMCPToolCall(t *testing.T) {
 		t.Fatalf("failed to create genkit: %v", err)
 	}
 
-	c, err := mcpclient.NewStdioMCPClient("npx", []string{}, "-y", "@modelcontextprotocol/server-filesystem", ".")
+	c, err := mcp.NewStdioMCPClient("npx", []string{}, "-y", "@modelcontextprotocol/server-filesystem", ".")
 	if err != nil {
 		t.Fatalf("failed to create MCP client: %v", err)
 	}
 	defer c.Close()
 
-	initRequest := mcpgo.InitializeRequest{}
-	initRequest.Params.ProtocolVersion = mcpgo.LATEST_PROTOCOL_VERSION
-	initRequest.Params.ClientInfo = mcpgo.Implementation{
+	initRequest := mcp.InitializeRequest{}
+	initRequest.Params.ProtocolVersion = mcp.LATEST_PROTOCOL_VERSION
+	initRequest.Params.ClientInfo = mcp.Implementation{
 		Name:    "example-client",
 		Version: "1.0.0",
 	}
@@ -35,11 +32,11 @@ func TestMCPToolCall(t *testing.T) {
 		t.Fatalf("failed to initialize MCP client: %v", err)
 	}
 
-	listToolsRes, err := c.ListTools(ctx, mcpgo.ListToolsRequest{})
+	listToolsRes, err := c.ListTools(ctx, mcp.ListToolsRequest{})
 	if err != nil {
 		t.Fatalf("failed to list tools: %v", err)
 	}
-	var listDirTool mcpgo.Tool
+	var listDirTool mcp.Tool
 	for _, tool := range listToolsRes.Tools {
 		if tool.Name == "list_directory" {
 			listDirTool = tool

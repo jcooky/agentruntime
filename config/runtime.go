@@ -8,11 +8,10 @@ type RuntimeConfig struct {
 	LogConfig
 	OpenAIConfig
 	ToolConfig
-	Host              string `env:"HOST"`
-	Port              int    `env:"PORT"`
-	NetworkGrpcAddr   string `env:"NETWORK_GRPC_ADDR"`
-	NetworkGrpcSecure bool   `env:"NETWORK_GRPC_SECURE"`
-	RuntimeGrpcAddr   string `env:"RUNTIME_GRPC_ADDR"`
+	Host           string `env:"HOST"`
+	Port           int    `env:"PORT"`
+	NetworkBaseUrl string `env:"NETWORK_BASE_URL"`
+	RuntimeBaseUrl string `env:"RUNTIME_BASE_URL"`
 }
 
 func init() {
@@ -22,11 +21,10 @@ func init() {
 				LogLevel:   "debug",
 				LogHandler: "default",
 			},
-			Host:              "0.0.0.0",
-			Port:              10080,
-			NetworkGrpcAddr:   "127.0.0.1:9080",
-			NetworkGrpcSecure: false,
-			RuntimeGrpcAddr:   "127.0.0.1:10080",
+			Host:           "0.0.0.0",
+			Port:           10080,
+			NetworkBaseUrl: "http://127.0.0.1:9080",
+			RuntimeBaseUrl: "http://127.0.0.1:10080",
 		}
 
 		if err := resolveConfig(&c, c.Env == din.EnvTest); err != nil {

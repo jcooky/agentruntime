@@ -1,10 +1,11 @@
 package main
 
 import (
+	"context"
 	"fmt"
-	"github.com/jcooky/go-din"
 	"log/slog"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"strings"
@@ -12,17 +13,15 @@ import (
 	"time"
 
 	"github.com/habiliai/agentruntime/config"
-	"github.com/habiliai/agentruntime/internal/grpcutils"
+	"github.com/habiliai/agentruntime/errors"
 	"github.com/habiliai/agentruntime/internal/mylog"
+	"github.com/habiliai/agentruntime/internal/tool"
+	"github.com/habiliai/agentruntime/jsonrpc"
 	"github.com/habiliai/agentruntime/network"
 	"github.com/habiliai/agentruntime/runtime"
-	"github.com/habiliai/agentruntime/tool"
+	"github.com/jcooky/go-din"
 	"github.com/mokiat/gog"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/health"
-	"google.golang.org/grpc/health/grpc_health_v1"
 )
 
 func newCmd() *cobra.Command {
@@ -61,7 +60,6 @@ func newCmd() *cobra.Command {
 			cfg := din.MustGetT[*config.RuntimeConfig](c)
 			logger := din.MustGet[*slog.Logger](c, mylog.Key)
 			runtimeService := din.MustGetT[runtime.Service](c)
-			runtimeServer := din.MustGetT[runtime.AgentRuntimeServer](c)
 			toolManager := din.MustGetT[tool.Manager](c)
 
 			logger.Debug("start agent-runtime", "config", cfg)
@@ -106,20 +104,15 @@ func newCmd() *cobra.Command {
 				logger.Info("Agent loaded", "name", ac.Name)
 			}
 
-			// prepare to listen the grpc server
-			lc := net.ListenConfig{}
-			listener, err := lc.Listen(c, "tcp", fmt.Sprintf("%s:%d", cfg.Host, cfg.Port))
-			if err != nil {
-				return errors.Wrapf(err, "failed to listen on %s:%d", cfg.Host, cfg.Port)
+			server := http.Server{
+				Addr:    fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
+				Handler: jsonrpc.NewHandlerWithHealth(c, jsonrpc.WithRuntime()),
+				BaseContext: func(_ net.Listener) context.Context {
+					return c
+				},
 			}
 
-			logger.Info("Starting server", "host", cfg.Host, "port", cfg.Port)
-
-			server := grpc.NewServer(
-				grpc.UnaryInterceptor(grpcutils.NewUnaryServerInterceptor(c)),
-			)
-			grpc_health_v1.RegisterHealthServer(server, health.NewServer())
-			runtime.RegisterAgentRuntimeServer(server, runtimeServer)
+			server.SetKeepAlivesEnabled(false)
 
 			closeCh := make(chan os.Signal, 3)
 			defer close(closeCh)
@@ -127,38 +120,42 @@ func newCmd() *cobra.Command {
 
 			go func() {
 				<-closeCh
-				server.GracefulStop()
+				if err := server.Shutdown(c); err != nil {
+					logger.Error("failed to shutdown server", "err", err)
+				}
 			}()
 
 			// register agent server
-			agentManager := din.MustGetT[network.AgentNetworkClient](c)
-			if _, err = agentManager.RegisterAgent(c, &network.RegisterAgentRequest{
-				Addr:   cfg.RuntimeGrpcAddr,
+			networkClient := network.NewJsonRpcClient(cfg.NetworkBaseUrl)
+			if err := networkClient.RegisterAgent(c, &network.RegisterAgentRequest{
+				Addr:   cfg.RuntimeBaseUrl,
 				Secure: false,
 				Info:   agentInfo,
 			}); err != nil {
-				return err
+				return errors.Wrapf(err, "failed to register agent")
 			}
 
 			agentNames := gog.Map(agentInfo, func(i *network.AgentInfo) string {
 				return i.Name
 			})
-			defer func() {
-				if _, err := agentManager.DeregisterAgent(c, &network.DeregisterAgentRequest{
+			server.RegisterOnShutdown(func() {
+				if err := networkClient.DeregisterAgent(c, &network.DeregisterAgentRequest{
 					Names: agentNames,
 				}); err != nil {
 					logger.Warn("failed to deregister agent", "err", err)
 				}
-			}()
+			})
+			ctx, cancel := context.WithCancel(c)
+			defer cancel()
 			go func() {
 				ticker := time.NewTicker(30 * time.Second)
 				defer ticker.Stop()
 				for {
 					select {
-					case <-c.Done():
+					case <-ctx.Done():
 						return
 					case <-ticker.C:
-						if _, err := agentManager.CheckLive(c, &network.CheckLiveRequest{
+						if err := networkClient.CheckLive(ctx, &network.CheckLiveRequest{
 							Names: agentNames,
 						}); err != nil {
 							logger.Warn("failed to check live", "err", err)
@@ -169,8 +166,8 @@ func newCmd() *cobra.Command {
 				}
 			}()
 
-			// start the grpc server
-			return server.Serve(listener)
+			logger.Info("Starting server", "host", cfg.Host, "port", cfg.Port)
+			return server.ListenAndServe()
 		},
 	}
 

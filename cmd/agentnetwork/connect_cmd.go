@@ -3,26 +3,22 @@ package main
 import (
 	"context"
 	"fmt"
-	"io"
 	"slices"
 	"strconv"
 
-	"github.com/habiliai/agentruntime/internal/grpcutils"
+	"github.com/habiliai/agentruntime/errors"
 	"github.com/habiliai/agentruntime/internal/msgutils"
 	"github.com/habiliai/agentruntime/network"
 	"github.com/habiliai/agentruntime/runtime"
 	"github.com/habiliai/agentruntime/thread"
 	"github.com/mokiat/gog"
-	"github.com/pkg/errors"
 	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
-	"golang.org/x/sync/errgroup"
 )
 
 func newConnectCmd() *cobra.Command {
 	flags := &struct {
-		addr     string
-		noSecure bool
+		url string
 	}{}
 	cmd := &cobra.Command{
 		Use: "connect <thread-id>",
@@ -38,16 +34,10 @@ func newConnectCmd() *cobra.Command {
 				return errors.Wrapf(err, "failed to convert thread-id %s to int", args[0])
 			}
 
-			conn, err := grpcutils.NewClient(flags.addr, !flags.noSecure)
-			if err != nil {
-				return errors.WithStack(err)
-			}
-			defer conn.Close()
+			threadClient := thread.NewJsonRpcClient(flags.url)
+			networkClient := network.NewJsonRpcClient(flags.url)
 
-			threadManager := thread.NewThreadManagerClient(conn)
-			agentNetwork := network.NewAgentNetworkClient(conn)
-
-			thr, err := threadManager.GetThread(ctx, &thread.GetThreadRequest{
+			thr, err := threadClient.GetThread(ctx, &thread.GetThreadRequest{
 				ThreadId: uint32(threadId),
 			})
 			if err != nil {
@@ -64,7 +54,9 @@ func newConnectCmd() *cobra.Command {
 				interrupted = true
 			})
 
-			var lastMessageId uint32
+			var (
+				lastMessageId uint32
+			)
 			for {
 				userInput, err := textInput.Show("> You")
 				if err != nil {
@@ -74,94 +66,78 @@ func newConnectCmd() *cobra.Command {
 				if interrupted {
 					break
 				}
-				if msg, err := threadManager.AddMessage(ctx, &thread.AddMessageRequest{
+
+				if reply, err := threadClient.AddMessage(ctx, &thread.AddMessageRequest{
 					ThreadId: uint32(threadId),
 					Content:  userInput,
 					Sender:   "USER",
 				}); err != nil {
-					return errors.Wrap(err, "failed to add message")
+					return errors.Wrapf(err, "failed to add message")
 				} else {
-					lastMessageId = msg.MessageId
+					lastMessageId = reply.MessageId
 				}
 
 				agentMentions := msgutils.ExtractMentions(userInput)
-				resp, err := agentNetwork.GetAgentRuntimeInfo(ctx, &network.GetAgentRuntimeInfoRequest{
+				reply, err := networkClient.GetAgentRuntimeInfo(ctx, &network.GetAgentRuntimeInfoRequest{
 					Names: agentMentions,
 				})
 				if err != nil {
-					return errors.Wrap(err, "failed to get agent runtime info")
+					return errors.Wrapf(err, "failed to get agent runtime info")
 				}
 
 				runtimeInfoAgg := make(map[string][]*network.AgentRuntimeInfo)
-				for _, info := range resp.AgentRuntimeInfo {
+				for _, info := range reply.AgentRuntimeInfo {
 					runtimeInfoAgg[info.Addr] = append(runtimeInfoAgg[info.Addr], info)
 				}
 
-				if len(resp.AgentRuntimeInfo) == 0 {
+				if len(reply.AgentRuntimeInfo) == 0 {
 					secondary.Println("< Agent: ", "No agent found")
 				} else {
-					var eg errgroup.Group
 					for addr, info := range runtimeInfoAgg {
-						secure := info[0].Secure
 						names := gog.Map(info, func(i *network.AgentRuntimeInfo) string {
 							return i.Info.Name
 						})
-						eg.Go(func() error {
-							conn, err := grpcutils.NewClient(addr, secure)
-							if err != nil {
-								return err
-							}
-							defer conn.Close()
+						runtimeClient := runtime.NewJsonRpcClient(addr)
 
-							runtimeClient := runtime.NewAgentRuntimeClient(conn)
-							if _, err := runtimeClient.Run(ctx, &runtime.RunRequest{
-								ThreadId:   uint32(threadId),
-								AgentNames: names,
-							}); err != nil {
-								return err
-							}
-
-							return nil
-						})
-					}
-					if err := eg.Wait(); err != nil {
-						logger.Error(fmt.Sprintf("failed to run agent: err: %v", err))
+						if _, err := runtimeClient.Run(ctx, &runtime.RunRequest{
+							ThreadId:   uint32(threadId),
+							AgentNames: names,
+						}); err != nil {
+							logger.Error(fmt.Sprintf("failed to run agent. err: %v, agentNames: '%v'", err, names))
+						}
 					}
 				}
 
 				{
-					var messages []*thread.Message
+					var (
+						messages []*thread.Message
+						cursor   uint32
+					)
 					ctx, cancel := context.WithCancel(ctx)
 					defer cancel()
 
-					if stream, err := threadManager.GetMessages(ctx, &thread.GetMessagesRequest{
-						ThreadId: uint32(threadId),
-						Order:    thread.GetMessagesRequest_LATEST,
-					}); err != nil {
-						return errors.Wrap(err, "failed to get messages")
-					} else {
-						for interrupt := false; !interrupt; {
-							msg, err := stream.Recv()
-							if err == io.EOF {
-								break
-							} else if err != nil {
-								return errors.Wrapf(err, "failed to receive message")
-							}
+					for interrupt := false; !interrupt; {
+						reply, err := threadClient.GetMessages(ctx, &thread.GetMessagesRequest{
+							ThreadId: uint32(threadId),
+							Order:    "latest",
+							Cursor:   cursor,
+						})
+						if err != nil {
+							return errors.Wrapf(err, "failed to get messages")
+						}
 
-							for _, m := range msg.Messages {
-								if m.Id == lastMessageId {
-									interrupt = true
-									break
-								}
-								messages = append(messages, m)
+						for _, m := range reply.Messages {
+							if m.Id == lastMessageId {
+								interrupt = true
+								break
 							}
+							messages = append(messages, m)
 						}
 					}
 
 					if len(messages) == 0 {
 						continue
 					}
-
 					slices.Reverse(messages)
 
 					for _, m := range messages {
@@ -179,8 +155,7 @@ func newConnectCmd() *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.BoolVarP(&flags.noSecure, "no-secure", "s", false, "Specify connect without SSL/TLS")
-	f.StringVarP(&flags.addr, "addr", "A", "127.0.0.1:9080", "Specify the address of the server")
+	f.StringVarP(&flags.url, "url", "A", "http://127.0.0.1:9080", "Specify the address of the server")
 
 	return cmd
 }

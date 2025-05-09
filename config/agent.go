@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/goccy/go-yaml"
-	"github.com/pkg/errors"
+	"github.com/habiliai/agentruntime/errors"
 )
 
 type AgentConfig struct {
