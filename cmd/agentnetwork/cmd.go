@@ -47,7 +47,7 @@ func newNetworkServeCmd() *cobra.Command {
 
 			server := http.Server{
 				Addr:    fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
-				Handler: jsonrpc.NewHandler(c, jsonrpc.WithNetwork()),
+				Handler: jsonrpc.NewHandlerWithHealth(c, jsonrpc.WithNetwork()),
 			}
 
 			go func() {

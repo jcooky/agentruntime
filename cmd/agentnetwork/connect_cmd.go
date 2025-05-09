@@ -10,7 +10,6 @@ import (
 	"github.com/habiliai/agentruntime/internal/msgutils"
 	"github.com/habiliai/agentruntime/network"
 	"github.com/habiliai/agentruntime/runtime"
-	"github.com/habiliai/agentruntime/thread"
 	"github.com/mokiat/gog"
 	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
@@ -34,10 +33,9 @@ func newConnectCmd() *cobra.Command {
 				return errors.Wrapf(err, "failed to convert thread-id %s to int", args[0])
 			}
 
-			threadClient := thread.NewJsonRpcClient(flags.url)
 			networkClient := network.NewJsonRpcClient(flags.url)
 
-			thr, err := threadClient.GetThread(ctx, &thread.GetThreadRequest{
+			thr, err := networkClient.GetThread(ctx, &network.GetThreadRequest{
 				ThreadId: uint32(threadId),
 			})
 			if err != nil {
@@ -67,7 +65,7 @@ func newConnectCmd() *cobra.Command {
 					break
 				}
 
-				if reply, err := threadClient.AddMessage(ctx, &thread.AddMessageRequest{
+				if reply, err := networkClient.AddMessage(ctx, &network.AddMessageRequest{
 					ThreadId: uint32(threadId),
 					Content:  userInput,
 					Sender:   "USER",
@@ -110,14 +108,14 @@ func newConnectCmd() *cobra.Command {
 
 				{
 					var (
-						messages []*thread.Message
+						messages []*network.Message
 						cursor   uint32
 					)
 					ctx, cancel := context.WithCancel(ctx)
 					defer cancel()
 
 					for interrupt := false; !interrupt; {
-						reply, err := threadClient.GetMessages(ctx, &thread.GetMessagesRequest{
+						reply, err := networkClient.GetMessages(ctx, &network.GetMessagesRequest{
 							ThreadId: uint32(threadId),
 							Order:    "latest",
 							Cursor:   cursor,

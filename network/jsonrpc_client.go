@@ -14,6 +14,11 @@ type (
 		GetAgentRuntimeInfo(ctx context.Context, request *GetAgentRuntimeInfoRequest) (*GetAgentRuntimeInfoResponse, error)
 		RegisterAgent(ctx context.Context, request *RegisterAgentRequest) error
 		DeregisterAgent(ctx context.Context, request *DeregisterAgentRequest) error
+		GetMessages(ctx context.Context, request *GetMessagesRequest) (*GetMessagesResponse, error)
+		GetNumMessages(ctx context.Context, request *GetNumMessagesRequest) (*GetNumMessagesResponse, error)
+		CreateThread(ctx context.Context, request *CreateThreadRequest) (*CreateThreadResponse, error)
+		GetThread(ctx context.Context, request *GetThreadRequest) (*Thread, error)
+		AddMessage(ctx context.Context, request *AddMessageRequest) (*AddMessageResponse, error)
 	}
 
 	jsonRpcClient struct {
@@ -53,6 +58,51 @@ func (c *jsonRpcClient) DeregisterAgent(ctx context.Context, request *Deregister
 	var reply struct{}
 	err := c.client.CallFor(ctx, &reply, servicePrefix+".DeregisterAgent", request)
 	return err
+}
+
+func (c *jsonRpcClient) GetMessages(ctx context.Context, request *GetMessagesRequest) (*GetMessagesResponse, error) {
+	var response GetMessagesResponse
+	err := c.client.CallFor(ctx, &response, servicePrefix+".GetMessages", request)
+	if err != nil {
+		return nil, err
+	}
+	return &response, nil
+}
+
+func (c *jsonRpcClient) GetNumMessages(ctx context.Context, request *GetNumMessagesRequest) (*GetNumMessagesResponse, error) {
+	var response GetNumMessagesResponse
+	err := c.client.CallFor(ctx, &response, servicePrefix+".GetNumMessages", request)
+	if err != nil {
+		return nil, err
+	}
+	return &response, nil
+}
+
+func (c *jsonRpcClient) CreateThread(ctx context.Context, request *CreateThreadRequest) (*CreateThreadResponse, error) {
+	var response CreateThreadResponse
+	err := c.client.CallFor(ctx, &response, servicePrefix+".CreateThread", request)
+	if err != nil {
+		return nil, err
+	}
+	return &response, nil
+}
+
+func (c *jsonRpcClient) GetThread(ctx context.Context, request *GetThreadRequest) (*Thread, error) {
+	var response Thread
+	err := c.client.CallFor(ctx, &response, servicePrefix+".GetThread", request)
+	if err != nil {
+		return nil, err
+	}
+	return &response, nil
+}
+
+func (c *jsonRpcClient) AddMessage(ctx context.Context, request *AddMessageRequest) (*AddMessageResponse, error) {
+	var response AddMessageResponse
+	err := c.client.CallFor(ctx, &response, servicePrefix+".AddMessage", request)
+	if err != nil {
+		return nil, err
+	}
+	return &response, nil
 }
 
 func init() {

@@ -9,7 +9,6 @@ import (
 	"github.com/habiliai/agentruntime/entity"
 	"github.com/habiliai/agentruntime/errors"
 	"github.com/habiliai/agentruntime/network"
-	"github.com/habiliai/agentruntime/thread"
 	"github.com/mokiat/gog"
 	"golang.org/x/sync/errgroup"
 )
@@ -17,15 +16,15 @@ import (
 func (s *service) getAllMessages(
 	ctx context.Context,
 	threadId uint,
-) (res []*thread.Message, err error) {
+) (res []*network.Message, err error) {
 	var (
-		reply *thread.GetMessagesResponse
-		req   = &thread.GetMessagesRequest{
+		reply *network.GetMessagesResponse
+		req   = &network.GetMessagesRequest{
 			ThreadId: uint32(threadId),
 		}
 	)
 	for {
-		if reply, err = s.threadClient.GetMessages(ctx, req); err != nil {
+		if reply, err = s.networkClient.GetMessages(ctx, req); err != nil {
 			return nil, errors.Wrapf(err, "failed to get messages")
 		}
 		if len(reply.Messages) == 0 {
@@ -44,7 +43,7 @@ func (s *service) Run(
 	threadId uint,
 	agents []entity.Agent,
 ) error {
-	thr, err := s.threadClient.GetThread(ctx, &thread.GetThreadRequest{
+	thr, err := s.networkClient.GetThread(ctx, &network.GetThreadRequest{
 		ThreadId: uint32(threadId),
 	})
 	if err != nil {
@@ -56,7 +55,7 @@ func (s *service) Run(
 		return err
 	}
 
-	slices.SortStableFunc(messages, func(a, b *thread.Message) int {
+	slices.SortStableFunc(messages, func(a, b *network.Message) int {
 		if a.CreatedAt.Before(b.CreatedAt) {
 			return -1
 		} else if a.CreatedAt.After(b.CreatedAt) {
@@ -87,7 +86,7 @@ func (s *service) Run(
 		history = append(history, engine.Conversation{
 			User: msg.Sender,
 			Text: msg.Content,
-			Actions: gog.Map(msg.ToolCalls, func(tc *thread.MessageToolCall) engine.Action {
+			Actions: gog.Map(msg.ToolCalls, func(tc *network.MessageToolCall) engine.Action {
 				return engine.Action{
 					Name:      tc.Name,
 					Arguments: tc.Arguments,
@@ -120,14 +119,14 @@ func (s *service) Run(
 				return err
 			}
 
-			req := &thread.AddMessageRequest{
+			req := &network.AddMessageRequest{
 				ThreadId: uint32(threadId),
 				Sender:   agent.Name,
 				Content:  content,
 			}
 
 			for _, toolCall := range resp.ToolCalls {
-				tc := thread.MessageToolCall{
+				tc := network.MessageToolCall{
 					Name:      toolCall.Name,
 					Arguments: string(toolCall.Arguments),
 					Result:    string(toolCall.Result),
@@ -137,7 +136,7 @@ func (s *service) Run(
 			}
 
 			// add message to thread
-			if _, err := s.threadClient.AddMessage(ctx, req); err != nil {
+			if _, err := s.networkClient.AddMessage(ctx, req); err != nil {
 				return errors.Wrapf(err, "failed to add message")
 			}
 

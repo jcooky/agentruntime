@@ -11,7 +11,6 @@ import (
 	"github.com/habiliai/agentruntime/internal/mylog"
 	"github.com/habiliai/agentruntime/network"
 	"github.com/habiliai/agentruntime/runtime"
-	"github.com/habiliai/agentruntime/thread"
 	"github.com/jcooky/go-din"
 )
 
@@ -28,10 +27,6 @@ func WithNetwork() ServerOption {
 		if err := network.RegisterJsonRpcService(c, s); err != nil {
 			panic(err)
 		}
-		if err := thread.RegisterJsonRpcService(c, s); err != nil {
-			panic(err)
-		}
-
 	}
 }
 

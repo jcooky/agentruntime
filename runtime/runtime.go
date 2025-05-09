@@ -13,7 +13,6 @@ import (
 	"github.com/habiliai/agentruntime/internal/stringslices"
 	"github.com/habiliai/agentruntime/internal/tool"
 	"github.com/habiliai/agentruntime/network"
-	"github.com/habiliai/agentruntime/thread"
 	"github.com/jcooky/go-din"
 )
 
@@ -31,7 +30,6 @@ type (
 		toolManager   tool.Manager
 		agents        []entity.Agent
 		networkClient network.JsonRpcClient
-		threadClient  thread.JsonRpcClient
 		runner        engine.Engine
 	}
 )
@@ -76,7 +74,6 @@ func init() {
 			runner:        din.MustGetT[engine.Engine](c),
 			toolManager:   din.MustGetT[tool.Manager](c),
 			networkClient: din.MustGetT[network.JsonRpcClient](c),
-			threadClient:  din.MustGetT[thread.JsonRpcClient](c),
 		}, nil
 	})
 }
