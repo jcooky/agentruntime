@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:latest
+    image: ghcr.io/pgmq/pg17-pgmq:v1.5.1
     restart: always
     environment:
       POSTGRES_USER: postgres
