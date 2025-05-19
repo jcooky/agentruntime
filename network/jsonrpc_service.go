@@ -28,9 +28,8 @@ type (
 	}
 
 	RegisterAgentRequest struct {
-		Addr   string       `json:"addr"`
-		Secure bool         `json:"secure,omitempty"`
-		Info   []*AgentInfo `json:"info"`
+		Addr string       `json:"addr"`
+		Info []*AgentInfo `json:"info"`
 	}
 
 	GetAgentRuntimeInfoRequest struct {
@@ -49,9 +48,8 @@ type (
 	}
 
 	AgentRuntimeInfo struct {
-		Info   *AgentInfo `json:"info"`
-		Addr   string     `json:"addr"`
-		Secure bool       `json:"secure,omitempty"`
+		Info *AgentInfo `json:"info"`
+		Addr string     `json:"addr"`
 	}
 
 	GetMessagesRequest struct {
@@ -143,8 +141,7 @@ func (s *JsonRpcService) GetAgentRuntimeInfo(r *http.Request, args *GetAgentRunt
 	reply.AgentRuntimeInfo = make([]*AgentRuntimeInfo, 0, len(runtimeInfo))
 	for _, agent := range runtimeInfo {
 		reply.AgentRuntimeInfo = append(reply.AgentRuntimeInfo, &AgentRuntimeInfo{
-			Addr:   agent.Addr,
-			Secure: agent.Secure,
+			Addr: agent.Addr,
 			Info: &AgentInfo{
 				Name:     agent.Name,
 				Role:     agent.Role,
@@ -157,7 +154,7 @@ func (s *JsonRpcService) GetAgentRuntimeInfo(r *http.Request, args *GetAgentRunt
 }
 
 func (s *JsonRpcService) RegisterAgent(r *http.Request, args *RegisterAgentRequest, _ *struct{}) error {
-	if err := s.service.RegisterAgent(r.Context(), args.Addr, args.Secure, args.Info); err != nil {
+	if err := s.service.RegisterAgent(r.Context(), args.Addr, args.Info); err != nil {
 		return err
 	}
 

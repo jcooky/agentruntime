@@ -24,7 +24,6 @@ The platform consists of three core components:
 
 1. **AgentRuntime**: The main execution environment that orchestrates all agent activities
 2. **AgentNetwork**: The network server that manages agent registration, health checks, and communication between agents and the runtime
-3. **ThreadManager**: Handles conversation threads, context, and state persistence
 
 ## Installation
 
@@ -124,16 +123,16 @@ OPENWEATHER_API_KEY=YOUR_OPENWEATHER_API_KEY
 
 ```bash
 # Start the agentnetwork server
-agentnetwork serve
+bin/agentnetwork serve
 ```
 
 4. In a separate terminal, create a thread and run the agent:
 
 ```bash
 # Create a new thread
-agentnetwork thread create
+bin/agentnetwork thread create
 # Run your agent
-agentruntime <agent files or directory>
+bin/agentruntime <agent files or directory>
 ```
 
 5. Interact with your agent through the command-line interface:

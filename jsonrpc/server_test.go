@@ -10,19 +10,63 @@ import (
 )
 
 func (s *Suite) TestCreateThread() {
+	// Given
 	server := httptest.NewServer(s.handler)
 	defer server.Close()
 
-	client := network.NewJsonRpcClientWithHttpClient(server.URL+"/rpc", server.Client())
+	s.network.On("CreateThread", mock.Anything, mock.MatchedBy(func(req *network.CreateThreadRequest) bool {
+		return req.Instruction == "hello world" && req.Metadata["key"] == "value"
+	})).Return(
+		&network.CreateThreadResponse{
+			ThreadId: 1,
+		}, nil,
+	).Once()
 
+	client := network.NewJsonRpcClientWithHttpClient(server.URL+"/rpc", server.Client())
+	// When
 	resp, err := client.CreateThread(s, &network.CreateThreadRequest{
 		Instruction: "hello world",
 		Metadata: map[string]string{
 			"key": "value",
 		},
 	})
+
+	// Then
 	s.Require().NoError(err)
 	s.Equal(uint32(1), resp.ThreadId)
+}
+
+func (s *Suite) TestRegisterAgent() {
+	// Given
+	addr := "http://localhost:8080"
+	agentInfo := []*network.AgentInfo{
+		{
+			Name: "agent1",
+			Role: "role1",
+		},
+	}
+
+	server := httptest.NewServer(s.handler)
+	defer server.Close()
+
+	s.network.On("RegisterAgent", mock.Anything, addr, agentInfo).Return(nil).Once()
+	defer s.network.AssertExpectations(s.T())
+
+	// When
+	client := network.NewJsonRpcClientWithHttpClient(server.URL+"/rpc", server.Client())
+
+	err := client.RegisterAgent(s, &network.RegisterAgentRequest{
+		Addr: "http://localhost:8080",
+		Info: []*network.AgentInfo{
+			{
+				Name: "agent1",
+				Role: "role1",
+			},
+		},
+	})
+
+	// Then
+	s.Require().NoError(err)
 }
 
 func (s *Suite) TestRunAgentRuntime() {

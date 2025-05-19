@@ -23,7 +23,7 @@ type (
 	Service interface {
 		GetAgentRuntimeInfo(ctx context.Context, agentNames []string) ([]entity.AgentRuntime, error)
 		GetAllAgentRuntimeInfo(ctx context.Context) ([]entity.AgentRuntime, error)
-		RegisterAgent(ctx context.Context, addr string, secure bool, agentInfo []*AgentInfo) error
+		RegisterAgent(ctx context.Context, addr string, agentInfo []*AgentInfo) error
 		DeregisterAgent(ctx context.Context, agentNames []string) error
 		CheckLive(ctx context.Context, agentNames []string) error
 	}
@@ -75,7 +75,7 @@ func (s *service) DeregisterAgent(ctx context.Context, agentNames []string) erro
 	})
 }
 
-func (s *service) RegisterAgent(ctx context.Context, addr string, secure bool, agentInfo []*AgentInfo) error {
+func (s *service) RegisterAgent(ctx context.Context, addr string, agentInfo []*AgentInfo) error {
 	_, tx := db.OpenSession(ctx, s.db)
 
 	return tx.Transaction(func(tx *gorm.DB) error {
@@ -89,7 +89,6 @@ func (s *service) RegisterAgent(ctx context.Context, addr string, secure bool, a
 
 			agentRuntime.Name = info.Name
 			agentRuntime.Addr = addr
-			agentRuntime.Secure = secure
 			agentRuntime.Role = info.Role
 			agentRuntime.Metadata = datatypes.NewJSONType(info.Metadata)
 			agentRuntime.LastLiveAt = time.Now()

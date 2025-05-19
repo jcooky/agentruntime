@@ -2,13 +2,14 @@ package network
 
 import (
 	"context"
-	"github.com/habiliai/agentruntime/entity"
 	"time"
+
+	"github.com/habiliai/agentruntime/entity"
 )
 
 func (s *service) runHealthChecker(ctx context.Context) {
-	s.logger.Info("Starting health checker")
-	defer s.logger.Info("Health checker stopped")
+	s.logger.Info("start health checker")
+	defer s.logger.Info("stop health checker")
 
 	ticker := time.NewTicker(60 * time.Second)
 	defer ticker.Stop()

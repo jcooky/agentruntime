@@ -128,9 +128,8 @@ func newCmd() *cobra.Command {
 			// register agent server
 			networkClient := network.NewJsonRpcClient(cfg.NetworkBaseUrl)
 			if err := networkClient.RegisterAgent(c, &network.RegisterAgentRequest{
-				Addr:   cfg.RuntimeBaseUrl,
-				Secure: false,
-				Info:   agentInfo,
+				Addr: cfg.RuntimeBaseUrl,
+				Info: agentInfo,
 			}); err != nil {
 				return errors.Wrapf(err, "failed to register agent")
 			}
