@@ -59,7 +59,6 @@ We use Make to automate common development tasks:
 - Run tests: `make test`
 - Run single test: `go test -v ./path/to/package -run TestName`
 - Lint: `make lint`
-- Generate protobuf files: `make pb`
 - Clean: `make clean`
 
 ## Code Style Guidelines

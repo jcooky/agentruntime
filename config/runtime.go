@@ -23,11 +23,11 @@ func init() {
 			},
 			Host:           "0.0.0.0",
 			Port:           10080,
-			NetworkBaseUrl: "http://127.0.0.1:9080",
-			RuntimeBaseUrl: "http://127.0.0.1:10080",
+			NetworkBaseUrl: "http://127.0.0.1:9080/rpc",
+			RuntimeBaseUrl: "http://127.0.0.1:10080/rpc",
 		}
 
-		if err := resolveConfig(&c, c.Env == din.EnvTest); err != nil {
+		if err := resolveConfig(conf, c.Env == din.EnvTest); err != nil {
 			return nil, err
 		}
 

@@ -1,11 +1,12 @@
 # AgentRuntime Development Guidelines
 
+Note: For comprehensive contribution guidelines, please also see [CONTRIBUTING.md](./CONTRIBUTING.md).
+
 ## Build Commands
 - Build: `make build`
 - Run tests: `make test`
 - Run single test: `go test -v ./path/to/package -run TestName`
 - Lint: `make lint`
-- Generate protobuf files: `make pb`
 - Clean: `make clean`
 
 ## Code Style
@@ -17,3 +18,4 @@
 - Comments: Document public interfaces and complex logic
 - Errors: Wrap errors with context when propagating up the call stack
 - Struct tags: Use consistent field tags for GORM and JSON serialization
+- Context: Use context.Context for cancellation and timeouts

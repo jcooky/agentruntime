@@ -2,6 +2,7 @@ package network
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/habiliai/agentruntime/config"
 	"github.com/jcooky/go-din"
@@ -27,7 +28,13 @@ type (
 )
 
 func NewJsonRpcClient(url string) JsonRpcClient {
-	client := jsonrpc.NewClient(url)
+	return NewJsonRpcClientWithHttpClient(url, http.DefaultClient)
+}
+
+func NewJsonRpcClientWithHttpClient(url string, httpClient *http.Client) JsonRpcClient {
+	client := jsonrpc.NewClientWithOpts(url, &jsonrpc.RPCClientOpts{
+		HTTPClient: httpClient,
+	})
 	return &jsonRpcClient{
 		client: client,
 	}
@@ -49,14 +56,12 @@ func (c *jsonRpcClient) GetAgentRuntimeInfo(ctx context.Context, request *GetAge
 }
 
 func (c *jsonRpcClient) RegisterAgent(ctx context.Context, request *RegisterAgentRequest) error {
-	var reply struct{}
-	err := c.client.CallFor(ctx, &reply, servicePrefix+".RegisterAgent", request)
+	_, err := c.client.Call(ctx, servicePrefix+".RegisterAgent", request)
 	return err
 }
 
 func (c *jsonRpcClient) DeregisterAgent(ctx context.Context, request *DeregisterAgentRequest) error {
-	var reply struct{}
-	err := c.client.CallFor(ctx, &reply, servicePrefix+".DeregisterAgent", request)
+	_, err := c.client.Call(ctx, servicePrefix+".DeregisterAgent", request)
 	return err
 }
 

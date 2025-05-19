@@ -231,8 +231,8 @@ func (s *JsonRpcService) GetNumMessages(r *http.Request, args *GetNumMessagesReq
 	return nil
 }
 
-func (m *JsonRpcService) CreateThread(r *http.Request, args *CreateThreadRequest, reply *CreateThreadResponse) error {
-	thr, err := m.threadManager.CreateThread(r.Context(), args.Instruction)
+func (s *JsonRpcService) CreateThread(r *http.Request, args *CreateThreadRequest, reply *CreateThreadResponse) error {
+	thr, err := s.threadManager.CreateThread(r.Context(), args.Instruction)
 	if err != nil {
 		return err
 	}
@@ -288,12 +288,13 @@ func (s *JsonRpcService) AddMessage(r *http.Request, args *AddMessageRequest, re
 }
 
 var (
-	servicePrefix = "habiliai.agentnetwork.v1"
+	servicePrefix = "habiliai-agentnetwork-v1"
 )
 
 func RegisterJsonRpcService(c *din.Container, server *rpc.Server) error {
 	svc := &JsonRpcService{
-		service: din.MustGetT[Service](c),
+		service:       din.MustGetT[Service](c),
+		threadManager: din.MustGetT[thread.Manager](c),
 	}
 
 	return errors.Wrapf(server.RegisterService(svc, servicePrefix), "failed to register jsonrpc service")

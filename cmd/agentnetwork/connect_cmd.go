@@ -153,7 +153,7 @@ func newConnectCmd() *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.StringVarP(&flags.url, "url", "A", "http://127.0.0.1:9080", "Specify the address of the server")
+	f.StringVarP(&flags.url, "url", "A", "http://127.0.0.1:9080/rpc", "Specify the address of the server")
 
 	return cmd
 }

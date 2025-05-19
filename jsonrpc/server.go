@@ -75,8 +75,8 @@ func newRPCServer(c *din.Container, opts ...ServerOption) *rpc.Server {
 
 			logger.Error("[JSON-RPC] error", mylog.Err(err))
 			e := &json2.Error{}
-			if errors.As(err, e) {
-				return err
+			if errors.As(err, &e) {
+				return e
 			}
 
 			e.Message = err.Error()

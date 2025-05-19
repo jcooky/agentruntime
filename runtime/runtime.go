@@ -23,7 +23,7 @@ type (
 			ac config.AgentConfig,
 		) (*entity.Agent, error)
 		Run(ctx context.Context, threadIds uint, agents []entity.Agent) error
-		findAgentsByNames(names []string) ([]entity.Agent, error)
+		FindAgentsByNames(names []string) ([]entity.Agent, error)
 	}
 	service struct {
 		logger        *mylog.Logger
@@ -38,7 +38,7 @@ var (
 	_ Service = (*service)(nil)
 )
 
-func (s *service) findAgentsByNames(names []string) ([]entity.Agent, error) {
+func (s *service) FindAgentsByNames(names []string) ([]entity.Agent, error) {
 	var (
 		res   = make([]entity.Agent, 0, len(names))
 		found = map[string]bool{}

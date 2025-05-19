@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/ybbus/jsonrpc/v3"
 )
@@ -26,7 +27,13 @@ func (c *jsonRpcClient) Run(ctx context.Context, req *RunRequest) (*RunResponse,
 }
 
 func NewJsonRpcClient(url string) JsonRpcClient {
-	client := jsonrpc.NewClient(url)
+	return NewJsonRpcClientWithHttpClient(url, http.DefaultClient)
+}
+
+func NewJsonRpcClientWithHttpClient(url string, httpClient *http.Client) JsonRpcClient {
+	client := jsonrpc.NewClientWithOpts(url, &jsonrpc.RPCClientOpts{
+		HTTPClient: httpClient,
+	})
 	return &jsonRpcClient{
 		client: client,
 	}

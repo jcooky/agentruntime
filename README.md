@@ -140,26 +140,25 @@ agentruntime <agent files or directory>
 
 ```bash
 # Connect to the thread to see ongoing interactions
-agentnetwork connect <thread id>
+bin/agentnetwork connect <thread id>
 ```
-
-## Protocols
-
-AgentRuntime uses gRPC for service communication. All services are defined using Protocol Buffers.
 
 ### Runtime Service
 
 The Runtime service is responsible for executing agents in the context of a thread.
 
-```protobuf
-syntax = "proto3";
-
-service AgentRuntime {
-  rpc Run(RunRequest) returns (RunResponse);
+```json
+// JSON-RPC Method: habiliai-agentruntime-v1.Run
+{
+  "jsonrpc": "2.0",
+  "method": "habiliai-agentruntime-v1.Run",
+  "params": {
+    "thread_id": 123,
+    "agent_names": ["agent1", "agent2"]
+  },
+  "id": 1
 }
 ```
-
-For the complete protobuf definition, please refer to [runtime/runtime.proto](https://github.com/habiliai/agentruntime/blob/main/runtime/runtime.proto) in the source code.
 
 #### CLI Usage
 
@@ -170,21 +169,39 @@ agentruntime run <thread_id> <agent_name> [<agent_name2> <agent_name3> ...]
 
 ### ThreadManager Service
 
-The ThreadManager service handles conversation threads and messages.
+The ThreadManager service handles conversation threads and messages through JSON-RPC methods.
 
-```protobuf
-syntax = "proto3";
+```json
+// JSON-RPC Methods:
+// habiliai-agentnetwork-v1.CreateThread
+// habiliai-agentnetwork-v1.GetThread
+// habiliai-agentnetwork-v1.AddMessage
+// habiliai-agentnetwork-v1.GetMessages
+// habiliai-agentnetwork-v1.GetNumMessages
 
-service ThreadManager {
-  rpc CreateThread(CreateThreadRequest) returns (CreateThreadResponse);
-  rpc GetThread(GetThreadRequest) returns (GetThreadResponse);
-  rpc AddMessage(AddMessageRequest) returns (AddMessageResponse);
-  rpc GetMessages(GetMessagesRequest) returns (stream GetMessagesResponse);
-  rpc GetNumMessages(GetNumMessagesRequest) returns (GetNumMessagesResponse);
+// Example: Create Thread
+{
+  "jsonrpc": "2.0",
+  "method": "habiliai-agentnetwork-v1.CreateThread",
+  "params": {
+    "instruction": "You are a helpful assistant"
+  },
+  "id": 1
+}
+
+// Example: Add Message
+{
+  "jsonrpc": "2.0",
+  "method": "habiliai-agentnetwork-v1.AddMessage",
+  "params": {
+    "thread_id": 123,
+    "sender": "user",
+    "content": "Hello, how are you?",
+    "tool_calls": []
+  },
+  "id": 2
 }
 ```
-
-For the complete protobuf definition, please refer to [thread/thread.proto](https://github.com/habiliai/agentruntime/blob/main/thread/thread.proto) in the source code.
 
 #### CLI Usage
 
@@ -204,20 +221,41 @@ agentruntime thread list-messages <thread_id>
 
 ### AgentNetwork Service
 
-The AgentNetwork service is the main network server that coordinates all services including ThreadManager, AgentManager, and Runtime.
+The AgentNetwork service is the main network server that coordinates all services including ThreadManager, AgentManager, and Runtime through JSON-RPC.
 
-```protobuf
-syntax = "proto3";
+```json
+// JSON-RPC Methods:
+// habiliai-agentnetwork-v1.CheckLive
+// habiliai-agentnetwork-v1.RegisterAgent
+// habiliai-agentnetwork-v1.DeregisterAgent
+// habiliai-agentnetwork-v1.GetAgentRuntimeInfo
 
-service Network {
-  rpc GetConfig(GetConfigRequest) returns (GetConfigResponse);
-  rpc SetConfig(SetConfigRequest) returns (SetConfigResponse);
-  rpc Register(RegisterRequest) returns (RegisterResponse);
-  rpc Health(HealthRequest) returns (HealthResponse);
+// Example: Register Agent
+{
+  "jsonrpc": "2.0",
+  "method": "habiliai-agentnetwork-v1.RegisterAgent",
+  "params": {
+    "addr": "localhost:8080",
+    "info": [{
+      "name": "myagent",
+      "role": "assistant",
+      "metadata": {}
+    }]
+  },
+  "id": 1
+}
+
+// Example: Get Agent Runtime Info
+{
+  "jsonrpc": "2.0",
+  "method": "habiliai-agentnetwork-v1.GetAgentRuntimeInfo",
+  "params": {
+    "names": ["myagent"],
+    "all": false
+  },
+  "id": 2
 }
 ```
-
-For the complete protobuf definition, please refer to [network/network.proto](https://github.com/habiliai/agentruntime/blob/main/network/network.proto) in the source code.
 
 #### CLI Usage
 
@@ -272,7 +310,7 @@ agentnetwork connect --host <host> --port <port>
 agentruntime <agent files or directory> [...<agent files or directory>]
 ```
 
-When running in server mode, clients can connect to the gRPC endpoints to use the services programmatically.
+When running in server mode, clients can connect to the JSON-RPC endpoints to use the services programmatically. The server listens on HTTP and accepts standard JSON-RPC 2.0 requests.
 
 ## License
 

@@ -1,10 +1,11 @@
 package config
 
 import (
+	"os"
+
 	goconfig "github.com/golobby/config/v3"
 	"github.com/golobby/config/v3/pkg/feeder"
 	"github.com/habiliai/agentruntime/errors"
-	"os"
 )
 
 func resolveConfig[T any](config *T, testing bool) error {
@@ -14,15 +15,14 @@ func resolveConfig[T any](config *T, testing bool) error {
 
 	configReader := goconfig.New()
 	if _, err := os.Stat(".env"); !os.IsNotExist(err) {
-		configReader = configReader.AddFeeder(feeder.DotEnv{Path: ".env"})
+		configReader.AddFeeder(feeder.DotEnv{Path: ".env"})
 	}
 
-	filename := ".env.test"
-	if v := os.Getenv("ENV_TEST_FILE"); v != "" {
-		filename = v
-	}
-	if _, err := os.Stat(filename); !os.IsNotExist(err) {
-		configReader = configReader.AddFeeder(feeder.DotEnv{Path: filename})
+	filename := os.Getenv("ENV_TEST_FILE")
+	if filename != "" {
+		if _, err := os.Stat(filename); !os.IsNotExist(err) {
+			configReader.AddFeeder(feeder.DotEnv{Path: filename})
+		}
 	}
 
 	if err := configReader.

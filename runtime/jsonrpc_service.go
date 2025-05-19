@@ -21,7 +21,7 @@ type (
 )
 
 func (s *JsonRpcService) Run(r *http.Request, args *RunRequest, _ *RunResponse) error {
-	agents, err := s.runtime.findAgentsByNames(args.AgentNames)
+	agents, err := s.runtime.FindAgentsByNames(args.AgentNames)
 	if err != nil {
 		return err
 	}
@@ -32,7 +32,7 @@ func (s *JsonRpcService) Run(r *http.Request, args *RunRequest, _ *RunResponse) 
 }
 
 var (
-	servicePrefix = "habiliai.agentruntime.v1"
+	servicePrefix = "habiliai-agentruntime-v1"
 )
 
 func RegisterJsonRpcService(c *din.Container, server *rpc.Server) error {
