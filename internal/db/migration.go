@@ -15,11 +15,13 @@ func AutoMigrate(db *gorm.DB) error {
 		&entity.Message{},
 		&entity.Thread{},
 		&entity.AgentRuntime{},
+		&entity.Mention{},
 	))
 }
 
 func DropAll(db *gorm.DB) error {
 	return errors.WithStack(db.Migrator().DropTable(
+		&entity.Mention{},
 		&entity.AgentRuntime{},
 		&entity.Thread{},
 		&entity.Message{},

@@ -4,11 +4,10 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"net"
-	"net/http"
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -16,19 +15,111 @@ import (
 	"github.com/habiliai/agentruntime/errors"
 	"github.com/habiliai/agentruntime/internal/mylog"
 	"github.com/habiliai/agentruntime/internal/tool"
-	"github.com/habiliai/agentruntime/jsonrpc"
+	"github.com/habiliai/agentruntime/memory"
 	"github.com/habiliai/agentruntime/network"
 	"github.com/habiliai/agentruntime/runtime"
 	"github.com/jcooky/go-din"
-	"github.com/mokiat/gog"
 	"github.com/spf13/cobra"
 )
+
+func processMentioned(
+	ctx context.Context,
+	mentionedThreadIds []uint32,
+	agentInfo *network.AgentInfo,
+	runtimeService runtime.Service,
+	logger *slog.Logger,
+) {
+	for _, threadId := range mentionedThreadIds {
+		logger.Info("mention received", "name", agentInfo.Name, "thread_id", threadId)
+		found, err := runtimeService.FindAgentsByNames([]string{agentInfo.Name})
+		if err != nil {
+			logger.Warn("failed to find agent by name", "name", agentInfo.Name, "err", err)
+			continue
+		}
+		if len(found) == 0 {
+			logger.Warn("agent not found", "name", agentInfo.Name)
+			continue
+		}
+		if err := runtimeService.Run(ctx, uint(threadId), found); err != nil {
+			logger.Warn("failed to run agent", "name", agentInfo.Name, "thread_id", threadId, "err", err)
+			continue
+		}
+		logger.Info("agent run completed", "name", agentInfo.Name, "thread_id", threadId)
+	}
+}
+
+func startAgentLoop(
+	agentInfo *network.AgentInfo,
+	networkClient network.JsonRpcClient,
+	memoryService memory.Service,
+	runtimeService runtime.Service,
+	logger *slog.Logger,
+	c *din.Container,
+) {
+	agentContext, err := memoryService.GetContext(c, agentInfo.Name)
+	if err != nil {
+		logger.Warn("failed to get agent context", "name", agentInfo.Name, "err", err)
+	}
+	defer func() {
+		if err := memoryService.SetContext(c, agentContext); err != nil {
+			logger.Warn("failed to set agent context", "name", agentInfo.Name, "err", err)
+		} else {
+			logger.Info("agent context saved", "name", agentInfo.Name)
+		}
+	}()
+
+	ctx, cancel := signal.NotifyContext(c, syscall.SIGTERM, os.Interrupt)
+	defer cancel()
+
+	liveTicker := time.NewTicker(30 * time.Second)
+	defer liveTicker.Stop()
+	mentionTicker := time.NewTicker(500 * time.Millisecond)
+	defer mentionTicker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-liveTicker.C:
+			// check if agent is alive
+			if err := networkClient.CheckLive(ctx, &network.CheckLiveRequest{
+				Names: []string{agentInfo.Name},
+			}); err != nil {
+				logger.Warn("failed to check live", "err", err)
+				break
+			}
+			logger.Info("agent is alive", "name", agentInfo.Name)
+
+		case <-mentionTicker.C:
+			// get mentions for the agent
+			var mentionedThreadIds []uint32
+			if reply, err := networkClient.IsMentionedOnce(ctx, &network.IsMentionedRequest{
+				AgentName: agentInfo.Name,
+			}); err != nil {
+				logger.Warn("failed to get mentions", "err", err)
+				break
+			} else {
+				logger.Debug("mention received", "name", agentInfo.Name, "thread_ids", reply.ThreadIds)
+				mentionedThreadIds = reply.ThreadIds
+			}
+			if len(mentionedThreadIds) == 0 {
+				break
+			}
+
+			// process the mentions
+			processMentioned(ctx, mentionedThreadIds, agentInfo, runtimeService, logger)
+		}
+	}
+}
 
 func newCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "agentruntime <agent-file OR agent-files-dir>",
 		Short: "Start agent-runtime",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx, cancel := context.WithCancel(cmd.Context())
+			defer cancel()
+
 			if len(args) < 1 {
 				return errors.Errorf("agent-file or agent-files-dir is required")
 			}
@@ -54,13 +145,20 @@ func newCmd() *cobra.Command {
 				}
 			}
 
-			c := din.NewContainer(cmd.Context(), din.EnvProd)
+			c := din.NewContainer(ctx, din.EnvProd)
 
 			// Initialize the container
 			cfg := din.MustGetT[*config.RuntimeConfig](c)
 			logger := din.MustGet[*slog.Logger](c, mylog.Key)
 			runtimeService := din.MustGetT[runtime.Service](c)
 			toolManager := din.MustGetT[tool.Manager](c)
+			memoryConfig := din.MustGetT[*config.MemoryConfig](c)
+			var memoryService memory.Service
+			if memoryConfig.SqliteEnabled {
+				memoryService = din.MustGet[memory.Service](c, memory.SqliteServiceName)
+			} else {
+				return errors.New("memory service is not enabled, please check the configuration")
+			}
 
 			logger.Debug("start agent-runtime", "config", cfg)
 
@@ -104,27 +202,6 @@ func newCmd() *cobra.Command {
 				logger.Info("Agent loaded", "name", ac.Name)
 			}
 
-			server := http.Server{
-				Addr:    fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
-				Handler: jsonrpc.NewHandlerWithHealth(c, jsonrpc.WithRuntime()),
-				BaseContext: func(_ net.Listener) context.Context {
-					return c
-				},
-			}
-
-			server.SetKeepAlivesEnabled(false)
-
-			closeCh := make(chan os.Signal, 3)
-			defer close(closeCh)
-			signal.Notify(closeCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGABRT)
-
-			go func() {
-				<-closeCh
-				if err := server.Shutdown(c); err != nil {
-					logger.Error("failed to shutdown server", "err", err)
-				}
-			}()
-
 			// register agent server
 			networkClient := network.NewJsonRpcClient(cfg.NetworkBaseUrl)
 			if err := networkClient.RegisterAgent(c, &network.RegisterAgentRequest{
@@ -134,39 +211,27 @@ func newCmd() *cobra.Command {
 				return errors.Wrapf(err, "failed to register agent")
 			}
 
-			agentNames := gog.Map(agentInfo, func(i *network.AgentInfo) string {
-				return i.Name
-			})
-			server.RegisterOnShutdown(func() {
-				if err := networkClient.DeregisterAgent(c, &network.DeregisterAgentRequest{
-					Names: agentNames,
-				}); err != nil {
-					logger.Warn("failed to deregister agent", "err", err)
-				}
-			})
-			ctx, cancel := context.WithCancel(c)
-			defer cancel()
-			go func() {
-				ticker := time.NewTicker(30 * time.Second)
-				defer ticker.Stop()
-				for {
-					select {
-					case <-ctx.Done():
-						return
-					case <-ticker.C:
-						if err := networkClient.CheckLive(ctx, &network.CheckLiveRequest{
-							Names: agentNames,
+			// start agent runtime
+			var wg sync.WaitGroup
+			for _, agentInfo := range agentInfo {
+				wg.Add(1)
+				go func(agentInfo *network.AgentInfo) {
+					defer wg.Done()
+					defer func() {
+						if err := networkClient.DeregisterAgent(c, &network.DeregisterAgentRequest{
+							Names: []string{agentInfo.Name},
 						}); err != nil {
-							logger.Warn("failed to check live", "err", err)
-						} else {
-							logger.Info("agent is alive", "names", agentNames)
+							logger.Warn("failed to deregister agent", "err", err)
 						}
-					}
-				}
-			}()
+					}()
 
-			logger.Info("Starting server", "host", cfg.Host, "port", cfg.Port)
-			return server.ListenAndServe()
+					startAgentLoop(agentInfo, networkClient, memoryService, runtimeService, logger, c)
+				}(agentInfo)
+			}
+			wg.Wait()
+
+			logger.Info("agent runtime stopped")
+			return nil
 		},
 	}
 

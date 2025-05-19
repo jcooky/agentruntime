@@ -3,6 +3,7 @@ package jsonrpc
 import (
 	"context"
 	"log/slog"
+	"net/http"
 	"time"
 
 	"github.com/gorilla/rpc/v2"
@@ -45,25 +46,24 @@ func newRPCServer(c *din.Container, opts ...ServerOption) *rpc.Server {
 	for _, opt := range opts {
 		opt(c, server)
 	}
-	server.RegisterBeforeFunc(func(i *rpc.RequestInfo) {
+	server.RegisterInterceptFunc(func(i *rpc.RequestInfo) *http.Request {
 		startTime := time.Now()
 		ctx := context.WithValue(i.Request.Context(), startTimeCtxKey, startTime)
 		req := i.Request.WithContext(ctx)
-		i.Request = req
+		return req
 	})
 	server.RegisterAfterFunc(func(i *rpc.RequestInfo) {
 		logger := logger.WithGroup("jsonrpc")
+		if i.Error != nil {
+			logger = logger.With(slog.String("error", i.Error.Error()))
+		}
 		if startTime, ok := i.Request.Context().Value(startTimeCtxKey).(time.Time); ok {
 			duration := time.Since(startTime)
 			logger = logger.With(slog.Duration("duration", duration))
 		}
-		if i.Error != nil {
-			logger = logger.With(mylog.Err(i.Error))
-		}
 		logger.Info("[JSON-RPC] call",
 			slog.Int("statusCode", i.StatusCode),
 			slog.String("method", i.Method),
-			slog.Bool("error", i.Error != nil),
 		)
 	})
 	server.RegisterCodec(json2.NewCustomCodecWithErrorMapper(

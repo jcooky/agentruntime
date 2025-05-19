@@ -42,7 +42,7 @@ func (m *manager) GetMCPTool(serverName, toolName string) ai.Tool {
 func (m *manager) Close() {
 	for _, client := range m.mcpClients {
 		if err := client.Close(); err != nil {
-			m.logger.Warn("failed to close MCP client", "err", err)
+			return
 		}
 	}
 }

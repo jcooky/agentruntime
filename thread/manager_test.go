@@ -1,11 +1,12 @@
 package thread_test
 
 import (
+	"os"
+	"testing"
+
 	"github.com/habiliai/agentruntime/internal/db"
 	"github.com/jcooky/go-din"
 	"gorm.io/gorm"
-	"os"
-	"testing"
 
 	"github.com/habiliai/agentruntime/entity"
 	"github.com/habiliai/agentruntime/internal/mytesting"
@@ -54,6 +55,25 @@ func (s *ThreadManagerTestSuite) TestGetMessagesInThread() {
 	s.Require().NoError(err)
 
 	s.Require().Equal(len(messages), len(resp))
+}
+
+func (s *ThreadManagerTestSuite) TestIsMentionedOnce() {
+	thread := entity.Thread{}
+	s.Require().NoError(s.DB.Save(&thread).Error)
+
+	mention := entity.Mention{
+		AgentName: "AGent1",
+		ThreadID:  thread.ID,
+	}
+	s.Require().NoError(s.DB.Save(&mention).Error)
+
+	mentionedThreadIds, err := s.threadManager.IsMentionedOnce(s.Context, "Agent1")
+	s.Require().NoError(err)
+	s.Require().Len(mentionedThreadIds, 1)
+
+	mentionedThreadIds, err = s.threadManager.IsMentionedOnce(s.Context, "agenT1")
+	s.Require().NoError(err)
+	s.Require().Len(mentionedThreadIds, 0)
 }
 
 func TestThreadManager(t *testing.T) {

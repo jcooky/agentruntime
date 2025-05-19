@@ -13,29 +13,20 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func (s *service) getAllMessages(
+func (s *service) getMessages(
 	ctx context.Context,
 	threadId uint,
 ) (res []*network.Message, err error) {
-	var (
-		reply *network.GetMessagesResponse
-		req   = &network.GetMessagesRequest{
-			ThreadId: uint32(threadId),
-		}
-	)
-	for {
-		if reply, err = s.networkClient.GetMessages(ctx, req); err != nil {
-			return nil, errors.Wrapf(err, "failed to get messages")
-		}
-		if len(reply.Messages) == 0 {
-			break
-		}
-
-		res = append(res, reply.Messages...)
-		req.Cursor = reply.NextCursor
+	reply, err := s.networkClient.GetMessages(ctx, &network.GetMessagesRequest{
+		ThreadId: uint32(threadId),
+		Order:    "latest",
+		Limit:    200,
+	})
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to get messages")
 	}
 
-	return
+	return reply.Messages, nil
 }
 
 func (s *service) Run(
@@ -50,7 +41,7 @@ func (s *service) Run(
 		return errors.Wrapf(err, "failed to get thread")
 	}
 
-	messages, err := s.getAllMessages(ctx, threadId)
+	messages, err := s.getMessages(ctx, threadId)
 	if err != nil {
 		return err
 	}

@@ -89,7 +89,7 @@ func (s *engine) Run(
 	instValues := ChatInstValues{
 		Agent:               agent,
 		MessageExamples:     sliceutils.RandomSampleN(agent.MessageExamples, 100),
-		RecentConversations: sliceutils.Cut(req.History, -25, len(req.History)),
+		RecentConversations: sliceutils.Cut(req.History, -200, len(req.History)),
 		AvailableActions:    make([]AvailableAction, 0, len(agent.Tools)),
 		Thread: ThreadValues{
 			Instruction:  req.ThreadInstruction,

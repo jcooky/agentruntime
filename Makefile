@@ -36,19 +36,19 @@ clean:
 
 .PHONY: agentruntime-windows-*.exe
 bin/agentruntime-windows-%.exe:
-	GOOS=windows GOARCH=$* CGO_ENABLED=0 go build -o $@ ./cmd/agentruntime
+	GOOS=windows GOARCH=$* go build -o $@ ./cmd/agentruntime
 
 .PHONY: bin/agentruntime-*
 bin/agentruntime-%:
 	$(eval OS_NAME := $(word 1,$(subst -, ,$*)))
 	$(eval ARCH_NAME := $(word 2,$(subst -, ,$*)))
-	GOOS=$(OS_NAME) GOARCH=$(ARCH_NAME) CGO_ENABLED=0 go build -o $@ ./cmd/agentruntime
+	GOOS=$(OS_NAME) GOARCH=$(ARCH_NAME) go build -o $@ ./cmd/agentruntime
 
 .PHONY: bin/agentnetwork-*
 bin/agentnetwork-%:
 	$(eval OS_NAME := $(word 1,$(subst -, ,$*)))
 	$(eval ARCH_NAME := $(word 2,$(subst -, ,$*)))
-	GOOS=$(OS_NAME) GOARCH=$(ARCH_NAME) CGO_ENABLED=0 go build -o $@ ./cmd/agentnetwork
+	GOOS=$(OS_NAME) GOARCH=$(ARCH_NAME) go build -o $@ ./cmd/agentnetwork
 
 .PHONY: $(AGENTRUNTIME_BIN)
 $(AGENTRUNTIME_BIN): bin/agentruntime-$(GOOS)-$(GOARCH)
@@ -60,8 +60,8 @@ $(AGENTNETWORK_BIN): bin/agentnetwork-$(GOOS)-$(GOARCH)
 
 .PHONY: install
 install:
-	CGO_ENABLED=0 go install ./cmd/agentruntime
-	CGO_ENABLED=0 go install ./cmd/agentnetwork
+	go install ./cmd/agentruntime
+	go install ./cmd/agentnetwork
 
 .PHONY: release
 release: $(AGENTRUNTIME_BIN_FILES) $(AGENTNETWORK_BIN_FILES)

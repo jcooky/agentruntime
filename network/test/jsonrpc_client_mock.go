@@ -56,6 +56,11 @@ func (j *JsonRpcClient) DeregisterAgent(ctx context.Context, request *network.De
 	return args.Error(0)
 }
 
+func (j *JsonRpcClient) IsMentionedOnce(ctx context.Context, request *network.IsMentionedRequest) (*network.IsMentionedResponse, error) {
+	args := j.Called(ctx, request)
+	return args.Get(0).(*network.IsMentionedResponse), args.Error(1)
+}
+
 var (
 	_ network.JsonRpcClient = (*JsonRpcClient)(nil)
 )

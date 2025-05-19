@@ -2,11 +2,13 @@ package network
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/gorilla/rpc/v2"
 	"github.com/habiliai/agentruntime/errors"
+	"github.com/habiliai/agentruntime/internal/mylog"
 	"github.com/habiliai/agentruntime/thread"
 	"github.com/jcooky/go-din"
 
@@ -17,6 +19,7 @@ type (
 	JsonRpcService struct {
 		service       Service
 		threadManager thread.Manager
+		logger        *slog.Logger
 	}
 
 	CheckLiveRequest struct {
@@ -117,6 +120,19 @@ type (
 
 	AddMessageResponse struct {
 		MessageId uint32 `json:"message_id"`
+	}
+
+	IsMentionedRequest struct {
+		AgentName string `json:"agent_name"`
+	}
+
+	IsMentionedResponse struct {
+		ThreadIds []uint32 `json:"thread_ids"`
+	}
+
+	AckMentionRequest struct {
+		AgentName string `json:"agent_name"`
+		ThreadId  uint32 `json:"thread_id"`
 	}
 )
 
@@ -284,6 +300,24 @@ func (s *JsonRpcService) AddMessage(r *http.Request, args *AddMessageRequest, re
 	return nil
 }
 
+func (s *JsonRpcService) IsMentionedOnce(r *http.Request, args *IsMentionedRequest, reply *IsMentionedResponse) error {
+	mentionedThreadIds, err := s.threadManager.IsMentionedOnce(r.Context(), args.AgentName)
+	if err != nil {
+		return err
+	}
+
+	s.logger.Debug("mention received", "agent_name", args.AgentName, "thread_ids", mentionedThreadIds)
+
+	reply.ThreadIds = make([]uint32, 0, len(mentionedThreadIds))
+	for _, threadId := range mentionedThreadIds {
+		reply.ThreadIds = append(reply.ThreadIds, uint32(threadId))
+	}
+
+	s.logger.Debug("mention received", "agent_name", args.AgentName, "thread_ids", reply.ThreadIds)
+
+	return nil
+}
+
 var (
 	servicePrefix = "habiliai-agentnetwork-v1"
 )
@@ -292,6 +326,7 @@ func RegisterJsonRpcService(c *din.Container, server *rpc.Server) error {
 	svc := &JsonRpcService{
 		service:       din.MustGetT[Service](c),
 		threadManager: din.MustGetT[thread.Manager](c),
+		logger:        din.MustGet[*slog.Logger](c, mylog.Key),
 	}
 
 	return errors.Wrapf(server.RegisterService(svc, servicePrefix), "failed to register jsonrpc service")

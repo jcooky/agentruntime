@@ -20,6 +20,7 @@ type (
 		CreateThread(ctx context.Context, request *CreateThreadRequest) (*CreateThreadResponse, error)
 		GetThread(ctx context.Context, request *GetThreadRequest) (*Thread, error)
 		AddMessage(ctx context.Context, request *AddMessageRequest) (*AddMessageResponse, error)
+		IsMentionedOnce(ctx context.Context, request *IsMentionedRequest) (*IsMentionedResponse, error)
 	}
 
 	jsonRpcClient struct {
@@ -104,6 +105,15 @@ func (c *jsonRpcClient) GetThread(ctx context.Context, request *GetThreadRequest
 func (c *jsonRpcClient) AddMessage(ctx context.Context, request *AddMessageRequest) (*AddMessageResponse, error) {
 	var response AddMessageResponse
 	err := c.client.CallFor(ctx, &response, servicePrefix+".AddMessage", request)
+	if err != nil {
+		return nil, err
+	}
+	return &response, nil
+}
+
+func (c *jsonRpcClient) IsMentionedOnce(ctx context.Context, request *IsMentionedRequest) (*IsMentionedResponse, error) {
+	var response IsMentionedResponse
+	err := c.client.CallFor(ctx, &response, servicePrefix+".IsMentionedOnce", request)
 	if err != nil {
 		return nil, err
 	}

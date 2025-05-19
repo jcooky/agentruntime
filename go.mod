@@ -32,10 +32,11 @@ require (
 	github.com/stretchr/testify v1.10.0
 	github.com/ybbus/jsonrpc/v3 v3.1.6
 	go.opentelemetry.io/otel/sdk v1.29.0
-	golang.org/x/sync v0.12.0
+	golang.org/x/sync v0.14.0
 	gorm.io/datatypes v1.2.5
 	gorm.io/driver/postgres v1.5.11
-	gorm.io/gorm v1.25.12
+	gorm.io/driver/sqlite v1.5.7
+	gorm.io/gorm v1.30.0
 	sigs.k8s.io/yaml v1.4.0
 )
 
@@ -74,6 +75,7 @@ require (
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mailru/easyjson v0.9.0 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
+	github.com/mattn/go-sqlite3 v1.14.28 // indirect
 	github.com/mbleigh/raymond v0.0.0-20250414171441-6b3a58ab9e0a // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
@@ -100,7 +102,7 @@ require (
 	golang.org/x/exp v0.0.0-20240318143956-a85f2c67cd81 // indirect
 	golang.org/x/sys v0.31.0 // indirect
 	golang.org/x/term v0.30.0 // indirect
-	golang.org/x/text v0.23.0 // indirect
+	golang.org/x/text v0.25.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gorm.io/driver/mysql v1.5.7 // indirect
 )

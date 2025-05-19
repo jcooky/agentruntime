@@ -1,9 +1,10 @@
 package network_test
 
 import (
+	"testing"
+
 	"github.com/habiliai/agentruntime/internal/mytesting"
 	"github.com/jcooky/go-din"
-	"testing"
 
 	"github.com/habiliai/agentruntime/network"
 	"github.com/stretchr/testify/suite"
