@@ -146,6 +146,7 @@ func newCmd() *cobra.Command {
 			}
 
 			c := din.NewContainer(ctx, din.EnvProd)
+			defer c.Close()
 
 			// Initialize the container
 			cfg := din.MustGetT[*config.RuntimeConfig](c)

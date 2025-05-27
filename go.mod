@@ -19,7 +19,7 @@ require (
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/rpc v1.2.1
 	github.com/invopop/jsonschema v0.13.0
-	github.com/jcooky/go-din v0.1.3-0.20250508191945-d09320f30cd8
+	github.com/jcooky/go-din v0.1.3-0.20250527064037-12e6144ddc28
 	github.com/lmittmann/tint v1.0.7
 	github.com/mark3labs/mcp-go v0.23.1
 	github.com/mitchellh/mapstructure v1.5.0

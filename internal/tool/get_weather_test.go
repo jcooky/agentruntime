@@ -20,6 +20,7 @@ func TestGetWeather(t *testing.T) {
 
 	ctx := context.TODO()
 	container := din.NewContainer(ctx, din.EnvTest)
+	defer container.Close()
 
 	s := din.MustGetT[tool.Manager](container)
 	getWeatherTool := s.GetTool("get_weather")

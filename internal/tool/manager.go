@@ -2,8 +2,9 @@ package tool
 
 import (
 	"context"
-	"github.com/jcooky/go-din"
 	"log/slog"
+
+	"github.com/jcooky/go-din"
 
 	"github.com/firebase/genkit/go/genkit"
 
@@ -37,10 +38,9 @@ func init() {
 			genkit:     din.MustGet[*genkit.Genkit](c, mygenkit.Key),
 		}
 
-		go func() {
-			<-c.Done()
+		c.RegisterOnShutdown(func(_ context.Context) {
 			s.Close()
-		}()
+		})
 
 		s.registerGetWeatherTool()
 		s.registerDoneTool()

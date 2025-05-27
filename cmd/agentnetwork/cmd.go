@@ -35,6 +35,7 @@ func newNetworkServeCmd() *cobra.Command {
 		Short: "Serve the network",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			c := din.NewContainer(cmd.Context(), din.EnvProd)
+			defer c.Close()
 			onSig := make(chan os.Signal, 3)
 			defer close(onSig)
 			signal.Notify(onSig, syscall.SIGINT, syscall.SIGTERM, syscall.SIGABRT)

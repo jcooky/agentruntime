@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"time"
 
 	"github.com/jcooky/go-din"
@@ -70,13 +71,12 @@ func init() {
 			}
 		}
 
-		go func() {
-			<-c.Done()
+		c.RegisterOnShutdown(func(_ context.Context) {
 			if err := CloseDB(db); err != nil {
 				logger.Warn("failed to close database", "err", err)
 			}
 			logger.Info("database closed")
-		}()
+		})
 
 		return db, nil
 	})

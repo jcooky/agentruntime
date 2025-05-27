@@ -64,8 +64,7 @@ func init() {
 		if err := db.AutoMigrate(&AgentContext{}); err != nil {
 			return nil, errors.Wrapf(err, "failed to auto-migrate sqlite database at %s", conf.SqlitePath)
 		}
-		go func() {
-			<-c.Done()
+		c.RegisterOnShutdown(func(_ context.Context) {
 			db, err := db.DB()
 			if err != nil {
 				logger.Warn("failed to get database connection", slog.Any("error", err))
@@ -73,7 +72,7 @@ func init() {
 			if err := db.Close(); err != nil {
 				logger.Warn("failed to close database connection", slog.Any("error", err))
 			}
-		}()
+		})
 
 		return &SqliteService{db: db}, nil
 	})

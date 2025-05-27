@@ -36,6 +36,7 @@ type (
 		xaiAPIKey    string
 		logger       *slog.Logger
 		traceVerbose bool
+		container    *din.Container
 	}
 )
 
@@ -70,19 +71,25 @@ func (a *AIEngine) CreateAgentFromYaml(ctx context.Context, yamlFile io.Reader) 
 	return a.engine.NewAgentFromConfig(ctx, yamlCfg)
 }
 
+func (a *AIEngine) Close() {
+	a.container.Close()
+}
+
 func NewAIEngine(ctx context.Context, optionFuncs ...func(*AIEngine)) *AIEngine {
 	c := din.NewContainer(ctx, din.EnvProd)
-	e := &AIEngine{}
+	e := &AIEngine{
+		container: c,
+	}
 	for _, f := range optionFuncs {
 		f(e)
 	}
 	if e.openAIAPIKey != "" {
-		din.SetT[*config.OpenAIConfig](c, &config.OpenAIConfig{
+		din.SetT(c, &config.OpenAIConfig{
 			APIKey: e.openAIAPIKey,
 		})
 	}
 	if e.xaiAPIKey != "" {
-		din.SetT[*config.XAIConfig](c, &config.XAIConfig{
+		din.SetT(c, &config.XAIConfig{
 			APIKey: e.xaiAPIKey,
 		})
 	}
@@ -90,10 +97,10 @@ func NewAIEngine(ctx context.Context, optionFuncs ...func(*AIEngine)) *AIEngine 
 		din.Set(c, mylog.Key, e.logger)
 	}
 	if e.toolConfig != nil {
-		din.SetT[*config.ToolConfig](c, e.toolConfig)
+		din.SetT(c, e.toolConfig)
 	}
 	if e.traceVerbose {
-		din.SetT[*config.LogConfig](c, &config.LogConfig{
+		din.SetT(c, &config.LogConfig{
 			TraceVerbose: e.traceVerbose,
 		})
 	}

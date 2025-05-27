@@ -2,6 +2,7 @@ package mytesting
 
 import (
 	"context"
+
 	"github.com/jcooky/go-din"
 
 	"github.com/stretchr/testify/suite"
@@ -22,4 +23,5 @@ func (s *Suite) SetupTest() {
 
 func (s *Suite) TearDownTest() {
 	s.Cancel()
+	s.Container.Close()
 }
