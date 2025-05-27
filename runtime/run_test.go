@@ -39,12 +39,6 @@ func (s *AgentRuntimeTestSuite) TestRun() {
 		},
 		NextCursor: 1,
 	}, nil).Once()
-	s.agentNetwork.On("GetMessages", mock.Anything, mock.MatchedBy(func(in *network.GetMessagesRequest) bool {
-		return in.ThreadId == threadId && in.Cursor == 1
-	})).Return(&network.GetMessagesResponse{
-		Messages:   nil,
-		NextCursor: 2,
-	}, nil).Once()
 	s.agentNetwork.On("AddMessage", mock.Anything, mock.MatchedBy(func(in *network.AddMessageRequest) bool {
 		s.T().Logf(">> AddMessage: %v\n", in)
 		if !s.Len(in.ToolCalls, 2) {
