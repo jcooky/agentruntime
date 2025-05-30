@@ -91,9 +91,10 @@ func convertMessages(messages []*ai.Message) ([]goopenai.ChatCompletionMessagePa
 		case ai.RoleSystem: // system
 			var text string
 			for _, content := range m.Content {
-				if content.Text != "" {
-					text += content.Text
+				if content.Text == "" {
+					continue
 				}
+				text += content.Text
 			}
 			sm := goopenai.SystemMessage(text)
 			msgs = append(msgs, sm)
