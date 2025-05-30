@@ -91,8 +91,9 @@ type (
 	}
 
 	CreateThreadRequest struct {
-		Instruction string            `json:"instruction"`
-		Metadata    map[string]string `json:"metadata"`
+		Instruction  string            `json:"instruction"`
+		Participants []string          `json:"participants"`
+		Metadata     map[string]string `json:"metadata"`
 	}
 
 	CreateThreadResponse struct {
@@ -130,11 +131,15 @@ type (
 		ThreadIds []uint32 `json:"thread_ids"`
 	}
 
-	AckMentionRequest struct {
-		AgentName string `json:"agent_name"`
+	InviteRequest struct {
 		ThreadId  uint32 `json:"thread_id"`
+		AgentName string `json:"agent_name"`
 	}
 )
+
+func (s *JsonRpcService) Invite(r *http.Request, args *InviteRequest, _ *struct{}) error {
+	return s.threadManager.Invite(r.Context(), uint(args.ThreadId), args.AgentName)
+}
 
 func (s *JsonRpcService) CheckLive(r *http.Request, args *CheckLiveRequest, _ *struct{}) error {
 	return s.service.CheckLive(r.Context(), args.Names)
@@ -245,7 +250,7 @@ func (s *JsonRpcService) GetNumMessages(r *http.Request, args *GetNumMessagesReq
 }
 
 func (s *JsonRpcService) CreateThread(r *http.Request, args *CreateThreadRequest, reply *CreateThreadResponse) error {
-	thr, err := s.threadManager.CreateThread(r.Context(), args.Instruction)
+	thr, err := s.threadManager.CreateThread(r.Context(), args.Instruction, args.Participants)
 	if err != nil {
 		return err
 	}

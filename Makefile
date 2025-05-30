@@ -70,3 +70,7 @@ release: $(AGENTRUNTIME_BIN_FILES) $(AGENTNETWORK_BIN_FILES)
 	git push origin v$(NEXT_VERSION)
 	convco changelog --max-versions 1 > CHANGELOG.md
 	gh release create v$(NEXT_VERSION) $(AGENTRUNTIME_BIN_FILES) $(AGENTNETWORK_BIN_FILES) --title "v$(NEXT_VERSION)" --notes-file CHANGELOG.md
+
+.PHONY: build-docker-agentruntime
+build-docker-agentruntime:
+	docker build --push -t ghcr.io/habiliai/agentruntime:latest -f cmd/agentruntime/Dockerfile .

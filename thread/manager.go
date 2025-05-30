@@ -3,6 +3,7 @@ package thread
 import (
 	"context"
 	"log/slog"
+	"slices"
 	"strings"
 
 	"github.com/jcooky/go-din"
@@ -19,13 +20,14 @@ import (
 
 type (
 	Manager interface {
-		CreateThread(ctx context.Context, instruction string) (*entity.Thread, error)
+		CreateThread(ctx context.Context, instruction string, participants []string) (*entity.Thread, error)
 		AddMessage(ctx context.Context, threadId uint, sender string, content entity.MessageContent) (*entity.Message, error)
 		GetMessages(ctx context.Context, threadId uint, order string, cursor uint, limit uint) ([]entity.Message, error)
 		GetNumMessages(ctx context.Context, threadId uint) (int64, error)
 		GetThreads(ctx context.Context, cursor uint, limit uint) ([]entity.Thread, error)
 		GetThreadById(ctx context.Context, threadId uint) (*entity.Thread, error)
 		IsMentionedOnce(ctx context.Context, agentName string) ([]uint, error)
+		Invite(ctx context.Context, threadId uint, agentName string) error
 	}
 
 	manager struct {
@@ -33,6 +35,28 @@ type (
 		db     *gorm.DB
 	}
 )
+
+func (s *manager) Invite(ctx context.Context, threadId uint, agentName string) error {
+	_, tx := db.OpenSession(ctx, s.db)
+
+	var thread entity.Thread
+	if err := tx.First(&thread, threadId).Error; err != nil {
+		return errors.Wrapf(err, "failed to find thread")
+	}
+
+	var agent entity.AgentRuntime
+	if err := tx.First(&agent, "name = ?", agentName).Error; err != nil {
+		return errors.Wrapf(err, "failed to find agent")
+	}
+
+	thread.Participants = append(thread.Participants, agent)
+
+	if err := tx.Save(&thread).Error; err != nil {
+		return errors.Wrapf(err, "failed to save thread")
+	}
+
+	return nil
+}
 
 func (s *manager) GetNumMessages(ctx context.Context, threadId uint) (int64, error) {
 	_, tx := db.OpenSession(ctx, s.db)
@@ -146,11 +170,25 @@ func (s *manager) AddMessage(ctx context.Context, threadId uint, sender string, 
 	return &msg, nil
 }
 
-func (s *manager) CreateThread(ctx context.Context, instruction string) (*entity.Thread, error) {
+func (s *manager) CreateThread(ctx context.Context, instruction string, participants []string) (*entity.Thread, error) {
 	_, tx := db.OpenSession(ctx, s.db)
 
+	var agents []entity.AgentRuntime
+	if err := tx.Find(&agents, "name IN (?)", participants).Error; err != nil {
+		return nil, errors.Wrapf(err, "failed to find agents")
+	}
+
+	for _, name := range participants {
+		if !slices.ContainsFunc(agents, func(agent entity.AgentRuntime) bool {
+			return agent.Name == name
+		}) {
+			return nil, errors.Wrapf(myerrors.ErrNotFound, "agent not found. name='%s'", name)
+		}
+	}
+
 	thread := entity.Thread{
-		Instruction: instruction,
+		Instruction:  instruction,
+		Participants: agents,
 	}
 
 	if err := tx.Create(&thread).Error; err != nil {
