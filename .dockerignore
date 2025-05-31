@@ -1,3 +1,6 @@
 bin/*
 docker-compose.yaml
 Dockerfile
+playground
+client
+node_modules

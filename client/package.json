@@ -1,0 +1,36 @@
+{
+  "name": "@habiliai/agentnetwork-client",
+  "description": "AgentNetwork client library for accessing the AgentNetwork API",
+  "version": "0.1.13",
+  "private": false,
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rimraf dist",
+    "prepublishOnly": "tsc"
+  },
+  "dependencies": {
+    "json-rpc-2.0": "^1.7.0",
+    "winston": "^3.17.0",
+    "zod": "^3.25.23"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.18",
+    "rimraf": "^5.0.5",
+    "typescript": "^5.8.3"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module"
+}
