@@ -21,7 +21,6 @@ func AutoMigrate(db *gorm.DB) error {
 
 func DropAll(db *gorm.DB) error {
 	return errors.WithStack(db.Migrator().DropTable(
-		"thread_participants",
 		&entity.Mention{},
 		&entity.AgentRuntime{},
 		&entity.Thread{},

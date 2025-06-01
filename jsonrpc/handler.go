@@ -36,9 +36,16 @@ func NewHandlerWithHealth(c *din.Container, opts ...ServerOption) http.Handler {
 		}
 	})
 
-	mux := http.NewServeMux()
-	mux.Handle("/health", healthHandler)
-	mux.Handle("/rpc", mainHandler)
-
-	return mux
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Handle different paths
+		switch r.URL.Path {
+		case "/health":
+			healthHandler.ServeHTTP(w, r)
+		case "/rpc":
+			mainHandler.ServeHTTP(w, r)
+		default:
+			// For any other path, return 404
+			w.WriteHeader(http.StatusNotFound)
+		}
+	})
 }

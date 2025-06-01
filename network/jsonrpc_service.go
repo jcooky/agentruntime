@@ -135,6 +135,16 @@ type (
 		ThreadId  uint32 `json:"thread_id"`
 		AgentName string `json:"agent_name"`
 	}
+
+	GetThreadsRequest struct {
+		Cursor uint32 `json:"cursor"`
+		Limit  uint32 `json:"limit"`
+	}
+
+	GetThreadsResponse struct {
+		Threads    []*Thread `json:"threads"`
+		NextCursor uint32    `json:"next_cursor"`
+	}
 )
 
 func (s *JsonRpcService) Invite(r *http.Request, args *InviteRequest, _ *struct{}) error {
@@ -150,6 +160,7 @@ func (s *JsonRpcService) GetAgentRuntimeInfo(r *http.Request, args *GetAgentRunt
 		runtimeInfo []entity.AgentRuntime
 		err         error
 	)
+	s.logger.Debug("get agent runtime info", "args", args)
 	if args.All {
 		runtimeInfo, err = s.service.GetAllAgentRuntimeInfo(r.Context())
 	} else {
@@ -158,6 +169,8 @@ func (s *JsonRpcService) GetAgentRuntimeInfo(r *http.Request, args *GetAgentRunt
 	if err != nil {
 		return err
 	}
+
+	s.logger.Debug("get agent runtime info", "runtimeInfo", runtimeInfo)
 
 	reply.AgentRuntimeInfo = make([]*AgentRuntimeInfo, 0, len(runtimeInfo))
 	for _, agent := range runtimeInfo {
@@ -270,6 +283,36 @@ func (s *JsonRpcService) GetThread(r *http.Request, args *GetThreadRequest, repl
 	reply.Instruction = thr.Instruction
 	reply.CreatedAt = thr.CreatedAt
 	reply.UpdatedAt = thr.UpdatedAt
+
+	return nil
+}
+
+func (s *JsonRpcService) GetThreads(r *http.Request, args *GetThreadsRequest, reply *GetThreadsResponse) error {
+	threads, err := s.threadManager.GetThreads(r.Context(), uint(args.Cursor), uint(args.Limit))
+	if err != nil {
+		return err
+	}
+
+	s.logger.Debug("get threads", "threads", threads)
+
+	reply.Threads = make([]*Thread, 0, len(threads))
+	for _, thread := range threads {
+		thr := &Thread{
+			Id:           uint32(thread.ID),
+			CreatedAt:    thread.CreatedAt,
+			UpdatedAt:    thread.UpdatedAt,
+			Instruction:  thread.Instruction,
+			Participants: []string{},
+		}
+		for _, participant := range thread.ParticipantNames {
+			thr.Participants = append(thr.Participants, participant)
+		}
+		reply.Threads = append(reply.Threads, thr)
+	}
+
+	if len(threads) > 0 {
+		reply.NextCursor = uint32(threads[len(threads)-1].ID)
+	}
 
 	return nil
 }

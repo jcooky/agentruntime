@@ -49,7 +49,7 @@ func (s *manager) Invite(ctx context.Context, threadId uint, agentName string) e
 		return errors.Wrapf(err, "failed to find agent")
 	}
 
-	thread.Participants = append(thread.Participants, agent)
+	thread.ParticipantNames = append(thread.ParticipantNames, agent.Name)
 
 	if err := tx.Save(&thread).Error; err != nil {
 		return errors.Wrapf(err, "failed to save thread")
@@ -187,8 +187,12 @@ func (s *manager) CreateThread(ctx context.Context, instruction string, particip
 	}
 
 	thread := entity.Thread{
-		Instruction:  instruction,
-		Participants: agents,
+		Instruction:      instruction,
+		ParticipantNames: make([]string, 0, len(agents)),
+	}
+
+	for _, agent := range agents {
+		thread.ParticipantNames = append(thread.ParticipantNames, agent.Name)
 	}
 
 	if err := tx.Create(&thread).Error; err != nil {

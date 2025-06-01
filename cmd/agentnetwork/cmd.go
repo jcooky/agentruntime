@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/gorilla/handlers"
 	"github.com/habiliai/agentruntime/config"
 	"github.com/habiliai/agentruntime/internal/mylog"
 	"github.com/habiliai/agentruntime/jsonrpc"
@@ -47,8 +48,27 @@ func newNetworkServeCmd() *cobra.Command {
 			logger.Debug("start agent-network", "config", cfg)
 
 			server := http.Server{
-				Addr:    fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
-				Handler: jsonrpc.NewHandlerWithHealth(c, jsonrpc.WithNetwork()),
+				Addr: fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
+				Handler: handlers.CORS(
+					handlers.AllowedOrigins([]string{"*"}),
+					handlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"}),
+					handlers.AllowedHeaders([]string{
+						"Content-Type",
+						"Authorization",
+						"Accept",
+						"Accept-Language",
+						"Accept-Encoding",
+						"X-Requested-With",
+						"Origin",
+						"User-Agent",
+						"Referer",
+						"Cache-Control",
+						"Pragma",
+					}),
+					handlers.ExposedHeaders([]string{"Content-Length", "Content-Type"}),
+					handlers.MaxAge(86400), // Cache preflight for 24 hours
+					handlers.AllowCredentials(),
+				)(jsonrpc.NewHandlerWithHealth(c, jsonrpc.WithNetwork())),
 			}
 
 			go func() {
