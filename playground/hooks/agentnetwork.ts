@@ -7,7 +7,7 @@ import {
 import { AgentNetworkClient, Message } from '@habiliai/agentnetwork-client';
 
 const client = new AgentNetworkClient({
-  rpcEndpoint: 'http://localhost:9080/rpc',
+  rpcEndpoint: process.env.NEXT_PUBLIC_AGENTNETWORK_RPC_ENDPOINT!,
 });
 
 /**
