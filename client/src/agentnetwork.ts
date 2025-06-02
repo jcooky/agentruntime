@@ -6,7 +6,7 @@ import {
   MessageToolCall,
   Rpc,
   Thread,
-} from './schema/rpc';
+} from './schema/index.js';
 import {
   JSONRPCClient,
   JSONRPCResponse,

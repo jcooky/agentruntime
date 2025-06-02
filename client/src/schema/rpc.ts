@@ -2,10 +2,6 @@ import { Thread } from './thread.js';
 import { AgentInfo, AgentRuntimeInfo } from './agent.js';
 import { Message, MessageToolCall } from './message.js';
 
-export * from './message.js';
-export * from './thread.js';
-export * from './agent.js';
-
 export type IThreadManager = {
   CreateThread(args: {
     instruction: string;
