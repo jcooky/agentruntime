@@ -17,25 +17,20 @@ This playground serves as an excellent starting point for first-time contributor
 
 Before running the playground, ensure you have the following services running:
 
-1. **AgentNetwork Server**: The main AgentNetwork service must be running
+1. **Database Infrastructure**: PostgreSQL and other required services
 
-   ```bash
-   # From the root directory
-   make run-agentnetwork
-   ```
-
-2. **Agent Runtime(s)**: At least one agent runtime (agentd) must be running
-
-   ```bash
-   # From the root directory
-   make run-agentruntime
-   ```
-
-3. **Database Infrastructure**: PostgreSQL and other required services
    ```bash
    # From the root directory
    docker-compose -f docker-compose.infra.yaml up -d
    ```
+
+2. **AgentNetwork Server**: The main AgentNetwork service must be running
+
+   - Follow agentnetwork serving from [README.md](../README.md) from root directory
+
+3. **Agent Runtime(s)**: At least one agent runtime (agentd) must be running
+
+   - Follow agentruntime running from [README.md](../README.md) from root directory
 
 ## Installation
 
