@@ -60,13 +60,13 @@ func init() {
 		}
 
 		if c.Env == din.EnvTest {
-			if err := DropAll(db); err != nil {
+			if err := DropAll(c, db); err != nil {
 				return nil, errors.Wrapf(err, "failed to drop database")
 			}
 			time.Sleep(500 * time.Millisecond)
 		}
 		if cfg.DatabaseAutoMigrate || c.Env == din.EnvTest {
-			if err := AutoMigrate(db); err != nil {
+			if err := AutoMigrate(c, db); err != nil {
 				return nil, errors.Wrapf(err, "failed to migrate database")
 			}
 		}

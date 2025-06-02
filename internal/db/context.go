@@ -2,6 +2,8 @@ package db
 
 import (
 	"context"
+	"fmt"
+
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -22,5 +24,6 @@ func OpenSession(ctx context.Context, db *gorm.DB) (context.Context, *gorm.DB) {
 func WithSession(ctx context.Context, db *gorm.DB) (context.Context, *gorm.DB) {
 	tx := db.WithContext(ctx)
 
+	tx.Exec(fmt.Sprintf("SET search_path TO %s", schema))
 	return context.WithValue(ctx, sessionCtxKey, tx), tx
 }
