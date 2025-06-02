@@ -74,3 +74,7 @@ release: $(AGENTRUNTIME_BIN_FILES) $(AGENTNETWORK_BIN_FILES)
 .PHONY: build-docker-agentruntime
 build-docker-agentruntime:
 	docker build --push -t ghcr.io/habiliai/agentruntime:latest -f cmd/agentruntime/Dockerfile .
+
+.PHONY: build-docker-agentnetwork
+build-docker-agentnetwork:
+	docker build --push -t ghcr.io/habiliai/agentnetwork:latest -f cmd/agentnetwork/Dockerfile .
