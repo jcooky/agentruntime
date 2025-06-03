@@ -7,6 +7,7 @@ import (
 	"github.com/firebase/genkit/go/plugins/compat_oai/openai"
 	"github.com/habiliai/agentruntime/config"
 	"github.com/habiliai/agentruntime/errors"
+	"github.com/habiliai/agentruntime/internal/genkit/plugins/anthropic"
 	"github.com/habiliai/agentruntime/internal/genkit/plugins/xai"
 	"github.com/habiliai/agentruntime/internal/mylog"
 	"github.com/jcooky/go-din"
@@ -38,6 +39,15 @@ func init() {
 					APIKey: conf.APIKey,
 				})
 				defaultModel = "xai/grok-3"
+			}
+		}
+		{
+			conf := din.MustGetT[*config.AnthropicConfig](c)
+			if conf.APIKey != "" {
+				plugins = append(plugins, &anthropic.Plugin{
+					APIKey: conf.APIKey,
+				})
+				defaultModel = "anthropic/claude-4-sonnet"
 			}
 		}
 		logConf := din.MustGetT[*config.LogConfig](c)

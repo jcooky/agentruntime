@@ -11,6 +11,9 @@ type (
 	XAIConfig struct {
 		APIKey string `env:"XAI_API_KEY"`
 	}
+	AnthropicConfig struct {
+		APIKey string `env:"ANTHROPIC_API_KEY"`
+	}
 )
 
 func init() {
@@ -20,6 +23,10 @@ func init() {
 	})
 	din.RegisterT(func(c *din.Container) (*XAIConfig, error) {
 		conf := &XAIConfig{}
+		return conf, resolveConfig(conf, c.Env == din.EnvTest)
+	})
+	din.RegisterT(func(c *din.Container) (*AnthropicConfig, error) {
+		conf := &AnthropicConfig{}
 		return conf, resolveConfig(conf, c.Env == din.EnvTest)
 	})
 }
