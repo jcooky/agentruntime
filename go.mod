@@ -11,6 +11,7 @@ replace (
 
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
+	github.com/anthropics/anthropic-sdk-go v1.3.0
 	github.com/firebase/genkit/go v0.5.4
 	github.com/goccy/go-yaml v1.17.1
 	github.com/golobby/config/v3 v3.4.2
