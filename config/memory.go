@@ -2,14 +2,16 @@ package config
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/habiliai/agentruntime/errors"
 	"github.com/jcooky/go-din"
-	"os"
 )
 
 type MemoryConfig struct {
 	SqliteEnabled bool   `env:"SQLITE_ENABLED"`
 	SqlitePath    string `env:"SQLITE_PATH"`
+	VectorEnabled bool   `env:"VECTOR_ENABLED"`
 }
 
 func init() {
@@ -21,6 +23,7 @@ func init() {
 		conf := &MemoryConfig{
 			SqliteEnabled: true,
 			SqlitePath:    fmt.Sprintf("%s/.agentruntime/memory.db", home),
+			VectorEnabled: true,
 		}
 
 		return conf, resolveConfig(

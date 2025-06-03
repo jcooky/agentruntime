@@ -12,6 +12,7 @@ replace (
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/anthropics/anthropic-sdk-go v1.3.0
+	github.com/asg017/sqlite-vec-go-bindings v0.1.7-alpha.2
 	github.com/firebase/genkit/go v0.5.4
 	github.com/goccy/go-yaml v1.17.1
 	github.com/golobby/config/v3 v3.4.2
@@ -73,7 +74,7 @@ require (
 	github.com/lithammer/fuzzysearch v1.1.8 // indirect
 	github.com/mailru/easyjson v0.9.0 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
-	github.com/mattn/go-sqlite3 v1.14.28 // indirect
+	github.com/mattn/go-sqlite3 v1.14.22 // indirect
 	github.com/mbleigh/raymond v0.0.0-20250414171441-6b3a58ab9e0a // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect

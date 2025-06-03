@@ -1,0 +1,5 @@
+name: BasicAgent
+model: gpt-4o
+tools:
+  - web_search
+  - done_agent

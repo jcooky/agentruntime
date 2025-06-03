@@ -16,6 +16,7 @@ import (
 	"github.com/habiliai/agentruntime/internal/mylog"
 	"github.com/habiliai/agentruntime/internal/tool"
 	"github.com/habiliai/agentruntime/memory"
+	_ "github.com/habiliai/agentruntime/memory" // Ensure memory package is imported
 	"github.com/habiliai/agentruntime/network"
 	"github.com/habiliai/agentruntime/runtime"
 	"github.com/jcooky/go-din"
@@ -156,7 +157,7 @@ func newCmd() *cobra.Command {
 			memoryConfig := din.MustGetT[*config.MemoryConfig](c)
 			var memoryService memory.Service
 			if memoryConfig.SqliteEnabled {
-				memoryService = din.MustGet[memory.Service](c, memory.SqliteServiceName)
+				memoryService = din.MustGetT[memory.Service](c)
 			} else {
 				return errors.New("memory service is not enabled, please check the configuration")
 			}

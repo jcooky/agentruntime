@@ -24,6 +24,10 @@ func OpenSession(ctx context.Context, db *gorm.DB) (context.Context, *gorm.DB) {
 func WithSession(ctx context.Context, db *gorm.DB) (context.Context, *gorm.DB) {
 	tx := db.WithContext(ctx)
 
-	tx.Exec(fmt.Sprintf("SET search_path TO %s", schema))
+	// Only execute schema commands for PostgreSQL databases
+	if db.Dialector.Name() == "postgres" {
+		tx.Exec(fmt.Sprintf("SET search_path TO %s", schema))
+	}
+
 	return context.WithValue(ctx, sessionCtxKey, tx), tx
 }
