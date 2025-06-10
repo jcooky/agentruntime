@@ -1,32 +1,13 @@
 package config
 
-import (
-	"github.com/jcooky/go-din"
-)
-
 type (
 	OpenAIConfig struct {
-		APIKey string `env:"OPENAI_API_KEY"`
+		APIKey string `json:"apiKey"`
 	}
 	XAIConfig struct {
-		APIKey string `env:"XAI_API_KEY"`
+		APIKey string `json:"apiKey"`
 	}
 	AnthropicConfig struct {
-		APIKey string `env:"ANTHROPIC_API_KEY"`
+		APIKey string `json:"apiKey"`
 	}
 )
-
-func init() {
-	din.RegisterT(func(c *din.Container) (*OpenAIConfig, error) {
-		conf := &OpenAIConfig{}
-		return conf, resolveConfig(conf, c.Env == din.EnvTest)
-	})
-	din.RegisterT(func(c *din.Container) (*XAIConfig, error) {
-		conf := &XAIConfig{}
-		return conf, resolveConfig(conf, c.Env == din.EnvTest)
-	})
-	din.RegisterT(func(c *din.Container) (*AnthropicConfig, error) {
-		conf := &AnthropicConfig{}
-		return conf, resolveConfig(conf, c.Env == din.EnvTest)
-	})
-}

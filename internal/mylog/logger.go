@@ -1,11 +1,10 @@
 package mylog
 
 import (
-	"github.com/jcooky/go-din"
 	"log/slog"
 	"os"
 
-	"github.com/habiliai/agentruntime/config"
+	"github.com/jcooky/go-din"
 )
 
 type Logger = slog.Logger
@@ -44,16 +43,4 @@ func NewLogger(logLevel string, logHandler string) *Logger {
 	}
 
 	return slog.New(handler)
-}
-
-func init() {
-	din.Register(Key, func(c *din.Container) (any, error) {
-		conf, err := din.GetT[*config.LogConfig](c)
-		if err != nil {
-			return nil, err
-		}
-
-		logger := NewLogger(conf.LogLevel, conf.LogHandler)
-		return logger, nil
-	})
 }

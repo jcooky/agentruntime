@@ -1,25 +1,17 @@
 package entity
 
 type Agent struct {
-	Name            string             `json:"name,omitempty"`
-	ModelName       string             `json:"model_name,omitempty"`
-	ModelConfig     map[string]any     `json:"model_config,omitempty"`
+	AgentCard
+	ModelName       string             `json:"modelName,omitempty"`
+	ModelConfig     map[string]any     `json:"modelConfig,omitempty"`
 	System          string             `json:"system,omitempty"`
 	Role            string             `json:"role,omitempty"`
-	Bio             []string           `json:"bio,omitempty"`
-	Lore            []string           `json:"lore,omitempty"`
-	MessageExamples [][]MessageExample `json:"message_examples,omitempty"`
+	Instruction     string             `json:"instruction,omitempty"`
+	MessageExamples [][]MessageExample `json:"messageExamples,omitempty"`
 	Knowledge       []map[string]any   `json:"knowledge,omitempty"`
 	Evaluator       AgentEvaluator     `json:"evaluator,omitempty"`
 
-	Tools []Tool `json:"tools"`
-
 	Metadata map[string]string `json:"metadata"`
-}
-
-type Tool struct {
-	Name        string `json:"name,omitempty"`
-	Description string `json:"description,omitempty"`
 }
 
 type MessageExample struct {
@@ -30,5 +22,5 @@ type MessageExample struct {
 
 type AgentEvaluator struct {
 	Prompt     string `json:"prompt,omitempty"`
-	NumRetries int    `json:"num_retries,omitempty"`
+	NumRetries int    `json:"numRetries,omitempty"`
 }

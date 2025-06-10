@@ -1,18 +1,6 @@
 package tool_test
 
-import (
-	"github.com/habiliai/agentruntime/internal/tool"
-)
-
-func (s *ToolTestSuite) TestToolByMCP() {
-	s.Require().NoError(s.toolManager.RegisterMCPTool(s, tool.RegisterMCPToolRequest{
-		ServerName: "filesystem",
-		Command:    "npx",
-		Args: []string{
-			"-y", "@modelcontextprotocol/server-filesystem", ".",
-		},
-	}))
-
+func (s *TestSuite) TestToolByMCP() {
 	tool := s.toolManager.GetMCPTool("filesystem", "list_directory")
 	s.NotNil(tool)
 

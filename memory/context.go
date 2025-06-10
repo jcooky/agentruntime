@@ -4,11 +4,10 @@ import (
 	"context"
 
 	"github.com/habiliai/agentruntime/errors"
-	"github.com/habiliai/agentruntime/internal/db"
 )
 
 func (s *SqliteService) SetContext(ctx context.Context, context *AgentContext) error {
-	_, tx := db.OpenSession(ctx, s.db)
+	tx := s.db.WithContext(ctx)
 
 	if context == nil {
 		return errors.New("context cannot be nil")
@@ -22,7 +21,7 @@ func (s *SqliteService) SetContext(ctx context.Context, context *AgentContext) e
 }
 
 func (s *SqliteService) GetContext(ctx context.Context, name string) (*AgentContext, error) {
-	_, tx := db.OpenSession(ctx, s.db)
+	tx := s.db.WithContext(ctx)
 
 	var agentContext AgentContext
 	if r := tx.Find(&agentContext, "name = ?", name); r.Error != nil {

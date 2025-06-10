@@ -90,7 +90,7 @@ func (s *engine) Run(
 		Agent:               agent,
 		MessageExamples:     sliceutils.RandomSampleN(agent.MessageExamples, 100),
 		RecentConversations: sliceutils.Cut(req.History, -200, len(req.History)),
-		AvailableActions:    make([]AvailableAction, 0, len(agent.Tools)),
+		AvailableActions:    make([]AvailableAction, 0, len(agent.Skills)),
 		Thread: ThreadValues{
 			Instruction:  req.ThreadInstruction,
 			Participants: req.Participant,
@@ -98,22 +98,22 @@ func (s *engine) Run(
 	}
 
 	// build available actions
-	tools := make([]ai.ToolRef, 0, len(agent.Tools))
-	for _, tool := range agent.Tools {
+	tools := make([]ai.ToolRef, 0, len(agent.Skills))
+	for _, skill := range agent.Skills {
 		instValues.AvailableActions = append(instValues.AvailableActions, AvailableAction{
-			Action:      tool.Name,
-			Description: tool.Description,
+			Action:      skill.Name,
+			Description: skill.Description,
 		})
 
-		toolNames := strings.SplitN(tool.Name, "/", 2)
+		toolNames := strings.SplitN(skill.Name, "/", 2)
 		var v ai.Tool
 		if len(toolNames) == 1 {
-			v = s.toolManager.GetTool(tool.Name)
+			v = s.toolManager.GetTool(skill.Name)
 		} else {
 			v = s.toolManager.GetMCPTool(toolNames[0], toolNames[1])
 		}
 		if v == nil {
-			return nil, errors.Wrapf(errors.ErrInvalidConfig, "invalid tool name %s", tool.Name)
+			return nil, errors.Wrapf(errors.ErrInvalidConfig, "invalid tool name %s", skill.Name)
 		}
 		tools = append(tools, v)
 	}

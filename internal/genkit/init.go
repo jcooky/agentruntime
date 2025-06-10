@@ -1,6 +1,7 @@
 package genkit
 
 import (
+	"context"
 	"log/slog"
 
 	"github.com/firebase/genkit/go/genkit"
@@ -9,7 +10,6 @@ import (
 	"github.com/habiliai/agentruntime/errors"
 	"github.com/habiliai/agentruntime/internal/genkit/plugins/anthropic"
 	"github.com/habiliai/agentruntime/internal/genkit/plugins/xai"
-	"github.com/habiliai/agentruntime/internal/mylog"
 	"github.com/jcooky/go-din"
 )
 
@@ -17,54 +17,55 @@ var (
 	Key = din.NewRandomName()
 )
 
-func init() {
-	din.Register(Key, func(c *din.Container) (any, error) {
-		var (
-			plugins      []genkit.Plugin
-			defaultModel string
-		)
-		{
-			conf := din.MustGetT[*config.OpenAIConfig](c)
-			if conf.APIKey != "" {
-				plugins = append(plugins, &openai.OpenAI{
-					APIKey: conf.APIKey,
-				})
-				defaultModel = "openai/gpt-4o"
-			}
+func NewGenkit(
+	ctx context.Context,
+	openaiConfig *config.OpenAIConfig,
+	xaiConfig *config.XAIConfig,
+	anthropicConfig *config.AnthropicConfig,
+	logger *slog.Logger,
+	traceVerbose bool,
+) (*genkit.Genkit, error) {
+	var (
+		plugins      []genkit.Plugin
+		defaultModel string
+	)
+	{
+		if openaiConfig != nil && openaiConfig.APIKey != "" {
+			plugins = append(plugins, &openai.OpenAI{
+				APIKey: openaiConfig.APIKey,
+			})
+			defaultModel = "openai/gpt-4o"
 		}
-		{
-			conf := din.MustGetT[*config.XAIConfig](c)
-			if conf.APIKey != "" {
-				plugins = append(plugins, &xai.Plugin{
-					APIKey: conf.APIKey,
-				})
-				defaultModel = "xai/grok-3"
-			}
+	}
+	{
+		if xaiConfig != nil && xaiConfig.APIKey != "" {
+			plugins = append(plugins, &xai.Plugin{
+				APIKey: xaiConfig.APIKey,
+			})
+			defaultModel = "xai/grok-3"
 		}
-		{
-			conf := din.MustGetT[*config.AnthropicConfig](c)
-			if conf.APIKey != "" {
-				plugins = append(plugins, &anthropic.Plugin{
-					APIKey: conf.APIKey,
-				})
-				defaultModel = "anthropic/claude-4-sonnet"
-			}
+	}
+	{
+		if anthropicConfig != nil && anthropicConfig.APIKey != "" {
+			plugins = append(plugins, &anthropic.Plugin{
+				APIKey: anthropicConfig.APIKey,
+			})
+			defaultModel = "anthropic/claude-4-sonnet"
 		}
-		logConf := din.MustGetT[*config.LogConfig](c)
-		logger := din.MustGet[*slog.Logger](c, mylog.Key)
-		g, err := genkit.Init(
-			c,
-			genkit.WithPlugins(plugins...),
-			genkit.WithDefaultModel(defaultModel),
-		)
+	}
+	g, err := genkit.Init(
+		ctx,
+		genkit.WithPlugins(plugins...),
+		genkit.WithDefaultModel(defaultModel),
+	)
 
-		genkit.RegisterSpanProcessor(g,
-			&loggingSpanProcessor{
-				verbose: logConf.TraceVerbose,
-				logger:  logger,
-			},
-		)
+	genkit.RegisterSpanProcessor(
+		g,
+		&loggingSpanProcessor{
+			verbose: traceVerbose,
+			logger:  logger,
+		},
+	)
 
-		return g, errors.Wrapf(err, "failed to init genkit")
-	})
+	return g, errors.Wrapf(err, "failed to init genkit")
 }

@@ -177,10 +177,10 @@ func newCmd() *cobra.Command {
 						continue
 					}
 					if err := toolManager.RegisterMCPTool(c, tool.RegisterMCPToolRequest{
-						ServerName: name,
-						Command:    mcpServer.Command,
-						Args:       mcpServer.Args,
-						Env:        mcpServer.Env,
+						ServerID: name,
+						Command:  mcpServer.Command,
+						Args:     mcpServer.Args,
+						Env:      mcpServer.Env,
 					}); err != nil {
 						return err
 					}
