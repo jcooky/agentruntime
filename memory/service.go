@@ -2,7 +2,6 @@ package memory
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log/slog"
 	"os"
@@ -36,7 +35,6 @@ type (
 	}
 	SqliteService struct {
 		db           *gorm.DB
-		rawDB        *sql.DB
 		embedder     Embedder
 		vecExtLoaded bool
 	}
@@ -88,20 +86,16 @@ func init() {
 			return nil, errors.Wrapf(err, "failed to open sqlite database at %s", conf.SqlitePath)
 		}
 
-		// Get the underlying sql.DB for sqlite-vec operations
-		rawDB, err := db.DB()
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to get raw database connection")
-		}
-
 		// Auto-migrate GORM entities
 		if err := db.AutoMigrate(&AgentContext{}, &entity.Knowledge{}); err != nil {
 			return nil, errors.Wrapf(err, "failed to auto-migrate sqlite database at %s", conf.SqlitePath)
 		}
 
 		c.RegisterOnShutdown(func(_ context.Context) {
-			if err := rawDB.Close(); err != nil {
-				logger.Warn("failed to close database connection", slog.Any("error", err))
+			if sqlDB, err := db.DB(); err == nil {
+				if err := sqlDB.Close(); err != nil {
+					logger.Warn("failed to close database connection", slog.Any("error", err))
+				}
 			}
 		})
 
@@ -111,7 +105,6 @@ func init() {
 
 		service := &SqliteService{
 			db:           db,
-			rawDB:        rawDB,
 			embedder:     embedder,
 			vecExtLoaded: conf.VectorEnabled,
 		}
@@ -144,9 +137,9 @@ func (s *SqliteService) initializeVectorFunctionality() error {
 
 // verifyAndCreateVectorTable verifies sqlite-vec is working and creates the vector table
 func (s *SqliteService) verifyAndCreateVectorTable() error {
-	// Verify sqlite-vec is loaded by checking vec_version()
+	// Verify sqlite-vec is loaded by checking vec_version() using GORM's connection pool
 	var sqliteVersion, vecVersion string
-	err := s.rawDB.QueryRow("SELECT sqlite_version(), vec_version()").Scan(&sqliteVersion, &vecVersion)
+	err := s.db.Raw("SELECT sqlite_version(), vec_version()").Row().Scan(&sqliteVersion, &vecVersion)
 	if err != nil {
 		return errors.Wrapf(err, "sqlite-vec extension not properly loaded")
 	}
@@ -166,7 +159,7 @@ func (s *SqliteService) createVectorTable() error {
 		);
 	`
 
-	if _, err := s.rawDB.Exec(createTableSQL); err != nil {
+	if err := s.db.Exec(createTableSQL).Error; err != nil {
 		return errors.Wrapf(err, "failed to create knowledge_vectors virtual table")
 	}
 
@@ -327,7 +320,7 @@ func (s *SqliteService) retrieveWithSqliteVec(ctx context.Context, agentName str
 		return nil, errors.Wrapf(err, "failed to serialize query embedding")
 	}
 
-	// Perform vector similarity search using sqlite-vec
+	// Perform vector similarity search using sqlite-vec with GORM's connection pool
 	searchSQL := `
 		SELECT content, distance
 		FROM knowledge_vectors
@@ -336,7 +329,7 @@ func (s *SqliteService) retrieveWithSqliteVec(ctx context.Context, agentName str
 		LIMIT ?
 	`
 
-	rows, err := s.rawDB.QueryContext(ctx, searchSQL, agentName, serializedQuery, limit)
+	rows, err := s.db.WithContext(ctx).Raw(searchSQL, agentName, serializedQuery, limit).Rows()
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to execute sqlite-vec similarity search")
 	}
@@ -370,7 +363,7 @@ func (s *SqliteService) DeleteAgentKnowledge(ctx context.Context, agentName stri
 
 	// Delete from sqlite-vec table (only if vector functionality is loaded)
 	if s.vecExtLoaded {
-		if _, err := s.rawDB.ExecContext(ctx, "DELETE FROM knowledge_vectors WHERE agent_name = ?", agentName); err != nil {
+		if err := db.Exec("DELETE FROM knowledge_vectors WHERE agent_name = ?", agentName).Error; err != nil {
 			return errors.Wrapf(err, "failed to delete agent knowledge from vector table")
 		}
 	}
