@@ -11,7 +11,7 @@ type (
 	}
 )
 
-func (m *manager) registerLLMTool(ctx context.Context, name, description, instruction string) error {
+func (m *manager) registerLLMTool(ctx context.Context, name, description, instruction string) {
 	registerLocalTool(
 		m,
 		name,
@@ -27,5 +27,4 @@ func (m *manager) registerLLMTool(ctx context.Context, name, description, instru
 			return
 		},
 	)
-	return nil
 }

@@ -66,9 +66,12 @@ func createThreadsRouter(router *mux.Router, db *gorm.DB, runtimes map[string]*a
 		}
 
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]any{
+		if err := json.NewEncoder(w).Encode(map[string]any{
 			"id": thread.ID,
-		})
+		}); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}).Methods("POST")
 
 	router.HandleFunc("/threads", func(w http.ResponseWriter, r *http.Request) {
@@ -81,7 +84,10 @@ func createThreadsRouter(router *mux.Router, db *gorm.DB, runtimes map[string]*a
 		}
 
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(threads)
+		if err := json.NewEncoder(w).Encode(threads); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}).Methods("GET")
 
 	router.HandleFunc("/threads/{id}", func(w http.ResponseWriter, r *http.Request) {
@@ -110,11 +116,14 @@ func createThreadsRouter(router *mux.Router, db *gorm.DB, runtimes map[string]*a
 		}
 
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]any{
+		if err := json.NewEncoder(w).Encode(map[string]any{
 			"id":           thread.ID,
 			"instruction":  thread.Instruction,
 			"participants": thread.Participants,
-		})
+		}); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}).Methods("GET")
 
 	router.HandleFunc("/threads/{id}/messages", func(w http.ResponseWriter, r *http.Request) {
@@ -167,7 +176,10 @@ func createThreadsRouter(router *mux.Router, db *gorm.DB, runtimes map[string]*a
 		}
 
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(messages)
+		if err := json.NewEncoder(w).Encode(messages); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}).Methods("GET")
 }
 
@@ -176,7 +188,10 @@ func createServerHandler(ctx context.Context, agents []entity.Agent, db *gorm.DB
 	createThreadsRouter(router, db, runtimes, messageCh)
 	router.HandleFunc("/agents", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(agents)
+		if err := json.NewEncoder(w).Encode(agents); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}).Methods("GET")
 
 	cors := handlers.CORS(

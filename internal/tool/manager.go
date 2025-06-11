@@ -2,17 +2,16 @@ package tool
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 	"strings"
 	"sync"
 
-	"github.com/firebase/genkit/go/genkit"
-
 	"github.com/firebase/genkit/go/ai"
+	"github.com/firebase/genkit/go/genkit"
 	"github.com/habiliai/agentruntime/entity"
 	"github.com/habiliai/agentruntime/internal/mylog"
 	mcpclient "github.com/mark3labs/mcp-go/client"
+	"github.com/pkg/errors"
 )
 
 type (
@@ -51,12 +50,14 @@ func NewToolManager(ctx context.Context, skills []entity.AgentSkill, logger *slo
 			if skill.Command == "" {
 				return nil, errors.New("mcp command is required")
 			}
-			s.registerMCPTool(ctx, RegisterMCPToolRequest{
+			if err := s.registerMCPTool(ctx, RegisterMCPToolRequest{
 				ServerID: skill.Name,
 				Command:  skill.Command,
 				Args:     skill.Args,
 				Env:      skill.Env,
-			})
+			}); err != nil {
+				return nil, errors.Wrap(err, "failed to register mcp tool")
+			}
 		case "llm":
 			if skill.Name == "" {
 				return nil, errors.New("llm name is required")
@@ -74,7 +75,7 @@ func NewToolManager(ctx context.Context, skills []entity.AgentSkill, logger *slo
 			}
 			s.registerNativeTool(skill.Name, skill.Description, skill.Env)
 		default:
-			return nil, errors.New("invalid skill type: " + skill.Type)
+			return nil, errors.Errorf("invalid skill type: %s", skill.Type)
 		}
 	}
 

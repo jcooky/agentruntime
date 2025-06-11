@@ -132,7 +132,9 @@ func newRootCmd() *cobra.Command {
 
 			go func() {
 				<-ctx.Done()
-				server.Shutdown(context.WithoutCancel(ctx))
+				if err := server.Shutdown(context.WithoutCancel(ctx)); err != nil {
+					logger.Error("failed to shutdown server", "error", err)
+				}
 			}()
 
 			if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
