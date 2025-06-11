@@ -20,7 +20,7 @@ $(GOLANG_CI_LINT):
 
 .PHONY: lint
 lint: $(GOLANG_CI_LINT)
-	$(GOLANG_CI_LINT) run
+	$(GOLANG_CI_LINT) run --timeout 0
 
 .PHONY: test
 test:
