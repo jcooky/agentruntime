@@ -43,7 +43,7 @@ func NewToolManager(ctx context.Context, skills []entity.AgentSkill, logger *slo
 	}
 
 	for _, skill := range skills {
-		switch strings.ToLower(skill.Type) {
+		switch skill.Type {
 		case "mcp":
 			if skill.Server == "" {
 				return nil, errors.New("mcp server is required")
@@ -68,6 +68,11 @@ func NewToolManager(ctx context.Context, skills []entity.AgentSkill, logger *slo
 				return nil, errors.New("llm instruction is required")
 			}
 			s.registerLLMTool(ctx, skill.Name, skill.Description, skill.Instruction)
+		case "nativeTool":
+			if skill.Name == "" {
+				return nil, errors.New("native tool name is required")
+			}
+			s.registerNativeTool(skill.Name, skill.Description, skill.Env)
 		default:
 			return nil, errors.New("invalid skill type: " + skill.Type)
 		}
@@ -93,6 +98,13 @@ func (m *manager) Close() {
 		if err := client.Close(); err != nil {
 			return
 		}
+	}
+}
+
+func (m *manager) registerNativeTool(name string, description string, env map[string]string) {
+	switch strings.ToLower(name) {
+	case "get_weather":
+		m.registerGetWeatherTool(description, env)
 	}
 }
 

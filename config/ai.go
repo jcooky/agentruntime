@@ -1,13 +1,9 @@
 package config
 
 type (
-	OpenAIConfig struct {
-		APIKey string `json:"apiKey"`
-	}
-	XAIConfig struct {
-		APIKey string `json:"apiKey"`
-	}
-	AnthropicConfig struct {
-		APIKey string `json:"apiKey"`
+	ModelConfig struct {
+		OpenAIAPIKey    string `json:"openaiApiKey"`
+		XAIAPIKey       string `json:"xaiApiKey"`
+		AnthropicAPIKey string `json:"anthropicApiKey"`
 	}
 )

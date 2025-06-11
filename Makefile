@@ -26,7 +26,7 @@ lint: $(GOLANG_CI_LINT)
 
 .PHONY: test
 test:
-	ENV_TEST_FILE=$(shell pwd)/.env.test CI=true go test -timeout 15m -p 1 ./...
+	CI=true npm run dotenv -e .env.test -- go test -timeout 15m -p 1 ./...
 
 .PHONY: clean
 clean:

@@ -8,23 +8,6 @@ type AgentProvider struct {
 	URL string `json:"url"`
 }
 
-// AgentSkill represents a unit of capability that an agent can perform.
-type AgentSkill struct {
-	Type string `json:"type" jsonschema:"required,enum=llm,enum=mcp"`
-
-	// MCP server config
-	Server  string            `json:"server,omitempty"`
-	Tools   []string          `json:"tools,omitempty"`
-	Command string            `json:"command,omitempty"` // npx, uv, etc.
-	Args    []string          `json:"args,omitempty"`    // npx -y @modelcontextprotocol/server-filesystem .
-	Env     map[string]string `json:"env,omitempty"`
-
-	// LLM tool config
-	Name        string `json:"name,omitempty"`
-	Description string `json:"description,omitempty"`
-	Instruction string `json:"instruction,omitempty"`
-}
-
 // AgentCard conveys key information about an agent:
 // - Overall details (version, name, description, uses)
 // - Skills: A set of capabilities the agent can perform
@@ -55,6 +38,4 @@ type AgentCard struct {
 	DefaultInputModes []string `json:"defaultInputModes"`
 	// Supported media types for output.
 	DefaultOutputModes []string `json:"defaultOutputModes"`
-	// Skills are a unit of capability that an agent can perform.
-	Skills []AgentSkill `json:"skills"`
 }

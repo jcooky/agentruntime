@@ -2,6 +2,7 @@ package tool_test
 
 import (
 	"log/slog"
+	"os"
 	"testing"
 
 	"github.com/habiliai/agentruntime/entity"
@@ -23,8 +24,6 @@ func (s *TestSuite) SetupTest() {
 	g, err := genkit.NewGenkit(
 		s,
 		nil,
-		nil,
-		nil,
 		slog.Default(),
 		false,
 	)
@@ -38,6 +37,14 @@ func (s *TestSuite) SetupTest() {
 				Command: "npx",
 				Args: []string{
 					"-y", "@modelcontextprotocol/server-filesystem", ".",
+				},
+			},
+			{
+				Type:        "nativeTool",
+				Name:        "get_weather",
+				Description: "Get weather information when you need it",
+				Env: map[string]string{
+					"OPENWEATHER_API_KEY": os.Getenv("OPENWEATHER_API_KEY"),
 				},
 			},
 		},

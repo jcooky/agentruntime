@@ -8,6 +8,7 @@ import (
 	"github.com/firebase/genkit/go/ai"
 	"github.com/habiliai/agentruntime/config"
 	"github.com/habiliai/agentruntime/engine"
+	"github.com/habiliai/agentruntime/entity"
 	"github.com/habiliai/agentruntime/internal/genkit"
 	"github.com/habiliai/agentruntime/internal/mylog"
 	"github.com/habiliai/agentruntime/internal/tool"
@@ -18,14 +19,12 @@ type (
 		engine      engine.Engine
 		toolManager tool.Manager
 		logger      *slog.Logger
+		agent       *entity.Agent
 
-		toolConfig      *config.ToolConfig
-		openaiConfig    *config.OpenAIConfig
-		xaiConfig       *config.XAIConfig
-		anthropicConfig *config.AnthropicConfig
-		memoryConfig    *config.MemoryConfig
-		logConfig       *config.LogConfig
-		traceVerbose    bool
+		modelConfig  *config.ModelConfig
+		memoryConfig *config.MemoryConfig
+		logConfig    *config.LogConfig
+		traceVerbose bool
 	}
 )
 
@@ -47,12 +46,9 @@ func (a *AgentRuntime) Close() {
 
 func NewAgentRuntime(ctx context.Context, optionFuncs ...func(*AgentRuntime)) (*AgentRuntime, error) {
 	e := &AgentRuntime{
-		openaiConfig:    &config.OpenAIConfig{},
-		xaiConfig:       &config.XAIConfig{},
-		anthropicConfig: &config.AnthropicConfig{},
-		memoryConfig:    config.NewMemoryConfig(),
-		logConfig:       config.NewLogConfig(),
-		toolConfig:      config.NewToolConfig(),
+		modelConfig:  &config.ModelConfig{},
+		memoryConfig: config.NewMemoryConfig(),
+		logConfig:    config.NewLogConfig(),
 	}
 	for _, f := range optionFuncs {
 		f(e)
@@ -62,15 +58,15 @@ func NewAgentRuntime(ctx context.Context, optionFuncs ...func(*AgentRuntime)) (*
 		e.logger = mylog.NewLogger(e.logConfig.LogLevel, e.logConfig.LogHandler)
 	}
 
-	if e.toolConfig == nil {
-		e.toolConfig = config.NewToolConfig()
+	if e.agent == nil {
+		return nil, errors.New("agent is required")
 	}
 
-	if e.openaiConfig == nil && e.xaiConfig == nil && e.anthropicConfig == nil {
-		return nil, errors.New("at least one of openai, xai, or anthropic must be configured")
+	if e.modelConfig == nil {
+		return nil, errors.New("model config is required")
 	}
 
-	g, err := genkit.NewGenkit(ctx, e.openaiConfig, e.xaiConfig, e.anthropicConfig, e.logger, e.traceVerbose)
+	g, err := genkit.NewGenkit(ctx, e.modelConfig, e.logger, e.traceVerbose)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +81,7 @@ func NewAgentRuntime(ctx context.Context, optionFuncs ...func(*AgentRuntime)) (*
 
 func WithOpenAIAPIKey(apiKey string) func(e *AgentRuntime) {
 	return func(e *AgentRuntime) {
-		e.openaiConfig.APIKey = apiKey
+		e.modelConfig.OpenAIAPIKey = apiKey
 	}
 }
 
@@ -103,19 +99,13 @@ func WithTraceVerbose(traceVerbose bool) func(e *AgentRuntime) {
 
 func WithXAIAPIKey(apiKey string) func(e *AgentRuntime) {
 	return func(e *AgentRuntime) {
-		e.xaiConfig.APIKey = apiKey
+		e.modelConfig.XAIAPIKey = apiKey
 	}
 }
 
-func WithSerpApiKey(apiKey string) func(e *AgentRuntime) {
+func WithAnthropicAPIKey(apiKey string) func(e *AgentRuntime) {
 	return func(e *AgentRuntime) {
-		e.toolConfig.SerpApiKey = apiKey
-	}
-}
-
-func WithOpenWeatherApiKey(apiKey string) func(e *AgentRuntime) {
-	return func(e *AgentRuntime) {
-		e.toolConfig.OpenWeatherApiKey = apiKey
+		e.modelConfig.AnthropicAPIKey = apiKey
 	}
 }
 
@@ -125,13 +115,8 @@ func WithLogConfig(logConfig *config.LogConfig) func(e *AgentRuntime) {
 	}
 }
 
-func AddMCPServer(serverID string, command string, args []string, env map[string]string) func(e *AgentRuntime) {
+func WithAgent(agent entity.Agent) func(e *AgentRuntime) {
 	return func(e *AgentRuntime) {
-		e.toolConfig.MCPServers = append(e.toolConfig.MCPServers, config.MCPServerConfig{
-			ID:      serverID,
-			Command: command,
-			Args:    args,
-			Env:     env,
-		})
+		e.agent = &agent
 	}
 }

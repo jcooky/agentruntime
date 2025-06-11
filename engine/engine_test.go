@@ -2,12 +2,14 @@ package engine_test
 
 import (
 	_ "embed"
+	"log/slog"
 	"os"
 	"testing"
 
 	"github.com/habiliai/agentruntime/engine"
-	"github.com/habiliai/agentruntime/internal/mylog"
+	"github.com/habiliai/agentruntime/internal/genkit"
 	"github.com/habiliai/agentruntime/internal/mytesting"
+	"github.com/habiliai/agentruntime/internal/tool"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -24,9 +26,15 @@ func (s *EngineTestSuite) SetupTest() {
 	os.Setenv("ENV_TEST_FILE", "../.env.test")
 	s.Suite.SetupTest()
 
+	g, err := genkit.NewGenkit(s, s.Config(), slog.Default(), true)
+	s.Require().NoError(err)
+
+	toolManager, err := tool.NewToolManager(s.Context(), s.Config(), slog.Default(), g)
+	s.Require().NoError(err)
+
 	s.engine = engine.NewEngine(
-		mylog.NewLogger(),
-		tool.NewManager(),
+		slog.Default(),
+		toolManager,
 		genkit.NewGenkit(),
 	)
 }

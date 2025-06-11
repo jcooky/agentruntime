@@ -19,9 +19,7 @@ var (
 
 func NewGenkit(
 	ctx context.Context,
-	openaiConfig *config.OpenAIConfig,
-	xaiConfig *config.XAIConfig,
-	anthropicConfig *config.AnthropicConfig,
+	modelConfig *config.ModelConfig,
 	logger *slog.Logger,
 	traceVerbose bool,
 ) (*genkit.Genkit, error) {
@@ -30,25 +28,25 @@ func NewGenkit(
 		defaultModel string
 	)
 	{
-		if openaiConfig != nil && openaiConfig.APIKey != "" {
+		if modelConfig != nil && modelConfig.OpenAIAPIKey != "" {
 			plugins = append(plugins, &openai.OpenAI{
-				APIKey: openaiConfig.APIKey,
+				APIKey: modelConfig.OpenAIAPIKey,
 			})
 			defaultModel = "openai/gpt-4o"
 		}
 	}
 	{
-		if xaiConfig != nil && xaiConfig.APIKey != "" {
+		if modelConfig != nil && modelConfig.XAIAPIKey != "" {
 			plugins = append(plugins, &xai.Plugin{
-				APIKey: xaiConfig.APIKey,
+				APIKey: modelConfig.XAIAPIKey,
 			})
 			defaultModel = "xai/grok-3"
 		}
 	}
 	{
-		if anthropicConfig != nil && anthropicConfig.APIKey != "" {
+		if modelConfig != nil && modelConfig.AnthropicAPIKey != "" {
 			plugins = append(plugins, &anthropic.Plugin{
-				APIKey: anthropicConfig.APIKey,
+				APIKey: modelConfig.AnthropicAPIKey,
 			})
 			defaultModel = "anthropic/claude-4-sonnet"
 		}

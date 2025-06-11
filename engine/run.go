@@ -5,7 +5,6 @@ import (
 	_ "embed"
 	"encoding/json"
 	"reflect"
-	"strings"
 
 	"github.com/firebase/genkit/go/ai"
 	"github.com/habiliai/agentruntime/entity"
@@ -100,22 +99,36 @@ func (s *engine) Run(
 	// build available actions
 	tools := make([]ai.ToolRef, 0, len(agent.Skills))
 	for _, skill := range agent.Skills {
-		instValues.AvailableActions = append(instValues.AvailableActions, AvailableAction{
-			Action:      skill.Name,
-			Description: skill.Description,
-		})
-
-		toolNames := strings.SplitN(skill.Name, "/", 2)
-		var v ai.Tool
-		if len(toolNames) == 1 {
-			v = s.toolManager.GetTool(skill.Name)
-		} else {
-			v = s.toolManager.GetMCPTool(toolNames[0], toolNames[1])
+		switch skill.Type {
+		case "llm", "nativeTool":
+			tool := s.toolManager.GetTool(skill.Name)
+			if tool == nil {
+				return nil, errors.Wrapf(errors.ErrInvalidConfig, "invalid tool name %s", skill.Name)
+			}
+			instValues.AvailableActions = append(instValues.AvailableActions, AvailableAction{
+				Action:      tool.Name(),
+				Description: tool.Definition().Description,
+			})
+			tools = append(tools, tool)
+		case "mcp":
+			skillToolNames := skill.Tools
+			if len(skillToolNames) == 0 {
+				for _, tool := range s.toolManager.GetMCPTools(ctx, skill.Server) {
+					skillToolNames = append(skillToolNames, tool.Name())
+				}
+			}
+			for _, skillToolName := range skillToolNames {
+				tool := s.toolManager.GetMCPTool(skill.Server, skillToolName)
+				if tool == nil {
+					return nil, errors.Wrapf(errors.ErrInvalidConfig, "invalid tool name %s", skill.Name)
+				}
+				instValues.AvailableActions = append(instValues.AvailableActions, AvailableAction{
+					Action:      tool.Name(),
+					Description: tool.Definition().Description,
+				})
+				tools = append(tools, tool)
+			}
 		}
-		if v == nil {
-			return nil, errors.Wrapf(errors.ErrInvalidConfig, "invalid tool name %s", skill.Name)
-		}
-		tools = append(tools, v)
 	}
 
 	ctx = tool.WithEmptyCallDataStore(ctx)
