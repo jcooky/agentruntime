@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Send, Bot, Home } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme-toggle';
-import { useAddMessage, useGetMessages } from '@/hooks/agentnetwork';
+import { useAddMessage, useGetMessages } from '@/hooks/agentruntime';
 import { useParams, useRouter } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -28,7 +28,7 @@ export default function ThreadPage() {
 
       addMessage(
         {
-          thread_id: parseInt(id),
+          threadId: parseInt(id),
           message: input.trim(),
         },
         {
@@ -46,8 +46,8 @@ export default function ThreadPage() {
 
   return (
     <div className="flex h-screen p-4">
-      <Card className="w-full max-w-4xl mx-auto flex flex-col">
-        <CardHeader className="flex flex-row items-center justify-between">
+      <Card className="w-full max-w-4xl mx-auto flex flex-col h-full">
+        <CardHeader className="flex flex-row items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-4">
             <Button
               variant="ghost"
@@ -62,7 +62,7 @@ export default function ThreadPage() {
           <ThemeToggle />
         </CardHeader>
 
-        <CardContent className="flex-1 flex flex-col">
+        <CardContent className="flex-1 flex flex-col min-h-0">
           <ScrollArea className="flex-1 pr-4">
             <div className="space-y-4">
               {isLoadingMessages ? (
@@ -74,19 +74,17 @@ export default function ThreadPage() {
                   <div
                     key={message.id}
                     className={`flex ${
-                      message.sender === 'USER'
-                        ? 'justify-end'
-                        : 'justify-start'
+                      message.user === 'USER' ? 'justify-end' : 'justify-start'
                     }`}
                   >
-                    {message.sender !== 'USER' ? (
+                    {message.user !== 'USER' ? (
                       <div className="flex gap-3">
                         <div className="flex flex-col items-center">
                           <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center">
                             <Bot className="w-5 h-5" />
                           </div>
                           <span className="text-xs text-muted-foreground mt-1">
-                            {message.sender}
+                            {message.user}
                           </span>
                         </div>
                         <div className="max-w-[80%] rounded-lg px-4 py-2 bg-muted">
@@ -103,7 +101,7 @@ export default function ThreadPage() {
                     ) : (
                       <div
                         className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                          message.sender === 'USER'
+                          message.user === 'USER'
                             ? 'bg-primary text-primary-foreground'
                             : 'bg-muted'
                         }`}
@@ -140,7 +138,10 @@ export default function ThreadPage() {
             </div>
           </ScrollArea>
 
-          <form onSubmit={handleSubmit} className="flex gap-2 mt-4">
+          <form
+            onSubmit={handleSubmit}
+            className="flex gap-2 mt-4 flex-shrink-0"
+          >
             <Input
               value={input}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) =>

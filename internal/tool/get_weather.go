@@ -8,7 +8,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/habiliai/agentruntime/errors"
+	"github.com/pkg/errors"
 )
 
 type (
@@ -122,18 +122,18 @@ func getWeatherSummary(apiKey string, date string, latitude, longitude float64, 
 	return &weatherResp, nil
 }
 
-func (m *manager) GetWeather(ctx context.Context, req *GetWeatherRequest) (*GetWeatherResponse, error) {
+func (m *manager) GetWeather(ctx context.Context, req *GetWeatherRequest, apiKey string) (*GetWeatherResponse, error) {
 	if strings.Contains(req.Location, "HKCEC") {
 		req.Location = "HK"
 	}
 	m.logger.Debug("get_weather", "location", req.Location, "date", req.Date)
 
-	latitude, longitude, err := getCoordinates(m.config.OpenWeatherApiKey, req.Location)
+	latitude, longitude, err := getCoordinates(apiKey, req.Location)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to convert coordinates")
 	}
 
-	weatherSummary, err := getWeatherSummary(m.config.OpenWeatherApiKey, req.Date, latitude, longitude, "metric", "en")
+	weatherSummary, err := getWeatherSummary(apiKey, req.Date, latitude, longitude, "metric", "en")
 	if err != nil {
 		return nil, errors.Wrapf(err, "error occurred while fetching weather information")
 	}
@@ -141,17 +141,20 @@ func (m *manager) GetWeather(ctx context.Context, req *GetWeatherRequest) (*GetW
 	return weatherSummary, nil
 }
 
-func (m *manager) registerGetWeatherTool() {
+func (m *manager) registerGetWeatherTool(description string, env map[string]string) {
+	if description == "" {
+		description = "Get weather information when you need it"
+	}
 	registerLocalTool(
 		m,
 		"get_weather",
-		"Get weather information when you need it",
+		description,
 		func(ctx context.Context, req struct {
 			*GetWeatherRequest
 		}) (res struct {
 			*GetWeatherResponse
 		}, err error) {
-			res.GetWeatherResponse, err = m.GetWeather(ctx, req.GetWeatherRequest)
+			res.GetWeatherResponse, err = m.GetWeather(ctx, req.GetWeatherRequest, env["OPENWEATHER_API_KEY"])
 			return
 		},
 	)

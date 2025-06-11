@@ -1,52 +1,70 @@
 {{- if .Thread }}
+<thread>
 # About this thread
 {{ .Thread.Instruction }}
-{{- if .Thread.Participants }}
 
-## Participants
+{{ if .Thread.Participants -}}
+<participants>
 {{- range .Thread.Participants }}
-- {{ .Name }}:
-  - Name: {{ .Name }}
-  - Role: {{ .Role }}
+  <participant>
+  - **Name**: {{ .Name }}
+  - **Description**: {{ .Description }}
+  - **Role**: {{ .Role }}
+  </participant>
+  {{- end }}
+</participants>
 {{- end }}
 {{- end }}
-{{- end }}
+</thread>
 
-{{- if .Knowledge }}
-# Knowledge
-{{- range .Knowledge }}
+
+{{- if .Agent.Knowledge }}
+<knowledge>
+{{- range .Agent.Knowledge }}
 - {{ . }}
 {{- end }}
+</knowledge>
 {{- end }}
 
-# Task: Generate dialog and actions for the character {{ .Agent.Name }}.
-About {{ .Agent.Name }}:
-{{- range .Agent.Bio }}
-- {{ . }}
-{{- end }}
-{{- range .Agent.Lore }}
-- {{ . }}
-{{- end }}
+<agent>
+# About {{ .Agent.Name }}:
 
+## Description:
+{{ .Agent.Description }}
+
+## Role:
+{{ .Agent.Role }}
+
+## Must Follow Instructions:
+{{ .Agent.Prompt }}
+</agent>
+
+<message_examples>
 # Example Conversations for {{ .Agent.Name }}
 ```json
 {{ .Agent.MessageExamples | toJson }}
 ```
+</message_examples>
 
+<history>
 {{- if .RecentConversations }}
 # Recent Conversations
 ```json
 {{ .RecentConversations | toJson }}
 ```
 {{- end }}
+</history>
 
-# Available Actions
+<available_actions>
+- You can use the following actions:
 ```json
 {{ .AvailableActions | toJson }}
 ```
+</available_actions>
 
-# Instructions
-- Write the next message for {{ .Agent.Name }}.
+# IMPORTANT BEHAVIOR RULES:
+- Write the next message for last conversation.
 {{- if .RecentConversations }}
-- See recent conversations. And generate a response.
+- See "Recent Conversations" and generate a response.
 {{- end }}
+- Can mention, which is use by `@{Name}` another participant by their name when you need to talk to them. It's important to mention the participant's name when you want to talk to them.

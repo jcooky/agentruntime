@@ -9,18 +9,18 @@ import (
 
 	"github.com/firebase/genkit/go/ai"
 	"github.com/firebase/genkit/go/genkit"
-	"github.com/habiliai/agentruntime/errors"
 	"github.com/habiliai/agentruntime/internal/genkit/plugins/mcp"
+	"github.com/pkg/errors"
 )
 
 type RegisterMCPToolRequest struct {
-	ServerName string
-	Command    string
-	Args       []string
-	Env        map[string]string
+	ServerID string
+	Command  string
+	Args     []string
+	Env      map[string]string
 }
 
-func (m *manager) RegisterMCPTool(ctx context.Context, req RegisterMCPToolRequest) (err error) {
+func (m *manager) registerMCPTool(ctx context.Context, req RegisterMCPToolRequest) (err error) {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
@@ -29,7 +29,7 @@ func (m *manager) RegisterMCPTool(ctx context.Context, req RegisterMCPToolReques
 		envs = append(envs, fmt.Sprintf("%s=%s", key, val))
 	}
 
-	mcpClient, ok := m.mcpClients[req.ServerName]
+	mcpClient, ok := m.mcpClients[req.ServerID]
 	if !ok {
 		c, err := mcp.NewStdioMCPClient(req.Command, envs, req.Args...)
 		if err != nil {
@@ -44,10 +44,10 @@ func (m *manager) RegisterMCPTool(ctx context.Context, req RegisterMCPToolReques
 					if err == io.EOF || strings.Contains(err.Error(), "already closed") {
 						return
 					}
-					m.logger.Error("failed to copy stderr", "err", err, "serverName", req.ServerName)
+					m.logger.Error("failed to copy stderr", "err", err, "serverName", req.ServerID)
 					return
 				}
-				m.logger.Warn("[MCP] "+strings.TrimSpace(line), "serverName", req.ServerName)
+				m.logger.Warn("[MCP] "+strings.TrimSpace(line), "serverName", req.ServerID)
 			}
 		}(c.Stderr())
 
@@ -57,7 +57,7 @@ func (m *manager) RegisterMCPTool(ctx context.Context, req RegisterMCPToolReques
 			return errors.Wrapf(err, "failed to initialize MCP client")
 		}
 
-		m.mcpClients[req.ServerName] = c
+		m.mcpClients[req.ServerID] = c
 		mcpClient = c
 	}
 

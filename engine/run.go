@@ -5,18 +5,18 @@ import (
 	_ "embed"
 	"encoding/json"
 	"reflect"
-	"strings"
+	"text/template"
 
 	"github.com/firebase/genkit/go/ai"
 	"github.com/habiliai/agentruntime/entity"
-	"github.com/habiliai/agentruntime/errors"
-	"github.com/habiliai/agentruntime/internal/sliceutils"
 	"github.com/habiliai/agentruntime/internal/tool"
+	"github.com/pkg/errors"
 )
 
 var (
 	//go:embed data/instructions/chat.md.tmpl
-	chatInst string
+	chatInst     string
+	chatInstTmpl *template.Template = template.Must(template.New("").Funcs(funcMap()).Parse(chatInst))
 )
 
 type (
@@ -37,28 +37,28 @@ type (
 	}
 
 	Participant struct {
-		Name string `json:"name"`
-		Role string `json:"role"`
+		Name        string `json:"name"`
+		Description string `json:"description"`
+		Role        string `json:"role"`
 	}
 
-	ThreadValues struct {
+	Thread struct {
 		Instruction  string
 		Participants []Participant `json:"participants,omitempty"`
 	}
 
-	ChatInstValues struct {
+	ChatPromptValues struct {
 		Agent               entity.Agent
 		RecentConversations []Conversation
-		Knowledge           []string
 		AvailableActions    []AvailableAction
 		MessageExamples     [][]entity.MessageExample
-		Thread              ThreadValues
+		Thread              Thread
+		Tools               []ai.ToolRef
 	}
 
 	RunRequest struct {
 		ThreadInstruction string         `json:"thread_instruction,omitempty"`
 		History           []Conversation `json:"history"`
-		Agent             entity.Agent   `json:"agent"`
 		Participant       []Participant  `json:"participants,omitempty"`
 	}
 
@@ -73,8 +73,9 @@ type (
 	}
 )
 
-func (s *engine) Run(
+func (s *Engine) Run(
 	ctx context.Context,
+	agent entity.Agent,
 	req RunRequest,
 	output any,
 ) (*RunResponse, error) {
@@ -83,59 +84,29 @@ func (s *engine) Run(
 	} else if reflect.TypeOf(output).Kind() != reflect.Ptr {
 		return nil, errors.Errorf("output is not a pointer")
 	}
-	agent := req.Agent
 
-	// construct inst values
-	instValues := ChatInstValues{
-		Agent:               agent,
-		MessageExamples:     sliceutils.RandomSampleN(agent.MessageExamples, 100),
-		RecentConversations: sliceutils.Cut(req.History, -200, len(req.History)),
-		AvailableActions:    make([]AvailableAction, 0, len(agent.Tools)),
-		Thread: ThreadValues{
-			Instruction:  req.ThreadInstruction,
-			Participants: req.Participant,
-		},
-	}
-
-	// build available actions
-	tools := make([]ai.ToolRef, 0, len(agent.Tools))
-	for _, tool := range agent.Tools {
-		instValues.AvailableActions = append(instValues.AvailableActions, AvailableAction{
-			Action:      tool.Name,
-			Description: tool.Description,
-		})
-
-		toolNames := strings.SplitN(tool.Name, "/", 2)
-		var v ai.Tool
-		if len(toolNames) == 1 {
-			v = s.toolManager.GetTool(tool.Name)
-		} else {
-			v = s.toolManager.GetMCPTool(toolNames[0], toolNames[1])
-		}
-		if v == nil {
-			return nil, errors.Wrapf(errors.ErrInvalidConfig, "invalid tool name %s", tool.Name)
-		}
-		tools = append(tools, v)
+	promptValues, err := s.BuildPromptValues(ctx, agent, req.History, Thread{
+		Instruction:  req.ThreadInstruction,
+		Participants: req.Participant,
+	})
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to build prompt values")
 	}
 
 	ctx = tool.WithEmptyCallDataStore(ctx)
-	var (
-		err error
-	)
 	for i := 0; i < 3; i++ {
 		_, err = s.Generate(
 			ctx,
 			&GenerateRequest{
-				Vars:                instValues,
-				PromptTmpl:          chatInst,
 				Model:               agent.ModelName,
-				SystemPromptTmpl:    agent.System,
 				EvaluatorPromptTmpl: agent.Evaluator.Prompt,
 				NumRetries:          agent.Evaluator.NumRetries,
 			},
 			output,
+			ai.WithSystem(agent.System),
+			ai.WithPromptFn(GetPromptFn(promptValues)),
 			ai.WithConfig(agent.ModelConfig),
-			ai.WithTools(tools...),
+			ai.WithTools(promptValues.Tools...),
 		)
 		if err != nil {
 			s.logger.Warn("failed to generate", "err", err)

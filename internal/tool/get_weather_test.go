@@ -1,40 +1,33 @@
 package tool_test
 
 import (
-	"context"
 	"fmt"
 	"os"
-	"testing"
 
 	"github.com/habiliai/agentruntime/internal/tool"
-	"github.com/jcooky/go-din"
 	"github.com/mitchellh/mapstructure"
-	"github.com/stretchr/testify/require"
 )
 
-func TestGetWeather(t *testing.T) {
+func (s *TestSuite) TestGetWeather() {
 	apiKey := os.Getenv("OPENWEATHER_API_KEY")
 	if apiKey == "" {
-		t.Skip("OPENWEATHER_API_KEY 환경 변수가 설정되지 않았습니다")
+		s.T().Skip("OPENWEATHER_API_KEY is not set")
 	}
 
-	ctx := context.TODO()
-	container := din.NewContainer(ctx, din.EnvTest)
-	defer container.Close()
+	getWeatherTool := s.toolManager.GetTool("get_weather")
+	s.Require().NotNil(getWeatherTool)
 
-	s := din.MustGetT[tool.Manager](container)
-	getWeatherTool := s.GetTool("get_weather")
-	res, err := getWeatherTool.RunRaw(ctx, map[string]any{
+	res, err := getWeatherTool.RunRaw(s, map[string]any{
 		"location": "Seoul",
 		"date":     "2023-10-01",
 		"unit":     "c",
 	})
-	require.NoError(t, err)
+	s.Require().NoError(err)
 
 	var weatherSummary tool.GetWeatherResponse
-	require.NoError(t, mapstructure.Decode(res, &weatherSummary))
+	s.Require().NoError(mapstructure.Decode(res, &weatherSummary))
 
-	t.Logf("contents: %v", weatherSummary)
+	s.T().Logf("contents: %v", weatherSummary)
 
 	// 3. 출력
 	fmt.Printf("🌡️ 최고 기온: %.2f°C\n", weatherSummary.Temperature.Max)

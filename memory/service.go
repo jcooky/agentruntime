@@ -8,9 +8,9 @@ import (
 	"path/filepath"
 
 	"github.com/habiliai/agentruntime/config"
-	"github.com/habiliai/agentruntime/errors"
 	"github.com/habiliai/agentruntime/internal/mylog"
 	"github.com/jcooky/go-din"
+	"github.com/pkg/errors"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )

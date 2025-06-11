@@ -8,6 +8,7 @@
   "author": "HabiliAI Team",
   "license": "MIT",
   "devDependencies": {
+    "dotenv-cli": "^8.0.0",
     "npm-run-all": "^4.1.5",
     "prettier": "^3.5.3",
     "typescript": "^5.8.2"
