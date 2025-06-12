@@ -3,7 +3,7 @@ name: Go Lint Pipeline
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   lint:
@@ -12,16 +12,15 @@ jobs:
     steps:
       # Checkout the repository code using the latest version of actions/checkout
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       # Setup the Go environment with Go version 1.23 using the latest version of actions/setup-go
       - name: Setup Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: '1.24.3'
+          cache-dependency-path: go.sum
 
       # Run golangci-lint to check for lint issues
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
-        with:
-          version: v1.64.7
+      - name: lint
+        run: make lint

@@ -2,37 +2,47 @@ package engine_test
 
 import (
 	_ "embed"
-	"github.com/jcooky/go-din"
+	"log/slog"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/habiliai/agentruntime/config"
 	"github.com/habiliai/agentruntime/engine"
+	"github.com/habiliai/agentruntime/internal/genkit"
 	"github.com/habiliai/agentruntime/internal/mytesting"
+	"github.com/habiliai/agentruntime/memory"
 	"github.com/stretchr/testify/suite"
 )
-
-//go:embed testdata/test1.agent.yaml
-var test1AgentYaml string
 
 type EngineTestSuite struct {
 	mytesting.Suite
 
-	engine      engine.Engine
-	agentConfig config.AgentConfig
+	engine *engine.Engine
 }
 
 func (s *EngineTestSuite) SetupTest() {
-	os.Setenv("ENV_TEST_FILE", "../.env.test")
 	s.Suite.SetupTest()
 
-	var err error
-
-	s.agentConfig, err = config.LoadAgentFromFile(strings.NewReader(test1AgentYaml))
+	g, err := genkit.NewGenkit(s, &config.ModelConfig{
+		OpenAIAPIKey:    os.Getenv("OPENAI_API_KEY"),
+		XAIAPIKey:       os.Getenv("XAI_API_KEY"),
+		AnthropicAPIKey: os.Getenv("ANTHROPIC_API_KEY"),
+	}, slog.Default(), true)
 	s.Require().NoError(err)
 
-	s.engine = din.MustGetT[engine.Engine](s.Container)
+	memoryService, err := memory.NewService(s, &config.MemoryConfig{
+		SqliteEnabled: true,
+		SqlitePath:    ":memory:",
+		VectorEnabled: true,
+	}, slog.Default(), g)
+	s.Require().NoError(err)
+
+	s.engine = engine.NewEngine(
+		slog.Default(),
+		nil,
+		g,
+		memoryService,
+	)
 }
 
 func (s *EngineTestSuite) TearDownTest() {

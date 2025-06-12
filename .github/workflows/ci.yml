@@ -3,7 +3,7 @@ name: Go Build & Test Pipeline
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   build:
@@ -12,43 +12,24 @@ jobs:
     steps:
       # Checkout the repository code using the latest version of actions/checkout
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       # Setup the Go environment with Go version 1.23 using the latest version of actions/setup-go
       - name: Setup Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
-
-      # Cache Go build files and module files to speed up builds using the latest version of actions/cache
-      - name: Cache Go modules
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
+          go-version: '1.24.3'
+          cache-dependency-path: go.sum
 
       # Download project dependencies
       - name: Download dependencies
         run: go mod download
 
-      # Start Docker services
-      - name: Start Docker services
-        run: docker compose up -d
-
       # Create .env.test file from secret
       - name: Create .env.test file
         run: echo "${{ secrets.ENV_TEST_FILE }}" > .env.test
-        
+
       # Run tests using Makefile
       - name: Run tests using Makefile
         run: make test
         id: tests
-        
-      # Stop Docker services (always runs)
-      - name: Stop Docker services
-        if: always()
-        run: docker compose down

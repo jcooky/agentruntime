@@ -2,13 +2,12 @@ package engine
 
 import (
 	"context"
-	"html/template"
 	"reflect"
 	"slices"
 	"strings"
 
 	"github.com/firebase/genkit/go/genkit"
-	"github.com/habiliai/agentruntime/errors"
+	"github.com/pkg/errors"
 
 	"github.com/firebase/genkit/go/ai"
 )
@@ -20,9 +19,6 @@ type (
 		Suggestion []string `json:"suggestion" jsonschema_description:"Suggestion to improve the response. It should be a short sentence."`
 	}
 	GenerateRequest struct {
-		Vars                any
-		PromptTmpl          string
-		SystemPromptTmpl    string
 		Model               string
 		EvaluatorPromptTmpl string
 		NumRetries          int
@@ -43,7 +39,7 @@ func withoutPurposeOutput(history []*ai.Message) []*ai.Message {
 	return newHistory
 }
 
-func (e *engine) Generate(
+func (e *Engine) Generate(
 	ctx context.Context,
 	req *GenerateRequest,
 	out any,
@@ -53,36 +49,6 @@ func (e *engine) Generate(
 		return nil, errors.New("output is nil")
 	}
 	isObjectOutput := reflect.TypeOf(out).Elem().Kind() != reflect.String
-
-	if req.PromptTmpl != "" {
-		opts = append(opts, ai.WithPromptFn(func(ctx context.Context, _ any) (string, error) {
-			var prompt strings.Builder
-			promptTmpl, err := template.New("").Funcs(funcMap()).Parse(req.PromptTmpl)
-			if err != nil {
-				return "", err
-			}
-
-			if err := promptTmpl.Execute(&prompt, req.Vars); err != nil {
-				return "", err
-			}
-			return prompt.String(), nil
-		}))
-	}
-
-	if req.SystemPromptTmpl != "" {
-		opts = append(opts, ai.WithSystemFn(func(ctx context.Context, _ any) (string, error) {
-			var systemPrompt strings.Builder
-			systemPromptTmpl, err := template.New("").Funcs(funcMap()).Parse(req.SystemPromptTmpl)
-			if err != nil {
-				return "", err
-			}
-			if err := systemPromptTmpl.Execute(&systemPrompt, req.Vars); err != nil {
-				return "", err
-			}
-
-			return systemPrompt.String(), nil
-		}))
-	}
 
 	if isObjectOutput {
 		opts = append(opts, ai.WithOutputType(out))

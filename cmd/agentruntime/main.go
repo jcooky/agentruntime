@@ -1,15 +1,10 @@
 package main
 
 import (
-	"context"
-	"os"
+	"github.com/habiliai/agentruntime/cmd/agentruntime/cmd"
+	_ "github.com/joho/godotenv/autoload"
 )
 
 func main() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	if err := newCmd().ExecuteContext(ctx); err != nil {
-		os.Exit(1)
-	}
+	cmd.Execute()
 }

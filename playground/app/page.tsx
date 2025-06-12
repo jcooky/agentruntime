@@ -9,7 +9,6 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
@@ -27,24 +26,17 @@ import { useRouter } from 'next/navigation';
 import { formatDistance } from 'date-fns';
 import {
   useCreateThread,
-  useGetAllAgentInfo,
+  useGetAgents,
   useGetThreads,
-} from '@/hooks/agentnetwork';
+} from '@/hooks/agentruntime';
 import { useToast } from '@/hooks/use-toast';
 
 export default function Home() {
   const router = useRouter();
-  const {
-    data: { pages: pagesOfThreads },
-    fetchNextPage,
-    hasNextPage,
-  } = useGetThreads();
-  const threads = useMemo(() => {
-    return pagesOfThreads.flatMap((page) => page.threads);
-  }, [pagesOfThreads]);
+  const { data: threads } = useGetThreads();
   const { mutate: createThread, isPending: isCreatingThread } =
     useCreateThread();
-  const { data: allAgentInfo } = useGetAllAgentInfo();
+  const { data: agents } = useGetAgents();
   const { toast } = useToast();
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -52,20 +44,6 @@ export default function Home() {
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>(
     [],
   );
-
-  // Create a list of all available participants (default_user + agents)
-  const availableParticipants = useMemo(() => {
-    const participants = [];
-    if (allAgentInfo) {
-      participants.push(
-        ...allAgentInfo.map((agent) => ({
-          name: agent.name,
-          role: agent.role || 'Agent',
-        })),
-      );
-    }
-    return participants;
-  }, [allAgentInfo]);
 
   const handleParticipantToggle = (participantName: string) => {
     setSelectedParticipants((prev) => {
@@ -90,7 +68,7 @@ export default function Home() {
             setSelectedParticipants([]);
             setIsCreateDialogOpen(false);
             // Navigate to the newly created thread
-            router.push(`/threads/${data.thread_id}`);
+            router.push(`/threads/${data.id}`);
           },
           onError: (error) => {
             console.error('Failed to create thread:', error);
@@ -108,6 +86,8 @@ export default function Home() {
   const formatRelativeTime = (date: Date) => {
     return formatDistance(date, new Date(), { addSuffix: true });
   };
+
+  console.log('threads:', threads);
 
   return (
     <div className="container mx-auto max-w-4xl py-8 px-4">
@@ -154,31 +134,25 @@ export default function Home() {
                 <div className="grid gap-2">
                   <Label>Participants</Label>
                   <div className="border rounded-md p-3 max-h-40 overflow-y-auto">
-                    {availableParticipants.map((participant) => (
+                    {agents.map((agent) => (
                       <div
-                        key={participant.name}
+                        key={agent.name}
                         className="flex items-center space-x-2 py-1"
                       >
                         <input
                           type="checkbox"
-                          id={`participant-${participant.name}`}
-                          checked={selectedParticipants.includes(
-                            participant.name,
-                          )}
-                          onChange={() =>
-                            handleParticipantToggle(participant.name)
-                          }
+                          id={`participant-${agent.name}`}
+                          checked={selectedParticipants.includes(agent.name)}
+                          onChange={() => handleParticipantToggle(agent.name)}
                           className="rounded border-gray-300 text-primary focus:ring-primary"
                         />
                         <label
-                          htmlFor={`participant-${participant.name}`}
+                          htmlFor={`participant-${agent.name}`}
                           className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
                         >
-                          <span className="font-medium">
-                            {participant.name}
-                          </span>
+                          <span className="font-medium">{agent.name}</span>
                           <span className="text-muted-foreground ml-2">
-                            ({participant.role})
+                            ({agent.role})
                           </span>
                         </label>
                       </div>

@@ -7,7 +7,7 @@ import (
 	"github.com/firebase/genkit/go/genkit"
 )
 
-func (e *engine) Embed(
+func (e *Engine) Embed(
 	ctx context.Context,
 	texts ...string,
 ) ([][]float32, error) {

@@ -13,11 +13,7 @@ import (
 	"github.com/firebase/genkit/go/genkit"
 	"github.com/habiliai/agentruntime/config"
 	"github.com/habiliai/agentruntime/entity"
-	"github.com/habiliai/agentruntime/errors"
-	"github.com/habiliai/agentruntime/internal/db"
-	mygenkit "github.com/habiliai/agentruntime/internal/genkit"
-	"github.com/habiliai/agentruntime/internal/mylog"
-	"github.com/jcooky/go-din"
+	"github.com/pkg/errors"
 	"gorm.io/datatypes"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -25,27 +21,26 @@ import (
 
 type (
 	Service interface {
-		SetContext(ctx context.Context, context *AgentContext) error
-		GetContext(ctx context.Context, name string) (*AgentContext, error)
-
 		// Knowledge management methods
 		IndexKnowledge(ctx context.Context, agentName string, knowledge []map[string]any) error
 		RetrieveRelevantKnowledge(ctx context.Context, agentName string, query string, limit int) ([]string, error)
 		DeleteAgentKnowledge(ctx context.Context, agentName string) error
+		Close() error
 	}
 	SqliteService struct {
 		db           *gorm.DB
 		embedder     Embedder
 		vecExtLoaded bool
 	}
-	AgentContext struct {
-		Name       string `gorm:"primaryKey"`
-		LastCursor uint   `gorm:"not null"`
-	}
 
 	// Embedder interface for generating embeddings
 	Embedder interface {
 		Embed(ctx context.Context, texts ...string) ([][]float32, error)
+	}
+
+	KnowledgeChunk struct {
+		Content  string
+		Metadata map[string]any
 	}
 )
 
@@ -53,71 +48,66 @@ var (
 	_ Service = (*SqliteService)(nil)
 )
 
-func init() {
-	din.RegisterT(func(c *din.Container) (Service, error) {
-		logger := din.MustGet[*slog.Logger](c, mylog.Key)
-		conf := din.MustGetT[*config.MemoryConfig](c)
-
-		if !conf.SqliteEnabled {
-			return nil, errors.New("sqlite memory service is not enabled. Please check your configuration.")
+func NewService(ctx context.Context, conf *config.MemoryConfig, logger *slog.Logger, genkit *genkit.Genkit) (Service, error) {
+	if !conf.SqliteEnabled {
+		return nil, errors.New("sqlite memory service is not enabled. Please check your configuration.")
+	}
+	if conf.SqlitePath == "" {
+		return nil, errors.New("sqlite memory service path is not configured. Please check your configuration.")
+	} else if _, err := os.Stat(conf.SqlitePath); os.IsNotExist(err) {
+		if err := os.MkdirAll(filepath.Dir(conf.SqlitePath), 0755); err != nil {
+			return nil, errors.Wrapf(err, "failed to create sqlite directory at %s", conf.SqlitePath)
+		} else {
+			logger.Info("created sqlite directory", slog.String("path", conf.SqlitePath))
 		}
-		if conf.SqlitePath == "" {
-			return nil, errors.New("sqlite memory service path is not configured. Please check your configuration.")
-		} else if _, err := os.Stat(conf.SqlitePath); os.IsNotExist(err) {
-			if err := os.MkdirAll(filepath.Dir(conf.SqlitePath), 0755); err != nil {
-				return nil, errors.Wrapf(err, "failed to create sqlite directory at %s", conf.SqlitePath)
-			} else {
-				logger.Info("created sqlite directory", slog.String("path", conf.SqlitePath))
-			}
+	}
+
+	// Initialize sqlite-vec extension using Go bindings (only if vector functionality is enabled)
+	if conf.VectorEnabled {
+		sqlite_vec.Auto()
+	}
+
+	db, err := gorm.Open(
+		sqlite.Open(
+			fmt.Sprintf("file:%s?cache=shared&mode=rwc&_journal_mode=WAL&_foreign_keys=on", conf.SqlitePath),
+		),
+		&gorm.Config{},
+	)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to open sqlite database at %s", conf.SqlitePath)
+	}
+
+	// Auto-migrate GORM entities
+	if err := db.AutoMigrate(&entity.Knowledge{}); err != nil {
+		return nil, errors.Wrapf(err, "failed to auto-migrate sqlite database at %s", conf.SqlitePath)
+	}
+
+	// Create embedder for RAG functionality
+	embedder := NewGenkitEmbedder(genkit)
+
+	service := &SqliteService{
+		db:           db,
+		embedder:     embedder,
+		vecExtLoaded: conf.VectorEnabled,
+	}
+
+	// Verify sqlite-vec is working and create vector table (only if vector functionality is enabled)
+	if conf.VectorEnabled {
+		if err := service.verifyAndCreateVectorTable(); err != nil {
+			return nil, errors.Wrapf(err, "failed to initialize sqlite-vec")
 		}
+	}
 
-		// Initialize sqlite-vec extension using Go bindings (only if vector functionality is enabled)
-		if conf.VectorEnabled {
-			sqlite_vec.Auto()
+	return service, nil
+}
+
+func (s *SqliteService) Close() error {
+	if sqlDB, err := s.db.DB(); err == nil {
+		if err := sqlDB.Close(); err != nil {
+			return errors.Wrapf(err, "failed to close database connection")
 		}
-
-		db, err := gorm.Open(
-			sqlite.Open(
-				fmt.Sprintf("file:%s?cache=shared&mode=rwc&_journal_mode=WAL&_foreign_keys=on", conf.SqlitePath),
-			),
-			&gorm.Config{},
-		)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to open sqlite database at %s", conf.SqlitePath)
-		}
-
-		// Auto-migrate GORM entities
-		if err := db.AutoMigrate(&AgentContext{}, &entity.Knowledge{}); err != nil {
-			return nil, errors.Wrapf(err, "failed to auto-migrate sqlite database at %s", conf.SqlitePath)
-		}
-
-		c.RegisterOnShutdown(func(_ context.Context) {
-			if sqlDB, err := db.DB(); err == nil {
-				if err := sqlDB.Close(); err != nil {
-					logger.Warn("failed to close database connection", slog.Any("error", err))
-				}
-			}
-		})
-
-		// Create embedder for RAG functionality
-		genkit := din.MustGet[*genkit.Genkit](c, mygenkit.Key)
-		embedder := NewGenkitEmbedder(genkit)
-
-		service := &SqliteService{
-			db:           db,
-			embedder:     embedder,
-			vecExtLoaded: conf.VectorEnabled,
-		}
-
-		// Verify sqlite-vec is working and create vector table (only if vector functionality is enabled)
-		if conf.VectorEnabled {
-			if err := service.verifyAndCreateVectorTable(); err != nil {
-				return nil, errors.Wrapf(err, "failed to initialize sqlite-vec")
-			}
-		}
-
-		return service, nil
-	})
+	}
+	return nil
 }
 
 // initializeVectorFunctionality initializes sqlite-vec functionality on-demand
@@ -212,7 +202,7 @@ func (s *SqliteService) IndexKnowledge(ctx context.Context, agentName string, kn
 	}
 
 	// Save chunks with embeddings using GORM
-	_, db := db.OpenSession(ctx, s.db)
+	db := s.db.WithContext(ctx)
 
 	// Begin transaction for both GORM and sqlite-vec operations
 	tx := db.Begin()
@@ -225,10 +215,14 @@ func (s *SqliteService) IndexKnowledge(ctx context.Context, agentName string, kn
 	var knowledgeIDs []uint
 	for i, chunk := range chunks {
 		var embeddingJSON datatypes.JSONType[[]float32]
-		embeddingJSON.Scan(embeddings[i])
+		if err := embeddingJSON.Scan(embeddings[i]); err != nil {
+			return errors.Wrapf(err, "failed to scan embedding")
+		}
 
 		var metadataJSON datatypes.JSONType[map[string]any]
-		metadataJSON.Scan(chunk.Metadata)
+		if err := metadataJSON.Scan(chunk.Metadata); err != nil {
+			return errors.Wrapf(err, "failed to scan metadata")
+		}
 
 		knowledgeEntity := &entity.Knowledge{
 			AgentName: agentName,
@@ -354,7 +348,7 @@ func (s *SqliteService) retrieveWithSqliteVec(ctx context.Context, agentName str
 
 // DeleteAgentKnowledge removes all knowledge for an agent
 func (s *SqliteService) DeleteAgentKnowledge(ctx context.Context, agentName string) error {
-	_, db := db.OpenSession(ctx, s.db)
+	db := s.db.WithContext(ctx)
 
 	// Delete from GORM table
 	if err := db.Where("agent_name = ?", agentName).Delete(&entity.Knowledge{}).Error; err != nil {
@@ -369,11 +363,6 @@ func (s *SqliteService) DeleteAgentKnowledge(ctx context.Context, agentName stri
 	}
 
 	return nil
-}
-
-type KnowledgeChunk struct {
-	Content  string
-	Metadata map[string]any
 }
 
 // processKnowledge converts knowledge maps into indexable text chunks

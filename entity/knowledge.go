@@ -1,7 +1,7 @@
 package entity
 
 import (
-	"github.com/habiliai/agentruntime/errors"
+	"github.com/pkg/errors"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
