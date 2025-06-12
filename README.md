@@ -21,6 +21,55 @@
 - **Multiple LLM Support**: Works with OpenAI, Anthropic, xAI and other providers
 - **MCP Server Support**: Integrate with Model Context Protocol (MCP) servers for extended functionality
 
+### RAG (Retrieval-Augmented Generation) Support
+
+AgentRuntime includes built-in RAG functionality using [sqlite-vec](https://github.com/asg017/sqlite-vec) for high-performance vector operations combined with GORM entities for structured data management.
+
+#### Features
+
+- **Automatic Knowledge Indexing**: Agent knowledge is automatically indexed into vector embeddings when agents are created
+- **High-Performance Vector Search**: Fast similarity search using sqlite-vec native SQLite extension
+- **Structured Data Storage**: GORM entities for knowledge management with JSONB metadata
+- **Context-Aware Retrieval**: Relevant knowledge is retrieved based on conversation context using vector similarity
+- **OpenAI Embeddings**: Uses OpenAI's text-embedding-3-small model via genkit for consistent embeddings
+
+#### Architecture
+
+The RAG system uses sqlite-vec for all vector operations:
+
+1. **GORM Entities**: Knowledge is stored in the `Knowledge` entity with full metadata and embeddings
+2. **sqlite-vec Virtual Table**: Vector embeddings are stored in a virtual table for fast similarity search
+3. **Integrated Operations**: Both storage systems work together in transactional safety
+
+#### Quick Setup
+
+1. **Configure agent with knowledge**:
+
+   ```yaml
+   name: TravelAgent
+   model: openai/gpt-4o
+   knowledge:
+     - cityName: Seoul
+       aliases: Seoul, SEOUL, KOR, Korea
+       info: Capital city of South Korea, known for technology and culture
+     - cityName: Tokyo
+       aliases: Tokyo, TYO, Japan
+       info: Capital city of Japan, famous for technology and tradition
+   ```
+
+2. **Knowledge is automatically indexed and retrieved during conversations**:
+   - When the agent is created, knowledge is indexed into both GORM entities and sqlite-vec tables
+   - During conversations, relevant knowledge is retrieved using fast vector similarity search
+   - Retrieved knowledge is injected into the agent's prompt for accurate, context-aware responses
+
+#### Technical Details
+
+- **Vector Dimensions**: 1536 (OpenAI text-embedding-3-small)
+- **Similarity Metric**: sqlite-vec distance (L2 distance)
+- **Storage**: GORM entities + sqlite-vec virtual tables
+- **Text Extraction**: Intelligent extraction from knowledge maps with priority field ordering
+- **Performance**: High-speed native SQLite vector operations
+
 ## Installation
 
 ### Option 1: Download pre-built binaries (Recommended)

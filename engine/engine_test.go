@@ -10,6 +10,7 @@ import (
 	"github.com/habiliai/agentruntime/engine"
 	"github.com/habiliai/agentruntime/internal/genkit"
 	"github.com/habiliai/agentruntime/internal/mytesting"
+	"github.com/habiliai/agentruntime/memory"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -29,10 +30,18 @@ func (s *EngineTestSuite) SetupTest() {
 	}, slog.Default(), true)
 	s.Require().NoError(err)
 
+	memoryService, err := memory.NewService(s, &config.MemoryConfig{
+		SqliteEnabled: true,
+		SqlitePath:    ":memory:",
+		VectorEnabled: true,
+	}, slog.Default(), g)
+	s.Require().NoError(err)
+
 	s.engine = engine.NewEngine(
 		slog.Default(),
 		nil,
 		g,
+		memoryService,
 	)
 }
 

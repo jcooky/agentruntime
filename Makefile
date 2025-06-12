@@ -7,9 +7,6 @@ GOLANG_CI_LINT := bin/golangci-lint
 AGENTRUNTIME_BIN := bin/agentruntime
 AGENTRUNTIME_BIN_FILES := bin/agentruntime-linux-amd64 bin/agentruntime-linux-arm64 bin/agentruntime-darwin-amd64 bin/agentruntime-darwin-arm64 bin/agentruntime-windows-amd64.exe
 
-.PHONY: all
-all: $(AGENTRUNTIME_BIN_FILES)
-
 .PHONY: build
 build: $(AGENTRUNTIME_BIN)
 
@@ -52,12 +49,12 @@ install:
 	go install ./cmd/agentruntime
 
 .PHONY: release
-release: $(AGENTRUNTIME_BIN_FILES)
+release:
 	$(eval NEXT_VERSION := $(shell convco version --bump))
 	git tag -a v$(NEXT_VERSION) -m "chore(release): v$(NEXT_VERSION)"
 	git push origin v$(NEXT_VERSION)
 	convco changelog --max-versions 1 > CHANGELOG.md
-	gh release create v$(NEXT_VERSION) $(AGENTRUNTIME_BIN_FILES) --title "v$(NEXT_VERSION)" --notes-file CHANGELOG.md
+	gh release create v$(NEXT_VERSION) --title "v$(NEXT_VERSION)" --notes-file CHANGELOG.md
 
 .PHONY: build-docker-agentruntime
 build-docker-agentruntime:

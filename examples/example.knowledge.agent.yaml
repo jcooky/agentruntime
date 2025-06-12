@@ -1,0 +1,10 @@
+name: HosuAgent
+model: gpt-4o
+tools:
+  - web_search
+  - done_agent
+knowledge:
+  - dogName: Hosu
+    aliases: Mandu, Hoshu, Hodol
+  - hometown: Nuri
+    aliases: Rescue shelter, Nuri, Nuri shelter, Nuri dog shelter

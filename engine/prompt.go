@@ -58,6 +58,31 @@ func (s *Engine) BuildPromptValues(ctx context.Context, agent entity.Agent, hist
 		}
 	}
 
+	// Retrieve relevant knowledge using RAG
+	promptValues.Knowledge = make([]string, 0)
+	if len(history) > 0 {
+		// Use the most recent conversation as context for knowledge retrieval
+		lastConversation := history[len(history)-1]
+		queryContext := lastConversation.Text
+		if queryContext == "" && len(lastConversation.Actions) > 0 {
+			// If no text, use action names as context
+			actionNames := make([]string, len(lastConversation.Actions))
+			for i, action := range lastConversation.Actions {
+				actionNames[i] = action.Name
+			}
+			queryContext = strings.Join(actionNames, " ")
+		}
+
+		if queryContext != "" {
+			retrievedKnowledge, err := s.memoryService.RetrieveRelevantKnowledge(ctx, agent.Name, queryContext, 5)
+			if err != nil {
+				s.logger.Warn("failed to retrieve relevant knowledge", "agent", agent.Name, "error", err)
+			} else {
+				promptValues.Knowledge = retrievedKnowledge
+			}
+		}
+	}
+
 	return promptValues, nil
 }
 

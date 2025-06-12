@@ -12,6 +12,7 @@ import (
 	"github.com/habiliai/agentruntime/internal/genkit"
 	"github.com/habiliai/agentruntime/internal/mylog"
 	"github.com/habiliai/agentruntime/internal/tool"
+	"github.com/habiliai/agentruntime/memory"
 )
 
 type (
@@ -25,6 +26,7 @@ type (
 		memoryConfig *config.MemoryConfig
 		logConfig    *config.LogConfig
 		traceVerbose bool
+		rag          bool
 	}
 	Option func(*AgentRuntime)
 )
@@ -81,10 +83,26 @@ func NewAgentRuntime(ctx context.Context, optionFuncs ...Option) (*AgentRuntime,
 		return nil, err
 	}
 
+	memoryService, err := memory.NewService(ctx, e.memoryConfig, e.logger, g)
+	if err != nil {
+		return nil, err
+	}
+
+	if e.rag && len(e.agent.Knowledge) > 0 {
+		// Index knowledge for RAG if available
+		if err := memoryService.IndexKnowledge(ctx, e.agent.Name, e.agent.Knowledge); err != nil {
+			e.logger.Warn("failed to index knowledge for agent - agent will work without RAG functionality",
+				"agent", e.agent.Name,
+				"error", err)
+			// Continue without failing agent creation
+		}
+	}
+
 	e.engine = engine.NewEngine(
 		e.logger,
 		e.toolManager,
 		g,
+		memoryService,
 	)
 
 	return e, nil
@@ -129,5 +147,17 @@ func WithLogConfig(logConfig *config.LogConfig) func(e *AgentRuntime) {
 func WithAgent(agent entity.Agent) func(e *AgentRuntime) {
 	return func(e *AgentRuntime) {
 		e.agent = &agent
+	}
+}
+
+func WithMemoryConfig(memoryConfig *config.MemoryConfig) func(e *AgentRuntime) {
+	return func(e *AgentRuntime) {
+		e.memoryConfig = memoryConfig
+	}
+}
+
+func WithRAG(rag bool) func(e *AgentRuntime) {
+	return func(e *AgentRuntime) {
+		e.rag = rag
 	}
 }

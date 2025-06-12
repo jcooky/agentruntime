@@ -6,8 +6,9 @@ import (
 )
 
 type MemoryConfig struct {
-	SqliteEnabled bool   `json:"sqliteEnabled"`
-	SqlitePath    string `json:"sqlitePath"`
+	SqliteEnabled bool   `env:"SQLITE_ENABLED"`
+	SqlitePath    string `env:"SQLITE_PATH"`
+	VectorEnabled bool   `env:"VECTOR_ENABLED"`
 }
 
 func NewMemoryConfig() *MemoryConfig {
@@ -18,5 +19,6 @@ func NewMemoryConfig() *MemoryConfig {
 	return &MemoryConfig{
 		SqliteEnabled: true,
 		SqlitePath:    fmt.Sprintf("%s/.agentruntime/memory.db", home),
+		VectorEnabled: true,
 	}
 }

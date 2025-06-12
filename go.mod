@@ -12,6 +12,7 @@ replace (
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/anthropics/anthropic-sdk-go v1.3.0
+	github.com/asg017/sqlite-vec-go-bindings v0.1.7-alpha.2
 	github.com/firebase/genkit/go v0.5.4
 	github.com/goccy/go-yaml v1.18.0
 	github.com/gorilla/handlers v1.5.2

@@ -54,6 +54,7 @@ type (
 		MessageExamples     [][]entity.MessageExample
 		Thread              Thread
 		Tools               []ai.ToolRef
+		Knowledge           []string
 	}
 
 	RunRequest struct {
