@@ -5,7 +5,10 @@ GOPATH := $(shell go env GOPATH)
 GOLANG_CI_LINT := bin/golangci-lint
 
 AGENTRUNTIME_BIN := bin/agentruntime
-AGENTRUNTIME_BIN_FILES := bin/agentruntime-linux-amd64 bin/agentruntime-linux-arm64 bin/agentruntime-darwin-amd64 bin/agentruntime-darwin-arm64 bin/agentruntime-windows-amd64.exe
+AGENTRUNTIME_BIN_FILES := bin/agentruntime-darwin-amd64 bin/agentruntime-darwin-arm64
+
+.PHONY: all
+all: $(AGENTRUNTIME_BIN_FILES)
 
 .PHONY: build
 build: $(AGENTRUNTIME_BIN)
@@ -30,15 +33,10 @@ clean:
 	rm -f $(GOLANG_CI_LINT)
 	@echo "cleared"
 
-.PHONY: agentruntime-windows-*.exe
-bin/agentruntime-windows-%.exe:
-	GOOS=windows GOARCH=$* go build -o $@ ./cmd/agentruntime
-
-.PHONY: bin/agentruntime-*
-bin/agentruntime-%:
-	$(eval OS_NAME := $(word 1,$(subst -, ,$*)))
+.PHONY: bin/agentruntime-darwin-*
+bin/agentruntime-darwin-%:
 	$(eval ARCH_NAME := $(word 2,$(subst -, ,$*)))
-	GOOS=$(OS_NAME) GOARCH=$(ARCH_NAME) go build -o $@ ./cmd/agentruntime
+	CGO_ENABLED=1 GOOS=darwin GOARCH=$(ARCH_NAME) go build -o $@ ./cmd/agentruntime
 
 .PHONY: $(AGENTRUNTIME_BIN)
 $(AGENTRUNTIME_BIN): bin/agentruntime-$(GOOS)-$(GOARCH)
@@ -49,12 +47,12 @@ install:
 	go install ./cmd/agentruntime
 
 .PHONY: release
-release:
+release: $(AGENTRUNTIME_BIN_FILES)
 	$(eval NEXT_VERSION := $(shell convco version --bump))
 	git tag -a v$(NEXT_VERSION) -m "chore(release): v$(NEXT_VERSION)"
 	git push origin v$(NEXT_VERSION)
 	convco changelog --max-versions 1 > CHANGELOG.md
-	gh release create v$(NEXT_VERSION) --title "v$(NEXT_VERSION)" --notes-file CHANGELOG.md
+	gh release create v$(NEXT_VERSION) $(AGENTRUNTIME_BIN_FILES) --title "v$(NEXT_VERSION)" --notes-file CHANGELOG.md
 
 .PHONY: build-docker-agentruntime
 build-docker-agentruntime:
