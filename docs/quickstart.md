@@ -10,12 +10,12 @@
 
 ## Step 1: Download AgentRuntime
 
-1. Go to the [AgentRuntime Releases](https://github.com/habiliai/agentruntime/releases) page
+1. Go to the [AgentRuntime Release](https://github.com/habiliai/agentruntime/releases/latest) page
 2. Download the file for your operating system:
-   - **Windows**: `agentruntime-windows.exe`
+   - **Windows**: _TBD_
    - **Mac(ARM64)**: `agentruntime-macos-arm64`
    - **Mac(Intel)**: `agentruntime-macos-amd64`
-   - **Linux**: `agentruntime`
+   - **Linux**: _TBD_
 
 ## Step 2: Get Your API Key
 
