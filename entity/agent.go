@@ -14,7 +14,7 @@ type Agent struct {
 	// Skills are a unit of capability that an agent can perform.
 	Skills []AgentSkill `json:"skills"`
 
-	Metadata map[string]string `json:"metadata"`
+	Metadata map[string]any `json:"metadata"`
 }
 
 type MessageExample struct {
