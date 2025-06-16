@@ -6,7 +6,9 @@ import (
 	"testing"
 
 	"github.com/firebase/genkit/go/genkit"
-	"github.com/habiliai/agentruntime/internal/genkit/plugins/mcp"
+	internalmcp "github.com/habiliai/agentruntime/internal/genkit/plugins/mcp"
+	mcpclient "github.com/mark3labs/mcp-go/client"
+	"github.com/mark3labs/mcp-go/mcp"
 )
 
 func TestMCPToolCall(t *testing.T) {
@@ -16,7 +18,7 @@ func TestMCPToolCall(t *testing.T) {
 		t.Fatalf("failed to create genkit: %v", err)
 	}
 
-	c, err := mcp.NewStdioMCPClient("npx", []string{}, "-y", "@modelcontextprotocol/server-filesystem", ".")
+	c, err := mcpclient.NewStdioMCPClient("npx", []string{}, "-y", "@modelcontextprotocol/server-filesystem", ".")
 	if err != nil {
 		t.Fatalf("failed to create MCP client: %v", err)
 	}
@@ -43,7 +45,7 @@ func TestMCPToolCall(t *testing.T) {
 			break
 		}
 	}
-	tool, err := mcp.DefineTool(g, c, listDirTool, nil)
+	tool, err := internalmcp.DefineTool(g, c, listDirTool, nil)
 	if err != nil {
 		t.Fatalf("failed to define tool: %v", err)
 	}

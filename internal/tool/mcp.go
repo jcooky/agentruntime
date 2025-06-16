@@ -9,7 +9,9 @@ import (
 
 	"github.com/firebase/genkit/go/ai"
 	"github.com/firebase/genkit/go/genkit"
-	"github.com/habiliai/agentruntime/internal/genkit/plugins/mcp"
+	internalmcp "github.com/habiliai/agentruntime/internal/genkit/plugins/mcp"
+	mcpclient "github.com/mark3labs/mcp-go/client"
+	mcp "github.com/mark3labs/mcp-go/mcp"
 	"github.com/pkg/errors"
 )
 
@@ -31,25 +33,28 @@ func (m *manager) registerMCPTool(ctx context.Context, req RegisterMCPToolReques
 
 	mcpClient, ok := m.mcpClients[req.ServerID]
 	if !ok {
-		c, err := mcp.NewStdioMCPClient(req.Command, envs, req.Args...)
+		c, err := mcpclient.NewStdioMCPClient(req.Command, envs, req.Args...)
 		if err != nil {
 			return fmt.Errorf("failed to create MCP client: %w", err)
 		}
 
-		go func(stderr io.Reader) {
-			rd := bufio.NewReader(stderr)
-			for {
-				line, err := rd.ReadString('\n')
-				if err != nil {
-					if err == io.EOF || strings.Contains(err.Error(), "already closed") {
+		stderr, ok := mcpclient.GetStderr(c)
+		if ok {
+			go func(stderr io.Reader) {
+				rd := bufio.NewReader(stderr)
+				for {
+					line, err := rd.ReadString('\n')
+					if err != nil {
+						if err == io.EOF || strings.Contains(err.Error(), "already closed") {
+							return
+						}
+						m.logger.Error("failed to copy stderr", "err", err, "serverName", req.ServerID)
 						return
 					}
-					m.logger.Error("failed to copy stderr", "err", err, "serverName", req.ServerID)
-					return
+					m.logger.Warn("[MCP] "+strings.TrimSpace(line), "serverName", req.ServerID)
 				}
-				m.logger.Warn("[MCP] "+strings.TrimSpace(line), "serverName", req.ServerID)
-			}
-		}(c.Stderr())
+			}(stderr)
+		}
 
 		initRequest := mcp.InitializeRequest{}
 		initRequest.Params.ProtocolVersion = mcp.LATEST_PROTOCOL_VERSION
@@ -70,7 +75,7 @@ func (m *manager) registerMCPTool(ctx context.Context, req RegisterMCPToolReques
 			m.logger.InfoContext(ctx, "tool already registered", "tool", tool.Name)
 			continue
 		}
-		if _, err := mcp.DefineTool(m.genkit, mcpClient, tool, func(ctx *ai.ToolContext, in any, out *mcp.ToolResult) error {
+		if _, err := internalmcp.DefineTool(m.genkit, mcpClient, tool, func(ctx *ai.ToolContext, in any, out *internalmcp.ToolResult) error {
 			appendCallData(ctx, CallData{
 				Name:      tool.Name,
 				Arguments: in,

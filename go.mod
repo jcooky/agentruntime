@@ -4,16 +4,11 @@ go 1.24.1
 
 toolchain go1.24.3
 
-replace (
-	github.com/firebase/genkit/go => github.com/habiliai/genkit/go v0.2.2-0.20250515032210-c46d2fdcaf1e
-	github.com/mark3labs/mcp-go => github.com/habiliai/mcp-go v0.17.1-0.20250403060106-7a5181225d1b
-)
-
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
-	github.com/anthropics/anthropic-sdk-go v1.3.0
+	github.com/anthropics/anthropic-sdk-go v1.4.0
 	github.com/asg017/sqlite-vec-go-bindings v0.1.7-alpha.2
-	github.com/firebase/genkit/go v0.5.4
+	github.com/firebase/genkit/go v0.6.0
 	github.com/goccy/go-yaml v1.18.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
@@ -21,7 +16,7 @@ require (
 	github.com/jcooky/go-din v0.1.3-0.20250527064037-12e6144ddc28
 	github.com/joho/godotenv v1.5.1
 	github.com/lmittmann/tint v1.0.7
-	github.com/mark3labs/mcp-go v0.23.1
+	github.com/mark3labs/mcp-go v0.32.0
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/mokiat/gog v0.15.0
 	github.com/openai/openai-go v0.1.0-alpha.65
@@ -47,7 +42,7 @@ require (
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-sql-driver/mysql v1.9.0 // indirect
-	github.com/google/dotprompt/go v0.0.0-20250424065700-61c578cf43ac // indirect
+	github.com/google/dotprompt/go v0.0.0-20250611200215-bb73406b05ca // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/huandu/xstrings v1.5.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
@@ -77,7 +72,6 @@ require (
 	go.opentelemetry.io/otel/metric v1.35.0 // indirect
 	go.opentelemetry.io/otel/trace v1.35.0 // indirect
 	golang.org/x/crypto v0.37.0 // indirect
-	golang.org/x/exp v0.0.0-20250408133849-7e4ce0ab07d0 // indirect
 	golang.org/x/sys v0.32.0 // indirect
 	golang.org/x/text v0.24.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
