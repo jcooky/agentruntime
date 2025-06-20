@@ -103,6 +103,9 @@ func buildMessageParams(genRequest *ai.ModelRequest, apiModelName string) (anthr
 
 	// Convert systems prompt to TextBlockParam array
 	for _, system := range systems {
+		if strings.TrimSpace(system) == "" {
+			continue
+		}
 		params.System = append(params.System, anthropic.TextBlockParam{
 			Text: system,
 		})
@@ -176,7 +179,7 @@ func convertMessages(messages []*ai.Message) ([]anthropic.MessageParam, []string
 			role = anthropic.MessageParamRoleUser
 		case ai.RoleSystem:
 			for _, part := range msg.Content {
-				if part.IsText() {
+				if part.IsText() && part.Text != "" {
 					systems = append(systems, part.Text)
 				}
 			}

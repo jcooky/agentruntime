@@ -322,3 +322,39 @@ func TestAgentRuntimeWithEx1(t *testing.T) {
 	require.Contains(t, out, "TechFlow AI", "Output should mention the company name")
 	require.NotEmpty(t, out, "Output should not be empty")
 }
+
+func TestAgentRuntimeWithDennis(t *testing.T) {
+	bytes, err := os.ReadFile("examples/dennis.agent.json")
+	require.NoError(t, err)
+
+	var agent entity.Agent
+	err = json.Unmarshal(bytes, &agent)
+	require.NoError(t, err)
+
+	runtime, err := agentruntime.NewAgentRuntime(
+		context.TODO(),
+		agentruntime.WithAgent(agent),
+		agentruntime.WithOpenAIAPIKey(os.Getenv("OPENAI_API_KEY")),
+		agentruntime.WithAnthropicAPIKey(os.Getenv("ANTHROPIC_API_KEY")),
+		agentruntime.WithLogger(slog.Default()),
+	)
+	require.NoError(t, err)
+	defer runtime.Close()
+
+	var out string
+	resp, err := runtime.Run(context.TODO(), engine.RunRequest{
+		ThreadInstruction: "User asks for startup analysis and summary.",
+		History: []engine.Conversation{
+			{
+				User: "USER",
+				Text: "Help me create a haiku about coding. Make it funny and relatable for programmers.",
+			},
+		},
+	}, &out)
+
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	t.Logf("Response: %+v", resp)
+	t.Logf("Output: %s", out)
+}
