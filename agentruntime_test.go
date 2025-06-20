@@ -2,6 +2,7 @@ package agentruntime_test
 
 import (
 	"context"
+	"encoding/json"
 	"log/slog"
 	"os"
 	"testing"
@@ -102,4 +103,117 @@ func TestAgentRuntime(t *testing.T) {
 	require.NotNil(t, resp)
 
 	t.Logf("Response: %+v", resp)
+}
+
+func TestAgentRuntimeWithLLMSkill(t *testing.T) {
+	bytes, err := os.ReadFile("examples/llm_agent.yaml")
+	require.NoError(t, err)
+
+	var agent entity.Agent
+	err = yaml.Unmarshal(bytes, &agent)
+	require.NoError(t, err)
+
+	// Test basic agent information
+	require.Equal(t, "Lily", agent.Name, "Agent name should be 'Lily'")
+	require.Contains(t, agent.Description, "creative writing assistant", "Agent description should contain creative writing assistant info")
+	require.Equal(t, "openai/gpt-4o", agent.ModelName, "Model name should be 'openai/gpt-4o'")
+	require.Contains(t, agent.System, "creative writing assistant", "System prompt should mention creative writing")
+	require.Equal(t, "Creative Writing Assistant", agent.Role, "Role should be 'Creative Writing Assistant'")
+
+	// Test prompt contains key instructions
+	require.Contains(t, agent.Prompt, "Your name is Lily", "Prompt should contain name instruction")
+	require.Contains(t, agent.Prompt, "creative writing", "Prompt should contain creative writing instruction")
+	require.Contains(t, agent.Prompt, "stories, poems", "Prompt should contain content types")
+
+	// Test message examples
+	require.Len(t, agent.MessageExamples, 2, "Should have 2 message examples")
+
+	// Test first message example (story writing)
+	firstExample := agent.MessageExamples[0]
+	require.Len(t, firstExample, 2, "First example should have 2 messages (user and agent)")
+	require.Contains(t, firstExample[0].Text, "robot learning to paint", "First user message should mention robot story")
+	require.Contains(t, firstExample[1].Text, "creative writing expertise", "First agent response should mention creative writing")
+	require.Contains(t, firstExample[1].Actions, "creative_writing_helper", "First agent response should have creative_writing_helper action")
+
+	// Test second message example (poetry)
+	secondExample := agent.MessageExamples[1]
+	require.Len(t, secondExample, 2, "Second example should have 2 messages (user and agent)")
+	require.Contains(t, secondExample[0].Text, "haiku about the ocean", "Second user message should mention haiku")
+	require.Contains(t, secondExample[1].Text, "poetry skills", "Second agent response should mention poetry skills")
+	require.Contains(t, secondExample[1].Actions, "poetry_generator", "Second agent response should have poetry_generator action")
+
+	// Test LLM skills
+	require.Len(t, agent.Skills, 2, "Should have 2 skills")
+
+	// Test first LLM skill (creative_writing_helper)
+	firstSkill := agent.Skills[0]
+	require.Equal(t, "llm", firstSkill.Type, "First skill type should be 'llm'")
+	require.Equal(t, "creative_writing_helper", firstSkill.Name, "First skill name should be 'creative_writing_helper'")
+	require.Contains(t, firstSkill.Description, "creative writing assistance", "First skill description should mention creative writing assistance")
+	require.Contains(t, firstSkill.Instruction, "narrative structure", "First skill instruction should mention narrative structure")
+	require.Contains(t, firstSkill.Instruction, "character development", "First skill instruction should mention character development")
+
+	// Test second LLM skill (poetry_generator)
+	secondSkill := agent.Skills[1]
+	require.Equal(t, "llm", secondSkill.Type, "Second skill type should be 'llm'")
+	require.Equal(t, "poetry_generator", secondSkill.Name, "Second skill name should be 'poetry_generator'")
+	require.Contains(t, secondSkill.Description, "poetry", "Second skill description should mention poetry")
+	require.Contains(t, secondSkill.Instruction, "haiku, sonnet", "Second skill instruction should mention poetry forms")
+	require.Contains(t, secondSkill.Instruction, "rhythm", "Second skill instruction should mention rhythm")
+
+	// Test runtime creation and execution
+	runtime, err := agentruntime.NewAgentRuntime(
+		context.TODO(),
+		agentruntime.WithAgent(agent),
+		agentruntime.WithOpenAIAPIKey(os.Getenv("OPENAI_API_KEY")),
+		agentruntime.WithLogger(slog.Default()),
+	)
+	require.NoError(t, err)
+	defer runtime.Close()
+
+	var out string
+	resp, err := runtime.Run(context.TODO(), engine.RunRequest{
+		ThreadInstruction: "User asks for creative writing help.",
+		History: []engine.Conversation{
+			{
+				User: "USER",
+				Text: "Help me create a haiku about coding. Make it funny and relatable for programmers.",
+			},
+		},
+	}, &out)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	t.Logf("Response: %+v", resp)
+	t.Logf("Output: %s", out)
+
+	// Verify the agent used the poetry_generator tool
+	require.NotEmpty(t, resp.ToolCalls, "Should have at least one tool call")
+
+	// Check if poetry_generator was called
+	poetryGeneratorCalled := false
+	for _, toolCall := range resp.ToolCalls {
+		if toolCall.Name == "poetry_generator" {
+			poetryGeneratorCalled = true
+
+			// Verify the tool call result contains the instruction
+			var result map[string]interface{}
+			err = json.Unmarshal(toolCall.Result, &result)
+			require.NoError(t, err, "Should be able to unmarshal tool result")
+
+			instruction, ok := result["additional_important_instruction"].(string)
+			require.True(t, ok, "Result should have additional_important_instruction field")
+			require.Contains(t, instruction, "haiku", "Instruction should mention haiku")
+			require.Contains(t, instruction, "rhythm", "Instruction should mention rhythm")
+
+			t.Logf("Tool call arguments: %s", string(toolCall.Arguments))
+			t.Logf("Tool call result: %s", string(toolCall.Result))
+		}
+	}
+
+	require.True(t, poetryGeneratorCalled, "poetry_generator tool should have been called")
+
+	// Verify the output contains haiku
+	require.Contains(t, out, "haiku", "Output should mention haiku")
+	require.NotEmpty(t, out, "Output should not be empty")
 }
