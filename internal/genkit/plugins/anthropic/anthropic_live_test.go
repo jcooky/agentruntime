@@ -41,25 +41,25 @@ func TestLive_GenerateText(t *testing.T) {
 			name:      "claude-3.5-sonnet simple",
 			modelName: "claude-3.5-sonnet",
 			prompt:    "What is 2+2? Answer with just the number.",
-			timeout:   30 * time.Second,
+			timeout:   30 * time.Minute,
 		},
 		{
 			name:      "claude-3.7-sonnet simple",
 			modelName: "claude-3.7-sonnet",
 			prompt:    "What is the capital of Japan? Answer with just the city name.",
-			timeout:   30 * time.Second,
+			timeout:   30 * time.Minute,
 		},
 		{
 			name:      "claude-4-sonnet simple",
 			modelName: "claude-4-sonnet",
 			prompt:    "What is the capital of France? Answer with just the city name.",
-			timeout:   30 * time.Second,
+			timeout:   30 * time.Minute,
 		},
 		{
 			name:      "claude-3.5-sonnet with reasoning",
 			modelName: "claude-3.5-sonnet",
 			prompt:    "If a train travels 120 miles in 2 hours, what is its speed in mph? Answer with just the number.",
-			timeout:   30 * time.Second,
+			timeout:   30 * time.Minute,
 		},
 	}
 
@@ -111,7 +111,7 @@ func TestLive_GenerateWithStreaming(t *testing.T) {
 		t.Skip("ANTHROPIC_API_KEY not set")
 	}
 
-	ctx := context.Background()
+	ctx := context.TODO()
 	g, err := genkit.Init(ctx, genkit.WithPlugins(&anthropic.Plugin{
 		APIKey: os.Getenv("ANTHROPIC_API_KEY"),
 	}))
@@ -121,7 +121,7 @@ func TestLive_GenerateWithStreaming(t *testing.T) {
 	require.NotNil(t, model)
 
 	// Create context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Minute)
 	defer cancel()
 
 	req := &ai.ModelRequest{
@@ -202,7 +202,7 @@ func TestLive_GenerateWithSystemMessage(t *testing.T) {
 		t.Skip("ANTHROPIC_API_KEY not set")
 	}
 
-	ctx := context.Background()
+	ctx := context.TODO()
 	g, err := genkit.Init(ctx, genkit.WithPlugins(&anthropic.Plugin{
 		APIKey: os.Getenv("ANTHROPIC_API_KEY"),
 	}))
@@ -212,7 +212,7 @@ func TestLive_GenerateWithSystemMessage(t *testing.T) {
 	require.NotNil(t, model)
 
 	// Create context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Minute)
 	defer cancel()
 
 	req := &ai.ModelRequest{

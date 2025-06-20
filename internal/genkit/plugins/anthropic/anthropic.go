@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/anthropics/anthropic-sdk-go"
 	"github.com/anthropics/anthropic-sdk-go/option"
@@ -26,12 +27,17 @@ var (
 		"claude-3-5-sonnet-latest": config.Multimodal,
 		"claude-3-opus-latest":     config.Multimodal,
 	}
+	defaultRequestTimeout = 10 * time.Minute
 )
 
 type Plugin struct {
 	// The API key to access the service for Anthropic.
 	// If empty, the values of the environment variables ANTHROPIC_API_KEY will be consulted.
 	APIKey string
+
+	// The timeout for requests to the Anthropic API.
+	// If empty, the default timeout of 10 minutes will be used.
+	RequestTimeout time.Duration
 }
 
 var (
@@ -60,8 +66,13 @@ func (o *Plugin) Init(_ context.Context, g *genkit.Genkit) (err error) {
 		}
 	}
 
+	if o.RequestTimeout == 0 {
+		o.RequestTimeout = defaultRequestTimeout
+	}
+
 	client := anthropic.NewClient(
 		option.WithAPIKey(apiKey),
+		option.WithRequestTimeout(o.RequestTimeout),
 	)
 
 	// Define models with simplified names as requested
