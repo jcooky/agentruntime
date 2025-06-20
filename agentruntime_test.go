@@ -217,3 +217,108 @@ func TestAgentRuntimeWithLLMSkill(t *testing.T) {
 	require.Contains(t, out, "haiku", "Output should mention haiku")
 	require.NotEmpty(t, out, "Output should not be empty")
 }
+
+func TestAgentRuntimeWithEx1(t *testing.T) {
+	// Read JSON file instead of YAML
+	bytes, err := os.ReadFile("examples/ex1.agent.json")
+	require.NoError(t, err)
+
+	var agent entity.Agent
+	err = json.Unmarshal(bytes, &agent)
+	require.NoError(t, err)
+
+	// Test basic agent information
+	require.Equal(t, "Edan", agent.Name, "Agent name should be 'Edan'")
+	require.Contains(t, agent.Description, "summarizes startup deal info", "Agent description should contain startup summary info")
+	require.Equal(t, "anthropic/claude-4-sonnet", agent.ModelName, "Model name should be 'anthropic/claude-4-sonnet'")
+	require.Equal(t, "Moderator", agent.Role, "Role should be 'Moderator'")
+
+	// Test prompt contains key instructions
+	require.Contains(t, agent.Prompt, "moderator who specializes in summarizing startup deal information", "Prompt should contain moderator instruction")
+	require.Contains(t, agent.Prompt, "team, traction, market, and competition", "Prompt should contain key analysis areas")
+
+	// Test message examples
+	require.Len(t, agent.MessageExamples, 1, "Should have 1 message example")
+	firstExample := agent.MessageExamples[0]
+	require.Len(t, firstExample, 2, "Example should have 2 messages (user and agent)")
+	require.Contains(t, firstExample[0].Text, "summarize this startup's key points", "User message should ask for startup summary")
+	require.Contains(t, firstExample[1].Actions, "startup-summary", "Agent response should have startup-summary action")
+
+	// Test LLM skills
+	require.Len(t, agent.Skills, 1, "Should have 1 skill")
+	skill := agent.Skills[0]
+	require.Equal(t, "llm", skill.Type, "Skill type should be 'llm'")
+	require.Equal(t, "startup-summary", skill.Name, "Skill name should be 'startup-summary'")
+	require.Contains(t, skill.Description, "Summarizes startup deal info", "Skill description should mention startup summary")
+	require.Contains(t, skill.Instruction, "team, traction, market analysis", "Skill instruction should mention key analysis areas")
+
+	// Test runtime creation and execution
+	// Debug: Print API key availability
+	t.Logf("ANTHROPIC_API_KEY set: %v", os.Getenv("ANTHROPIC_API_KEY") != "")
+	t.Logf("OPENAI_API_KEY set: %v", os.Getenv("OPENAI_API_KEY") != "")
+
+	runtime, err := agentruntime.NewAgentRuntime(
+		context.TODO(),
+		agentruntime.WithAgent(agent),
+		agentruntime.WithOpenAIAPIKey(os.Getenv("OPENAI_API_KEY")),
+		agentruntime.WithAnthropicAPIKey(os.Getenv("ANTHROPIC_API_KEY")),
+		agentruntime.WithLogger(slog.Default()),
+	)
+	require.NoError(t, err)
+	defer runtime.Close()
+
+	var out string
+	resp, err := runtime.Run(context.TODO(), engine.RunRequest{
+		ThreadInstruction: "User asks for startup analysis and summary.",
+		History: []engine.Conversation{
+			{
+				User: "USER",
+				Text: `I have a startup pitch that I need help analyzing:
+				
+				Company: TechFlow AI
+				Team: 3 ex-Google engineers with 10+ years experience in ML
+				Product: AI-powered code review tool that automatically suggests improvements
+				Traction: 500 beta users, $10K MRR, growing 20% month-over-month
+				Market: Developer tools market worth $20B, growing at 15% annually
+				Competition: GitHub Copilot, Amazon CodeWhisperer
+				Funding: Seeking $2M seed round
+				
+				Can you summarize this for investment review?`,
+			},
+		},
+	}, &out)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	t.Logf("Response: %+v", resp)
+	t.Logf("Output: %s", out)
+
+	// Verify the agent used the startup-summary tool
+	require.NotEmpty(t, resp.ToolCalls, "Should have at least one tool call")
+
+	// Check if startup-summary was called
+	startupSummaryCalled := false
+	for _, toolCall := range resp.ToolCalls {
+		if toolCall.Name == "startup-summary" {
+			startupSummaryCalled = true
+
+			// Verify the tool call result contains the instruction
+			var result map[string]interface{}
+			err = json.Unmarshal(toolCall.Result, &result)
+			require.NoError(t, err, "Should be able to unmarshal tool result")
+
+			instruction, ok := result["additional_important_instruction"].(string)
+			require.True(t, ok, "Result should have additional_important_instruction field")
+			require.Contains(t, instruction, "team, traction, market analysis", "Instruction should mention key analysis areas")
+
+			t.Logf("Tool call arguments: %s", string(toolCall.Arguments))
+			t.Logf("Tool call result: %s", string(toolCall.Result))
+		}
+	}
+
+	require.True(t, startupSummaryCalled, "startup-summary tool should have been called")
+
+	// Verify the output contains startup analysis elements
+	require.Contains(t, out, "TechFlow AI", "Output should mention the company name")
+	require.NotEmpty(t, out, "Output should not be empty")
+}

@@ -90,7 +90,7 @@ func generateStream(ctx context.Context, client *anthropic.Client, genRequest *a
 }
 
 func buildMessageParams(genRequest *ai.ModelRequest, apiModelName string) (anthropic.MessageNewParams, error) {
-	messages, system, err := convertMessages(genRequest.Messages)
+	messages, systems, err := convertMessages(genRequest.Messages)
 	if err != nil {
 		return anthropic.MessageNewParams{}, err
 	}
@@ -101,13 +101,11 @@ func buildMessageParams(genRequest *ai.ModelRequest, apiModelName string) (anthr
 		MaxTokens: 4096, // Default max tokens
 	}
 
-	// Convert system prompt to TextBlockParam array
-	if system != "" {
-		params.System = []anthropic.TextBlockParam{
-			{
-				Text: system,
-			},
-		}
+	// Convert systems prompt to TextBlockParam array
+	for _, system := range systems {
+		params.System = append(params.System, anthropic.TextBlockParam{
+			Text: system,
+		})
 	}
 
 	// Handle generation config
@@ -163,37 +161,33 @@ func buildMessageParams(genRequest *ai.ModelRequest, apiModelName string) (anthr
 	return params, nil
 }
 
-func convertMessages(messages []*ai.Message) ([]anthropic.MessageParam, string, error) {
-	var system string
+func convertMessages(messages []*ai.Message) ([]anthropic.MessageParam, []string, error) {
+	var systems []string
 	var anthropicMessages []anthropic.MessageParam
 
 	for _, msg := range messages {
-		if msg.Role == ai.RoleSystem {
-			// Anthropic handles system messages differently
-			for _, part := range msg.Content {
-				if part.IsText() {
-					if system != "" {
-						system += "\n"
-					}
-					system += part.Text
-				}
-			}
-			continue
-		}
-
 		var role anthropic.MessageParamRole
 		switch msg.Role {
 		case ai.RoleUser:
 			role = anthropic.MessageParamRoleUser
 		case ai.RoleModel:
 			role = anthropic.MessageParamRoleAssistant
+		case ai.RoleTool:
+			role = anthropic.MessageParamRoleUser
+		case ai.RoleSystem:
+			for _, part := range msg.Content {
+				if part.IsText() {
+					systems = append(systems, part.Text)
+				}
+			}
+			continue
 		default:
-			return nil, "", fmt.Errorf("unsupported message role: %s", msg.Role)
+			return nil, nil, fmt.Errorf("unsupported message role: %s", msg.Role)
 		}
 
 		content, err := convertContent(msg.Content)
 		if err != nil {
-			return nil, "", err
+			return nil, nil, err
 		}
 
 		anthropicMessages = append(anthropicMessages, anthropic.MessageParam{
@@ -202,19 +196,24 @@ func convertMessages(messages []*ai.Message) ([]anthropic.MessageParam, string, 
 		})
 	}
 
-	return anthropicMessages, system, nil
+	return anthropicMessages, systems, nil
 }
 
 func convertContent(parts []*ai.Part) ([]anthropic.ContentBlockParamUnion, error) {
 	var blocks []anthropic.ContentBlockParamUnion
 
 	for _, part := range parts {
-		if part.IsText() {
+		if part.IsCustom() {
+			switch part.Custom["type"].(string) {
+			case "thinking":
+				blocks = append(blocks, anthropic.NewThinkingBlock(part.Custom["signature"].(string), part.Custom["thinking"].(string)))
+			default:
+				return nil, fmt.Errorf("unsupported custom part type: %s", part.Custom["type"])
+			}
+		} else if part.IsText() {
 			// Use the NewTextBlock helper function
 			blocks = append(blocks, anthropic.NewTextBlock(part.Text))
-		}
-
-		if part.IsMedia() {
+		} else if part.IsMedia() {
 			// Handle image content
 			// Extract base64 data from data URL if present
 			data := part.Text
@@ -233,32 +232,31 @@ func convertContent(parts []*ai.Part) ([]anthropic.ContentBlockParamUnion, error
 
 			// Create image block
 			blocks = append(blocks, anthropic.NewImageBlock(imageSource))
-		}
-
-		// Handle tool requests
-		if part.IsToolRequest() {
+		} else if part.IsToolRequest() {
 			// Convert tool request to Anthropic format
 			toolReq := part.ToolRequest
 
 			// Marshal the input to get the string representation
-			inputStr := "{}"
+			var inputMsg json.RawMessage
 			if toolReq.Input != nil {
 				inputJSON, err := json.Marshal(toolReq.Input)
 				if err != nil {
 					return nil, fmt.Errorf("failed to marshal tool input: %w", err)
 				}
-				inputStr = string(inputJSON)
+				inputMsg = inputJSON
+			}
+			if len(inputMsg) == 0 {
+				inputMsg = json.RawMessage("{}")
 			}
 
+			println("inputStr", inputMsg)
 			toolUse := anthropic.NewToolUseBlock(
 				toolReq.Ref,  // ID
+				inputMsg,     // Input as JSON string
 				toolReq.Name, // Name
-				inputStr,     // Input as JSON string
 			)
 			blocks = append(blocks, toolUse)
-		}
-
-		if part.IsToolResponse() {
+		} else if part.IsToolResponse() {
 			// Convert tool response to Anthropic format
 			toolResp := part.ToolResponse
 
@@ -292,7 +290,7 @@ func convertTool(tool *ai.ToolDefinition) anthropic.ToolUnionParam {
 	// Convert the InputSchema map to ToolInputSchemaParam
 	inputSchema := anthropic.ToolInputSchemaParam{
 		Type:       "object",
-		Properties: tool.InputSchema,
+		Properties: tool.InputSchema["properties"],
 	}
 
 	return anthropic.ToolUnionParam{
@@ -322,6 +320,12 @@ func translateResponse(resp anthropic.Message) (*ai.ModelResponse, error) {
 				Ref:   block.ID,
 				Name:  block.Name,
 				Input: json.RawMessage(block.Input),
+			}))
+		case anthropic.ThinkingBlock:
+			parts = append(parts, ai.NewCustomPart(map[string]any{
+				"type":      "thinking",
+				"thinking":  block.Thinking,
+				"signature": block.Signature,
 			}))
 		}
 	}

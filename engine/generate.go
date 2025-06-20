@@ -2,7 +2,6 @@ package engine
 
 import (
 	"context"
-	"reflect"
 	"slices"
 	"strings"
 
@@ -48,10 +47,11 @@ func (e *Engine) Generate(
 	if out == nil {
 		return nil, errors.New("output is nil")
 	}
-	isObjectOutput := reflect.TypeOf(out).Elem().Kind() != reflect.String
-
-	if isObjectOutput {
-		opts = append(opts, ai.WithOutputType(out))
+	switch v := out.(type) {
+	case *string:
+		opts = append(opts, ai.WithOutputFormat(ai.OutputFormatText))
+	default:
+		opts = append(opts, ai.WithOutputType(v))
 	}
 
 	modelName := req.Model
@@ -99,12 +99,13 @@ func (e *Engine) Generate(
 		}
 	}
 
-	if isObjectOutput {
-		if err := resp.Output(out); err != nil {
+	switch v := out.(type) {
+	case *string:
+		*v = resp.Text()
+	default:
+		if err := resp.Output(v); err != nil {
 			return nil, err
 		}
-	} else {
-		reflect.ValueOf(out).Elem().SetString(resp.Text())
 	}
 
 	return resp, nil
