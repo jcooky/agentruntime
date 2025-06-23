@@ -1,0 +1,68 @@
+# Example agent configuration with Remote MCP support
+#
+# IMPORTANT: Replace placeholder values with your actual credentials.
+# Environment variable substitution (${VAR}) is not automatically supported.
+# For production use, consider implementing a secure configuration management solution.
+
+name: 'mcp-remote-agent'
+description: 'An agent with access to remote MCP tools'
+model: 'claude-3-5-sonnet-20241022'
+instructions: |
+  You are a helpful assistant with access to various remote tools via MCP.
+  Use the appropriate tools to help users with their requests.
+
+skills:
+  # Example 1: Remote SSE MCP server with API key authentication
+  - type: mcp
+    name: weather-service
+    url: https://mcp.weather-api.com/v1
+    headers:
+      # Replace with your actual API key or use a secure configuration solution
+      Authorization: Bearer your-weather-api-key-here
+      X-Client-ID: agentruntime
+    # Transport is auto-detected as 'sse' when URL is provided
+
+  # Example 2: OAuth-protected MCP server
+  - type: mcp
+    name: data-analytics
+    url: https://api.analytics-provider.com/mcp
+    transport: oauth-sse
+    oauth:
+      # Replace with your actual OAuth credentials
+      clientId: your-oauth-client-id
+      clientSecret: your-oauth-client-secret
+      authServerMetadataUrl: https://auth.analytics-provider.com/.well-known/openid-configuration
+      redirectUrl: http://localhost:8080/callback
+      scopes:
+        - mcp:read
+        - mcp:write
+        - analytics:query
+      pkceEnabled: true
+
+  # Example 3: Local MCP server (backward compatible)
+  # For local servers, environment variables can be passed via the env field
+  - type: mcp
+    name: local-calculator
+    command: /usr/local/bin/calculator-mcp
+    args:
+      - --precision
+      - high
+    env:
+      LOG_LEVEL: info
+      # You can reference environment variables here
+      # The MCP server will receive these as environment variables
+      API_KEY: your-api-key-here
+
+  # Example 4: Streamable HTTP MCP server
+  - type: mcp
+    name: stream-processor
+    url: wss://stream.example.com/mcp
+    transport: streamable
+    headers:
+      # Replace with your actual API key
+      API-Key: your-stream-api-key-here
+
+# Model configuration
+modelConfig:
+  temperature: 0.7
+  maxTokens: 4096

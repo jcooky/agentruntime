@@ -17,43 +17,68 @@ import (
 
 type RegisterMCPToolRequest struct {
 	ServerID string
-	Command  string
-	Args     []string
-	Env      map[string]string
+	// Deprecated: Use ServerConfig instead
+	Command string
+	// Deprecated: Use ServerConfig instead
+	Args []string
+	// Deprecated: Use ServerConfig instead
+	Env map[string]string
+
+	// ServerConfig contains the full server configuration
+	// If provided, it takes precedence over the legacy fields
+	ServerConfig *MCPServerConfig
 }
 
 func (m *manager) registerMCPTool(ctx context.Context, req RegisterMCPToolRequest) (err error) {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
-	var envs []string
-	for key, val := range req.Env {
-		envs = append(envs, fmt.Sprintf("%s=%s", key, val))
-	}
-
+	// Use existing client if already registered
 	mcpClient, ok := m.mcpClients[req.ServerID]
 	if !ok {
-		c, err := mcpclient.NewStdioMCPClient(req.Command, envs, req.Args...)
+		// Create configuration from request
+		var config MCPServerConfig
+		if req.ServerConfig != nil {
+			// Use new server config if provided
+			config = *req.ServerConfig
+		} else {
+			// Build from legacy fields for backward compatibility
+			config = MCPServerConfig{
+				Command: req.Command,
+				Args:    req.Args,
+				Env:     req.Env,
+			}
+		}
+
+		// Create client using factory
+		factory := NewMCPClientFactory()
+		c, err := factory.CreateClient(ctx, req.ServerID, config)
 		if err != nil {
 			return fmt.Errorf("failed to create MCP client: %w", err)
 		}
 
-		stderr, ok := mcpclient.GetStderr(c)
-		if ok {
-			go func(stderr io.Reader) {
-				rd := bufio.NewReader(stderr)
-				for {
-					line, err := rd.ReadString('\n')
-					if err != nil {
-						if err == io.EOF || strings.Contains(err.Error(), "already closed") {
-							return
+		// Handle stderr for stdio clients
+		if config.GetTransport() == MCPTransportStdio {
+			// Try to get stderr from the client if it's a stdio client
+			if stdioClient, ok := c.(*mcpclient.Client); ok {
+				stderr, ok := mcpclient.GetStderr(stdioClient)
+				if ok {
+					go func(stderr io.Reader) {
+						rd := bufio.NewReader(stderr)
+						for {
+							line, err := rd.ReadString('\n')
+							if err != nil {
+								if err == io.EOF || strings.Contains(err.Error(), "already closed") {
+									return
+								}
+								m.logger.Error("failed to copy stderr", "err", err, "serverName", req.ServerID)
+								return
+							}
+							m.logger.Warn("[MCP] "+strings.TrimSpace(line), "serverName", req.ServerID)
 						}
-						m.logger.Error("failed to copy stderr", "err", err, "serverName", req.ServerID)
-						return
-					}
-					m.logger.Warn("[MCP] "+strings.TrimSpace(line), "serverName", req.ServerID)
+					}(stderr)
 				}
-			}(stderr)
+			}
 		}
 
 		initRequest := mcp.InitializeRequest{}

@@ -19,7 +19,7 @@
 - **Built-in Playground**: Test and interact with your agents through a modern web interface
 - **Tool Extensibility**: Easily extend agent capabilities with custom tools and integrations
 - **Multiple LLM Support**: Works with OpenAI, Anthropic, xAI and other providers
-- **MCP Server Support**: Integrate with Model Context Protocol (MCP) servers for extended functionality
+- **MCP Server Support**: Integrate with Model Context Protocol (MCP) servers both locally and remotely via SSE, OAuth-SSE, and streamable transports
 
 ### RAG (Retrieval-Augmented Generation) Support
 
@@ -213,12 +213,30 @@ import (
 func main() {
     ctx := context.Background()
 
-    // Create an agent
+    // Create an agent with skills
     agent := entity.Agent{
         Name:   "Assistant",
         Model:  "gpt-4o",
         System: "You are a helpful assistant.",
         Tools:  []string{"get_weather"},
+        Skills: []entity.AgentSkill{
+            // Local MCP server
+            {
+                Type:    "mcp",
+                Name:    "calculator",
+                Command: "/usr/local/bin/calculator-mcp",
+                Args:    []string{"--precision", "high"},
+            },
+            // Remote MCP server
+            {
+                Type: "mcp",
+                Name: "web-search",
+                URL:  "https://mcp.example.com/search",
+                Headers: map[string]string{
+                    "Authorization": "Bearer api-key",
+                },
+            },
+        },
     }
 
     // Initialize the runtime with API keys passed directly
@@ -264,9 +282,30 @@ tools: # Optional: List of tools the agent can use
   - tool_name
   - another_tool
 
-skills: # Optional: Custom skills/capabilities
-  - name: custom_skill
-    description: What this skill does
+skills: # Optional: Skills including MCP servers, LLM tools, and native tools
+  # Local MCP server
+  - type: mcp
+    name: local-server
+    command: /path/to/mcp-server
+    args: ['--arg1', 'value1']
+    env:
+      ENV_VAR: value
+
+  # Remote MCP server (SSE)
+  - type: mcp
+    name: remote-server
+    url: https://mcp.example.com/api
+    headers:
+      Authorization: Bearer api-key
+
+  # OAuth-protected MCP server
+  - type: mcp
+    name: oauth-server
+    url: https://api.example.com/mcp
+    transport: oauth-sse
+    oauth:
+      clientId: your-client-id
+      clientSecret: your-client-secret
 
 # Personality & Examples
 bio: # Optional: Agent biography/description
@@ -278,12 +317,9 @@ message_examples: # Optional: Few-shot examples
     text: 'Example user message'
   - name: 'ASSISTANT'
     text: 'Example assistant response'
-
-# Extensions
-mcpServers: # Optional: MCP server configurations
-  - name: server_name
-    config: {}
 ```
+
+See `docs/remote-mcp-support.md` for detailed MCP configuration options and `examples/mcp/mcp-remote-agent.yaml` for a complete example.
 
 ## Available Tools
 
@@ -300,16 +336,18 @@ The runtime includes several built-in tools:
 ### Project Structure
 
 ```
+
 agentruntime/
-├── cmd/agentruntime/     # CLI application
-├── engine/               # Core execution engine
-├── entity/               # Agent and message entities
-├── internal/             # Internal packages
-│   ├── genkit/          # Genkit integration
-│   └── tool/            # Tool management
-├── playground/           # Web interface
-├── examples/            # Example agent configurations
-└── agentruntime.go      # Main package API
+├── cmd/agentruntime/ # CLI application
+├── engine/ # Core execution engine
+├── entity/ # Agent and message entities
+├── internal/ # Internal packages
+│ ├── genkit/ # Genkit integration
+│ └── tool/ # Tool management
+├── playground/ # Web interface
+├── examples/ # Example agent configurations
+└── agentruntime.go # Main package API
+
 ```
 
 ### Running the Playground Locally

@@ -1,0 +1,54 @@
+# MCP Server Configuration Examples
+
+# Example 1: Local MCP server using stdio (traditional method)
+- serverID: local-weather-server
+  command: /usr/local/bin/weather-mcp-server
+  args:
+    - --api-key
+    - ${WEATHER_API_KEY}
+  env:
+    LOG_LEVEL: debug
+
+# Example 2: Remote MCP server using SSE
+- serverID: remote-calculator-server
+  url: https://mcp.example.com/calculator
+  headers:
+    Authorization: Bearer ${MCP_API_TOKEN}
+    X-Client-ID: my-client
+
+# Example 3: Remote MCP server with OAuth authentication
+- serverID: oauth-data-server
+  url: https://api.example.com/mcp/data
+  transport: oauth-sse
+  oauthConfig:
+    clientId: ${OAUTH_CLIENT_ID}
+    clientSecret: ${OAUTH_CLIENT_SECRET}
+    authServerMetadataUrl: https://auth.example.com/.well-known/openid-configuration
+    redirectUrl: http://localhost:8080/callback
+    scopes:
+      - mcp:read
+      - mcp:write
+    pkceEnabled: true
+
+# Example 4: Streamable HTTP MCP server
+- serverID: streamable-llm-server
+  url: https://stream.example.com/mcp/llm
+  transport: streamable
+  headers:
+    API-Key: ${STREAM_API_KEY}
+
+# Example 5: SSE server with auto-detected transport (defaults to SSE when URL is provided)
+- serverID: auto-sse-server
+  url: https://mcp.example.com/tools
+  # Transport type will be automatically detected as SSE
+# Example 6: Using the new ServerConfig format with RegisterMCPToolRequest
+# In code:
+# req := RegisterMCPToolRequest{
+#     ServerID: "my-remote-server",
+#     ServerConfig: &MCPServerConfig{
+#         URL: "https://mcp.example.com/api",
+#         Headers: map[string]string{
+#             "Authorization": "Bearer token",
+#         },
+#     },
+# }

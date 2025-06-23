@@ -1,0 +1,44 @@
+# Test agent for MCP functionality
+name: 'test-mcp-agent'
+description: 'Agent for testing MCP servers'
+model: 'claude-3-5-sonnet-20241022'
+instructions: |
+  You are a helpful assistant with access to various MCP tools.
+  You can perform file operations, search the web, and more.
+
+skills:
+  # 1. Local filesystem MCP server (built-in with agentruntime)
+  - type: mcp
+    name: filesystem
+    command: npx
+    args:
+      - -y
+      - '@modelcontextprotocol/server-filesystem'
+      - /tmp
+    env:
+      NODE_ENV: production
+
+  # 2. Web search MCP server (if you have Brave API key)
+  # - type: mcp
+  #   name: brave-search
+  #   command: npx
+  #   args:
+  #     - -y
+  #     - "@modelcontextprotocol/server-brave-search"
+  #   env:
+  #     BRAVE_API_KEY: your-brave-api-key-here
+
+  # 3. GitHub MCP server (for repository operations)
+  # - type: mcp
+  #   name: github
+  #   command: npx
+  #   args:
+  #     - -y
+  #     - "@modelcontextprotocol/server-github"
+  #   env:
+  #     GITHUB_PERSONAL_ACCESS_TOKEN: your-github-token-here
+
+# Model configuration
+modelConfig:
+  temperature: 0.7
+  maxTokens: 4096

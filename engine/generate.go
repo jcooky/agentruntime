@@ -5,10 +5,9 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/firebase/genkit/go/ai"
 	"github.com/firebase/genkit/go/genkit"
 	"github.com/pkg/errors"
-
-	"github.com/firebase/genkit/go/ai"
 )
 
 type (

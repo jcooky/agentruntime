@@ -80,10 +80,14 @@ func TestAgentRuntime(t *testing.T) {
 	require.Equal(t, "@modelcontextprotocol/server-filesystem", skill.Args[1], "Second arg should be MCP filesystem server")
 	require.Equal(t, "./", skill.Args[2], "Third arg should be './'")
 
+	agent.Skills = []entity.AgentSkill{}
+	agent.ModelName = "anthropic/claude-4-sonnet"
+
 	runtime, err := agentruntime.NewAgentRuntime(
 		context.TODO(),
 		agentruntime.WithAgent(agent),
 		agentruntime.WithOpenAIAPIKey(os.Getenv("OPENAI_API_KEY")),
+		agentruntime.WithAnthropicAPIKey(os.Getenv("ANTHROPIC_API_KEY")),
 		agentruntime.WithLogger(slog.Default()),
 	)
 	require.NoError(t, err)

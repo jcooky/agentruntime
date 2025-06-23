@@ -47,14 +47,45 @@ func NewToolManager(ctx context.Context, skills []entity.AgentSkill, logger *slo
 			if skill.Name == "" {
 				return nil, errors.New("mcp server is required")
 			}
-			if skill.Command == "" {
-				return nil, errors.New("mcp command is required")
+
+			// Create server config based on skill configuration
+			var serverConfig *MCPServerConfig
+
+			// Check if remote configuration is provided
+			if skill.URL != "" {
+				serverConfig = &MCPServerConfig{
+					URL:       skill.URL,
+					Transport: MCPTransportType(skill.Transport),
+					Headers:   skill.Headers,
+					Env:       skill.Env,
+				}
+
+				// Convert OAuth config if provided
+				if skill.OAuth != nil {
+					serverConfig.OAuthConfig = &OAuthConfig{
+						ClientID:              skill.OAuth.ClientID,
+						ClientSecret:          skill.OAuth.ClientSecret,
+						AuthServerMetadataURL: skill.OAuth.AuthServerMetadataURL,
+						RedirectURL:           skill.OAuth.RedirectURL,
+						Scopes:                skill.OAuth.Scopes,
+						PKCEEnabled:           skill.OAuth.PKCEEnabled,
+					}
+				}
+			} else {
+				// Legacy stdio configuration
+				if skill.Command == "" {
+					return nil, errors.New("mcp command is required for local MCP server")
+				}
+				serverConfig = &MCPServerConfig{
+					Command: skill.Command,
+					Args:    skill.Args,
+					Env:     skill.Env,
+				}
 			}
+
 			if err := s.registerMCPTool(ctx, RegisterMCPToolRequest{
-				ServerID: skill.Name,
-				Command:  skill.Command,
-				Args:     skill.Args,
-				Env:      skill.Env,
+				ServerID:     skill.Name,
+				ServerConfig: serverConfig,
 			}); err != nil {
 				return nil, errors.Wrap(err, "failed to register mcp tool")
 			}
