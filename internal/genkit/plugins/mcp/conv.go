@@ -2,7 +2,6 @@ package mcp
 
 import (
 	"encoding/json"
-	"strings"
 
 	"github.com/invopop/jsonschema"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -23,15 +22,4 @@ func makeInputSchema(
 	}
 
 	return &inputSchema, nil
-}
-
-func toText(contents []mcp.Content) string {
-	text := ""
-	for _, c := range contents {
-		if t, ok := c.(mcp.TextContent); ok {
-			text += t.Text
-		}
-	}
-
-	return strings.TrimSpace(text)
 }
