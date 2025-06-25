@@ -38,7 +38,7 @@ type AgentSkill struct {
 
 	// Remote MCP Support
 	URL       string                 `json:"url,omitempty" jsonschema_description:"URL for remote MCP server (SSE, OAuth-SSE, or Streamable)"`
-	Transport string                 `json:"transport,omitempty" jsonschema_description:"Transport type: stdio, sse, oauth-sse, streamable. Auto-detected if not specified"`
+	Transport string                 `json:"transport,omitempty" jsonschema_description:"Transport type: stdio, sse, oauth-sse, http. Auto-detected if not specified"`
 	Headers   map[string]string      `json:"headers,omitempty" jsonschema_description:"HTTP headers for authentication (e.g., API keys)"`
 	OAuth     *AgentSkillOAuthConfig `json:"oauth,omitempty" jsonschema_description:"OAuth configuration for oauth-sse transport"`
 

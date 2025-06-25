@@ -12,7 +12,6 @@ import (
 	"syscall"
 
 	"github.com/goccy/go-yaml"
-	"github.com/habiliai/agentruntime"
 	"github.com/habiliai/agentruntime/entity"
 	"github.com/habiliai/agentruntime/internal/mylog"
 	"github.com/pkg/errors"
@@ -59,7 +58,7 @@ func newRootCmd() *cobra.Command {
 				return errors.New("no agent files found")
 			}
 
-			var agents []entity.Agent
+			agents := map[string]entity.Agent{}
 			for _, agentFile := range agentFiles {
 				var agent entity.Agent
 				agentFileBytes, err := os.ReadFile(agentFile)
@@ -69,7 +68,7 @@ func newRootCmd() *cobra.Command {
 				if err := yaml.Unmarshal(agentFileBytes, &agent); err != nil {
 					return errors.Wrapf(err, "failed to unmarshal agent file: %s", agentFile)
 				}
-				agents = append(agents, agent)
+				agents[strings.ToLower(agent.Name)] = agent
 			}
 
 			db, err := gorm.Open(sqlite.Open("agentruntime.db"), &gorm.Config{})
@@ -81,40 +80,16 @@ func newRootCmd() *cobra.Command {
 				return errors.Wrap(err, "failed to migrate database")
 			}
 
-			runtimes := make(map[string]*agentruntime.AgentRuntime)
-			for _, agent := range agents {
-				runtime, err := agentruntime.NewAgentRuntime(
-					ctx,
-					agentruntime.WithOpenAIAPIKey(os.Getenv("OPENAI_API_KEY")),
-					agentruntime.WithAnthropicAPIKey(os.Getenv("ANTHROPIC_API_KEY")),
-					agentruntime.WithXAIAPIKey(os.Getenv("XAI_API_KEY")),
-					agentruntime.WithLogger(logger),
-					agentruntime.WithTraceVerbose(true),
-					agentruntime.WithAgent(agent),
-				)
-				if err != nil {
-					return errors.Wrap(err, "failed to create agent runtime")
-				}
-				runtimes[strings.ToLower(agent.Name)] = runtime
-			}
-
 			messageCh := make(chan *Message, len(agents)*2)
 			var wg sync.WaitGroup
 			wg.Add(1)
 			go func() {
 				defer close(messageCh)
 				defer wg.Done()
-				loopMentionedBy(ctx, db, runtimes, logger, messageCh)
+				loopMentionedBy(ctx, db, agents, logger, messageCh)
 			}()
 
-			handler, err := createServerHandler(
-				ctx,
-				agents,
-				db,
-				runtimes,
-				logger,
-				messageCh,
-			)
+			handler, err := createServerHandler(agents, db, logger, messageCh)
 			if err != nil {
 				return err
 			}

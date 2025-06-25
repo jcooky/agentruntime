@@ -4,13 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"maps"
 	"net/http"
+	"slices"
 	"strconv"
 	"time"
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
-	"github.com/habiliai/agentruntime"
 	"github.com/habiliai/agentruntime/entity"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
@@ -48,7 +49,7 @@ type Thread struct {
 	History []Message `json:"messages" gorm:"foreignKey:ThreadID"`
 }
 
-func createThreadsRouter(router *mux.Router, db *gorm.DB, runtimes map[string]*agentruntime.AgentRuntime, messageCh chan *Message) {
+func createThreadsRouter(router *mux.Router, db *gorm.DB, messageCh chan *Message) {
 
 	// Create a new thread
 	router.HandleFunc("/threads", func(w http.ResponseWriter, r *http.Request) {
@@ -183,10 +184,12 @@ func createThreadsRouter(router *mux.Router, db *gorm.DB, runtimes map[string]*a
 	}).Methods("GET")
 }
 
-func createServerHandler(ctx context.Context, agents []entity.Agent, db *gorm.DB, runtimes map[string]*agentruntime.AgentRuntime, logger *slog.Logger, messageCh chan *Message) (http.Handler, error) {
+func createServerHandler(agents map[string]entity.Agent, db *gorm.DB, logger *slog.Logger, messageCh chan *Message) (http.Handler, error) {
 	router := mux.NewRouter()
-	createThreadsRouter(router, db, runtimes, messageCh)
+	createThreadsRouter(router, db, messageCh)
 	router.HandleFunc("/agents", func(w http.ResponseWriter, r *http.Request) {
+		agents := slices.Collect(maps.Values(agents))
+
 		w.WriteHeader(http.StatusOK)
 		if err := json.NewEncoder(w).Encode(agents); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)

@@ -5,3 +5,4 @@
 .vscode
 .history
 node_modules
+__debug*

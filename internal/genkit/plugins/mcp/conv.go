@@ -35,25 +35,3 @@ func toText(contents []mcp.Content) string {
 
 	return strings.TrimSpace(text)
 }
-
-func processResult(result *mcp.CallToolResult) (*ToolResult, error) {
-	if result == nil {
-		return nil, nil
-	}
-
-	var (
-		out ToolResult
-		err error
-	)
-	if result.IsError {
-		out.Error = toText(result.Content)
-		return &out, nil
-	} else {
-		content := any(result.Content)
-		if len(result.Content) == 1 {
-			content = result.Content[0]
-		}
-		out.Result, err = json.Marshal(content)
-		return &out, err
-	}
-}

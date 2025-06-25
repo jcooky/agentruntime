@@ -24,7 +24,7 @@ type (
 	manager struct {
 		logger *mylog.Logger
 
-		mcpClients map[string]mcpclient.MCPClient
+		mcpClients map[string]*mcpclient.Client
 		mtx        sync.Mutex
 		genkit     *genkit.Genkit
 	}
@@ -37,7 +37,7 @@ var (
 func NewToolManager(ctx context.Context, skills []entity.AgentSkill, logger *slog.Logger, genkit *genkit.Genkit) (Manager, error) {
 	s := &manager{
 		logger:     logger,
-		mcpClients: make(map[string]mcpclient.MCPClient),
+		mcpClients: make(map[string]*mcpclient.Client),
 		genkit:     genkit,
 	}
 
@@ -45,7 +45,7 @@ func NewToolManager(ctx context.Context, skills []entity.AgentSkill, logger *slo
 		switch skill.Type {
 		case "mcp":
 			if skill.Name == "" {
-				return nil, errors.New("mcp server is required")
+				return nil, errors.New("mcp server name is required")
 			}
 
 			// Create server config based on skill configuration

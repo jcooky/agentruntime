@@ -3,10 +3,11 @@ package cmd
 import (
 	"context"
 	"log/slog"
-	"strings"
+	"os"
 
 	"github.com/habiliai/agentruntime"
 	"github.com/habiliai/agentruntime/engine"
+	"github.com/habiliai/agentruntime/entity"
 	"github.com/habiliai/agentruntime/internal/msgutils"
 	"github.com/mokiat/gog"
 	"gorm.io/gorm"
@@ -15,7 +16,7 @@ import (
 func loopMentionedBy(
 	ctx context.Context,
 	db *gorm.DB,
-	runtimes map[string]*agentruntime.AgentRuntime,
+	agents map[string]entity.Agent,
 	logger *slog.Logger,
 	messageCh chan *Message,
 ) {
@@ -28,17 +29,31 @@ func loopMentionedBy(
 			if len(mentions) == 0 {
 				continue
 			}
-			if db.First(&msg.Thread, "id = ?", msg.ThreadID).Error != nil {
+			if db.Preload("History").First(&msg.Thread, "id = ?", msg.ThreadID).Error != nil {
 				logger.Error("thread not found", "thread_id", msg.ThreadID)
 				continue
 			}
 
 			for _, mention := range mentions {
-				runtime, ok := runtimes[strings.ToLower(mention)]
+				agent, ok := agents[mention]
 				if !ok {
-					logger.Error("runtime not found", "mention", mention)
+					logger.Error("agent not found", "mention", mention)
 					continue
 				}
+				runtime, err := agentruntime.NewAgentRuntime(
+					ctx,
+					agentruntime.WithOpenAIAPIKey(os.Getenv("OPENAI_API_KEY")),
+					agentruntime.WithAnthropicAPIKey(os.Getenv("ANTHROPIC_API_KEY")),
+					agentruntime.WithXAIAPIKey(os.Getenv("XAI_API_KEY")),
+					agentruntime.WithLogger(logger),
+					agentruntime.WithTraceVerbose(true),
+					agentruntime.WithAgent(agent),
+				)
+				if err != nil {
+					logger.Error("failed to create agent runtime", "mention", mention, "error", err)
+					continue
+				}
+				defer runtime.Close()
 
 				var out string
 				resp, err := runtime.Run(ctx, engine.RunRequest{

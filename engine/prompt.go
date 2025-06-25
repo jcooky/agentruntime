@@ -92,6 +92,7 @@ func GetPromptFn(promptValues *ChatPromptValues) ai.PromptFn {
 		if err := chatInstTmpl.Execute(&buf, promptValues); err != nil {
 			return "", err
 		}
-		return buf.String(), nil
+		result := buf.String()
+		return result, nil
 	}
 }

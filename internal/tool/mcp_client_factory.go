@@ -26,7 +26,7 @@ func NewMCPClientFactory() *MCPClientFactory {
 }
 
 // CreateClient creates an MCP client based on the server configuration
-func (f *MCPClientFactory) CreateClient(ctx context.Context, serverID string, config MCPServerConfig) (mcpclient.MCPClient, error) {
+func (f *MCPClientFactory) CreateClient(ctx context.Context, serverID string, config MCPServerConfig) (*mcpclient.Client, error) {
 	transportType := config.GetTransport()
 
 	switch transportType {
@@ -39,7 +39,7 @@ func (f *MCPClientFactory) CreateClient(ctx context.Context, serverID string, co
 	case MCPTransportOAuthSSE:
 		return f.createOAuthSSEClient(config)
 
-	case MCPTransportStreamable:
+	case MCPTransportHTTP:
 		return f.createStreamableClient(config)
 
 	default:
@@ -48,7 +48,7 @@ func (f *MCPClientFactory) CreateClient(ctx context.Context, serverID string, co
 }
 
 // createStdioClient creates a stdio-based MCP client
-func (f *MCPClientFactory) createStdioClient(config MCPServerConfig) (mcpclient.MCPClient, error) {
+func (f *MCPClientFactory) createStdioClient(config MCPServerConfig) (*mcpclient.Client, error) {
 	if config.Command == "" {
 		return nil, errors.New("command is required for stdio transport")
 	}
@@ -62,7 +62,7 @@ func (f *MCPClientFactory) createStdioClient(config MCPServerConfig) (mcpclient.
 }
 
 // createSSEClient creates an SSE-based MCP client
-func (f *MCPClientFactory) createSSEClient(config MCPServerConfig) (mcpclient.MCPClient, error) {
+func (f *MCPClientFactory) createSSEClient(config MCPServerConfig) (*mcpclient.Client, error) {
 	if config.URL == "" {
 		return nil, errors.New("URL is required for SSE transport")
 	}
@@ -79,7 +79,7 @@ func (f *MCPClientFactory) createSSEClient(config MCPServerConfig) (mcpclient.MC
 }
 
 // createOAuthSSEClient creates an OAuth-enabled SSE MCP client
-func (f *MCPClientFactory) createOAuthSSEClient(config MCPServerConfig) (mcpclient.MCPClient, error) {
+func (f *MCPClientFactory) createOAuthSSEClient(config MCPServerConfig) (*mcpclient.Client, error) {
 	if config.URL == "" {
 		return nil, errors.New("URL is required for OAuth SSE transport")
 	}
@@ -110,24 +110,10 @@ func (f *MCPClientFactory) createOAuthSSEClient(config MCPServerConfig) (mcpclie
 }
 
 // createStreamableClient creates a streamable HTTP MCP client
-func (f *MCPClientFactory) createStreamableClient(config MCPServerConfig) (mcpclient.MCPClient, error) {
+func (f *MCPClientFactory) createStreamableClient(config MCPServerConfig) (*mcpclient.Client, error) {
 	if config.URL == "" {
 		return nil, errors.New("URL is required for streamable transport")
 	}
 
-	opts := []transport.StreamableHTTPCOption{}
-
-	// Convert headers if needed
-	if len(config.Headers) > 0 {
-		headerFunc := func(req *http.Request) {
-			for key, value := range config.Headers {
-				req.Header.Set(key, value)
-			}
-		}
-		// Note: You might need to implement a wrapper for StreamableHTTPCOption
-		// as the transport package might have different option types
-		_ = headerFunc // placeholder
-	}
-
-	return mcpclient.NewStreamableHttpClient(config.URL, opts...)
+	return mcpclient.NewStreamableHttpClient(config.URL, transport.WithHTTPHeaders(config.Headers))
 }

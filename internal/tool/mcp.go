@@ -60,31 +60,36 @@ func (m *manager) registerMCPTool(ctx context.Context, req RegisterMCPToolReques
 		// Handle stderr for stdio clients
 		if config.GetTransport() == MCPTransportStdio {
 			// Try to get stderr from the client if it's a stdio client
-			if stdioClient, ok := c.(*mcpclient.Client); ok {
-				stderr, ok := mcpclient.GetStderr(stdioClient)
-				if ok {
-					go func(stderr io.Reader) {
-						rd := bufio.NewReader(stderr)
-						for {
-							line, err := rd.ReadString('\n')
-							if err != nil {
-								if err == io.EOF || strings.Contains(err.Error(), "already closed") {
-									return
-								}
-								m.logger.Error("failed to copy stderr", "err", err, "serverName", req.ServerID)
+			stderr, ok := mcpclient.GetStderr(c)
+			if ok {
+				go func(stderr io.Reader) {
+					rd := bufio.NewReader(stderr)
+					for {
+						line, err := rd.ReadString('\n')
+						if err != nil {
+							if err == io.EOF || strings.Contains(err.Error(), "already closed") {
 								return
 							}
-							m.logger.Warn("[MCP] "+strings.TrimSpace(line), "serverName", req.ServerID)
+							m.logger.Error("failed to copy stderr", "err", err, "serverName", req.ServerID)
+							return
 						}
-					}(stderr)
-				}
+						m.logger.Warn("[MCP] "+strings.TrimSpace(line), "serverName", req.ServerID)
+					}
+				}(stderr)
 			}
 		}
 
 		initRequest := mcp.InitializeRequest{}
 		initRequest.Params.ProtocolVersion = mcp.LATEST_PROTOCOL_VERSION
+		initRequest.Params.ClientInfo = mcp.Implementation{
+			Name:    "agentruntime",
+			Version: "0.1.0",
+		}
+		if err := c.Start(ctx); err != nil {
+			return errors.Wrapf(err, "failed to start MCP client %s", req.ServerID)
+		}
 		if _, err := c.Initialize(ctx, initRequest); err != nil {
-			return errors.Wrapf(err, "failed to initialize MCP client")
+			return errors.Wrapf(err, "failed to initialize MCP client %s", req.ServerID)
 		}
 
 		m.mcpClients[req.ServerID] = c
@@ -100,7 +105,7 @@ func (m *manager) registerMCPTool(ctx context.Context, req RegisterMCPToolReques
 			m.logger.InfoContext(ctx, "tool already registered", "tool", tool.Name)
 			continue
 		}
-		if _, err := internalmcp.DefineTool(m.genkit, mcpClient, tool, func(ctx *ai.ToolContext, in any, out *internalmcp.ToolResult) error {
+		if _, err := internalmcp.DefineTool(m.genkit, mcpClient, tool, func(ctx *ai.ToolContext, in any, out *mcp.CallToolResult) error {
 			appendCallData(ctx, CallData{
 				Name:      tool.Name,
 				Arguments: in,

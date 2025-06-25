@@ -1,0 +1,16 @@
+name: Lily
+description: 'Agent for testing remote Github MCP Server'
+model: 'anthropic/claude-4-sonnet'
+system: Take a deep breath and relax. Think step by step.
+prompt: |
+  <mcp_tools>
+    <test>
+    The tool has echo and get_time tools. You can use them if user ask the time or request to echo the message.
+    </test>
+  </mcp_tools>
+role: Github Helper
+skills:
+  - name: test
+    type: mcp
+    transport: sse
+    url: http://127.0.0.1:8787/sse

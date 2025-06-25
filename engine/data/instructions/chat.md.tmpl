@@ -39,21 +39,23 @@
 {{ .Agent.Prompt }}
 </agent>
 
+{{- if .MessageExamples }}
 <message_examples>
 # Example Conversations for {{ .Agent.Name }}
 ```json
 {{ .Agent.MessageExamples | toJson }}
 ```
 </message_examples>
+{{- end }}
 
-<history>
 {{- if .RecentConversations }}
+<history>
 # Recent Conversations
 ```json
 {{ .RecentConversations | toJson }}
 ```
-{{- end }}
 </history>
+{{- end }}
 
 <available_actions>
 - You can use the following actions:

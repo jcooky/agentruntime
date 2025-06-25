@@ -6,15 +6,15 @@ import "time"
 type MCPTransportType string
 
 const (
-	MCPTransportStdio      MCPTransportType = "stdio"
-	MCPTransportSSE        MCPTransportType = "sse"
-	MCPTransportOAuthSSE   MCPTransportType = "oauth-sse"
-	MCPTransportStreamable MCPTransportType = "streamable"
+	MCPTransportStdio    MCPTransportType = "stdio"
+	MCPTransportSSE      MCPTransportType = "sse"
+	MCPTransportOAuthSSE MCPTransportType = "oauth-sse"
+	MCPTransportHTTP     MCPTransportType = "http"
 )
 
 // MCPServerConfig represents the configuration for an MCP server
 type MCPServerConfig struct {
-	// Transport type (stdio, sse, oauth-sse, streamable)
+	// Transport type (stdio, sse, oauth-sse, http)
 	Transport MCPTransportType `json:"transport,omitempty" yaml:"transport,omitempty"`
 
 	// For stdio transport
