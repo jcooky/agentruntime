@@ -30,6 +30,7 @@ type AgentEvaluator struct {
 
 // AgentSkill represents a unit of capability that an agent can perform.
 type AgentSkill struct {
+	ID   string `json:"id" jsonschema:"required,description=Field for unique identify to skill"`
 	Type string `json:"type" jsonschema:"required,enum=llm,enum=mcp,enum=nativeTool"`
 
 	Tools   []string `json:"tools,omitempty" jsonschema_description:"MCP tools name"`
