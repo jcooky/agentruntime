@@ -218,23 +218,34 @@ func convertContent(parts []*ai.Part) ([]anthropic.ContentBlockParamUnion, error
 			blocks = append(blocks, anthropic.NewTextBlock(part.Text))
 		} else if part.IsMedia() {
 			// Handle image content
-			// Extract base64 data from data URL if present
 			data := part.Text
-			if strings.HasPrefix(data, "data:") {
+
+			// Check if it's a base64 data URL
+			if strings.HasPrefix(data, "data:") && strings.Contains(data, ";base64,") {
+				// Extract base64 data from data URL
 				parts := strings.SplitN(data, ",", 2)
 				if len(parts) == 2 {
 					data = parts[1]
 				}
-			}
 
-			// Create base64 image source param
-			imageSource := anthropic.Base64ImageSourceParam{
-				Data:      data,
-				MediaType: getAnthropicMediaType(part.ContentType),
-			}
+				// Create base64 image source param
+				imageSource := anthropic.Base64ImageSourceParam{
+					Data:      data,
+					MediaType: getAnthropicMediaType(part.ContentType),
+				}
 
-			// Create image block
-			blocks = append(blocks, anthropic.NewImageBlock(imageSource))
+				// Create image block with base64 source
+				blocks = append(blocks, anthropic.NewImageBlock(imageSource))
+			} else {
+				// Assume it's a URL
+				// Create URL image source param
+				imageSource := anthropic.URLImageSourceParam{
+					URL: data,
+				}
+
+				// Create image block with URL source
+				blocks = append(blocks, anthropic.NewImageBlock(imageSource))
+			}
 		} else if part.IsToolRequest() {
 			// Convert tool request to Anthropic format
 			toolReq := part.ToolRequest
