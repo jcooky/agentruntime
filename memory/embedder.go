@@ -7,10 +7,17 @@ import (
 	"github.com/firebase/genkit/go/genkit"
 )
 
-// GenkitEmbedder implements Embedder using genkit functionality
-type GenkitEmbedder struct {
-	genkit *genkit.Genkit
-}
+type (
+	// Embedder interface for generating embeddings
+	Embedder interface {
+		Embed(ctx context.Context, texts ...string) ([][]float32, error)
+	}
+
+	// GenkitEmbedder implements Embedder using genkit functionality
+	GenkitEmbedder struct {
+		genkit *genkit.Genkit
+	}
+)
 
 // NewGenkitEmbedder creates a new embedder using genkit
 func NewGenkitEmbedder(genkit *genkit.Genkit) Embedder {

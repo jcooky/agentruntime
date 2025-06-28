@@ -30,12 +30,9 @@ type (
 	SqliteService struct {
 		db           *gorm.DB
 		embedder     Embedder
+		reranker     Reranker
 		vecExtLoaded bool
-	}
-
-	// Embedder interface for generating embeddings
-	Embedder interface {
-		Embed(ctx context.Context, texts ...string) ([][]float32, error)
+		config       *config.MemoryConfig
 	}
 
 	KnowledgeChunk struct {
@@ -85,10 +82,24 @@ func NewService(ctx context.Context, conf *config.MemoryConfig, logger *slog.Log
 	// Create embedder for RAG functionality
 	embedder := NewGenkitEmbedder(genkit)
 
+	// Create reranker if enabled
+	var reranker Reranker
+	if conf.RerankEnabled && embedder != nil {
+		if conf.UseBatchRerank {
+			reranker = NewBatchGenkitReranker(genkit, conf.RerankModel)
+		} else {
+			reranker = NewGenkitReranker(genkit, conf.RerankModel)
+		}
+	} else {
+		reranker = NewNoOpReranker()
+	}
+
 	service := &SqliteService{
 		db:           db,
 		embedder:     embedder,
+		reranker:     reranker,
 		vecExtLoaded: conf.VectorEnabled,
+		config:       conf,
 	}
 
 	// Verify sqlite-vec is working and create vector table (only if vector functionality is enabled)
@@ -303,7 +314,44 @@ func (s *SqliteService) RetrieveRelevantKnowledge(ctx context.Context, agentName
 
 	queryEmbedding := embeddings[0]
 
-	return s.retrieveWithSqliteVec(ctx, agentName, queryEmbedding, limit)
+	// Determine retrieval count based on rerank configuration
+	retrievalLimit := limit
+	if s.config.RerankEnabled && s.config.RetrievalFactor > 1 {
+		retrievalLimit = limit * s.config.RetrievalFactor
+	}
+
+	// Retrieve candidates using vector search
+	candidates, err := s.retrieveWithSqliteVec(ctx, agentName, queryEmbedding, retrievalLimit)
+	if err != nil {
+		return nil, err
+	}
+
+	// Apply reranking if enabled
+	if s.config.RerankEnabled && s.reranker != nil && len(candidates) > limit {
+		rerankResults, err := s.reranker.Rerank(ctx, query, candidates, limit)
+		if err != nil {
+			// If reranking fails, fall back to original results
+			logger := slog.Default()
+			logger.Warn("reranking failed, falling back to original results", slog.String("error", err.Error()))
+			if len(candidates) > limit {
+				candidates = candidates[:limit]
+			}
+			return candidates, nil
+		}
+
+		// Extract content from rerank results
+		results := make([]string, len(rerankResults))
+		for i, result := range rerankResults {
+			results[i] = result.Content
+		}
+		return results, nil
+	}
+
+	// If reranking is not enabled or not needed, return original results
+	if len(candidates) > limit {
+		candidates = candidates[:limit]
+	}
+	return candidates, nil
 }
 
 // retrieveWithSqliteVec uses sqlite-vec for fast vector similarity search with Go bindings
