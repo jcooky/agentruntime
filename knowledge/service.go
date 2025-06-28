@@ -23,10 +23,11 @@ type (
 	}
 
 	service struct {
-		store    Store
-		embedder Embedder
-		reranker Reranker
-		config   *config.KnowledgeConfig
+		store         Store
+		embedder      Embedder
+		reranker      Reranker
+		queryRewriter QueryRewriter
+		config        *config.KnowledgeConfig
 	}
 
 	KnowledgeChunk struct {
@@ -69,11 +70,24 @@ func NewService(ctx context.Context, conf *config.KnowledgeConfig, logger *slog.
 		reranker = NewNoOpReranker()
 	}
 
+	// Create query rewriter if enabled
+	var queryRewriter QueryRewriter
+	if conf.QueryRewriteEnabled && embedder != nil {
+		model := conf.QueryRewriteModel
+		if model == "" {
+			model = conf.RerankModel // Default to rerank model
+		}
+		queryRewriter = CreateQueryRewriter(genkit, conf.QueryRewriteStrategy, model)
+	} else {
+		queryRewriter = NewNoOpQueryRewriter()
+	}
+
 	return &service{
-		store:    store,
-		embedder: embedder,
-		reranker: reranker,
-		config:   conf,
+		store:         store,
+		embedder:      embedder,
+		reranker:      reranker,
+		queryRewriter: queryRewriter,
+		config:        conf,
 	}, nil
 }
 
@@ -100,11 +114,24 @@ func NewServiceWithStore(
 		reranker = NewNoOpReranker()
 	}
 
+	// Create query rewriter if enabled
+	var queryRewriter QueryRewriter
+	if conf.QueryRewriteEnabled && embedder != nil {
+		model := conf.QueryRewriteModel
+		if model == "" {
+			model = conf.RerankModel // Default to rerank model
+		}
+		queryRewriter = CreateQueryRewriter(genkit, conf.QueryRewriteStrategy, model)
+	} else {
+		queryRewriter = NewNoOpQueryRewriter()
+	}
+
 	return &service{
-		store:    store,
-		embedder: embedder,
-		reranker: reranker,
-		config:   conf,
+		store:         store,
+		embedder:      embedder,
+		reranker:      reranker,
+		queryRewriter: queryRewriter,
+		config:        conf,
 	}, nil
 }
 
@@ -182,17 +209,14 @@ func (s *service) RetrieveRelevantKnowledge(ctx context.Context, agentName strin
 		return nil, nil
 	}
 
-	// Generate embedding for the query
-	embeddings, err := s.embedder.Embed(ctx, query)
+	// Apply query rewriting
+	queries, err := s.queryRewriter.Rewrite(ctx, query)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to generate query embedding")
+		// Log error but continue with original query
+		logger := slog.Default()
+		logger.Warn("query rewriting failed, using original query", slog.String("error", err.Error()))
+		queries = []string{query}
 	}
-
-	if len(embeddings) == 0 {
-		return nil, errors.Errorf("no embedding generated for query")
-	}
-
-	queryEmbedding := embeddings[0]
 
 	// Determine retrieval count based on rerank configuration
 	retrievalLimit := limit
@@ -200,15 +224,66 @@ func (s *service) RetrieveRelevantKnowledge(ctx context.Context, agentName strin
 		retrievalLimit = limit * s.config.RetrievalFactor
 	}
 
-	// Search for relevant knowledge
-	searchResults, err := s.store.Search(ctx, agentName, queryEmbedding, retrievalLimit)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to search knowledge")
+	// Search with all rewritten queries
+	allSearchResults := make([]KnowledgeSearchResult, 0)
+	uniqueResults := make(map[string]KnowledgeSearchResult) // Use map to track unique results by ID
+
+	for i, q := range queries {
+		// Generate embedding for this query
+		embeddings, err := s.embedder.Embed(ctx, q)
+		if err != nil {
+			logger := slog.Default()
+			logger.Warn("failed to generate embedding for rewritten query",
+				slog.String("query", q),
+				slog.String("error", err.Error()))
+			continue
+		}
+
+		if len(embeddings) == 0 {
+			continue
+		}
+
+		queryEmbedding := embeddings[0]
+
+		// Search for relevant knowledge
+		searchResults, err := s.store.Search(ctx, agentName, queryEmbedding, retrievalLimit)
+		if err != nil {
+			logger := slog.Default()
+			logger.Warn("search failed for rewritten query",
+				slog.String("query", q),
+				slog.String("error", err.Error()))
+			continue
+		}
+
+		// Apply score weighting based on query type
+		scoreWeight := 1.0
+		if i > 0 { // Not the original query
+			scoreWeight = 0.9 // Slightly lower weight for rewritten queries
+		}
+
+		// Merge results, keeping highest score for duplicates
+		for _, result := range searchResults {
+			adjustedScore := result.Score * float32(scoreWeight)
+			if existing, exists := uniqueResults[result.ID]; !exists || adjustedScore > existing.Score {
+				result.Score = adjustedScore
+				uniqueResults[result.ID] = result
+			}
+		}
 	}
 
+	// Convert map back to slice
+	for _, result := range uniqueResults {
+		allSearchResults = append(allSearchResults, result)
+	}
+
+	// Sort by score descending
+	sort.Slice(allSearchResults, func(i, j int) bool {
+		return allSearchResults[i].Score > allSearchResults[j].Score
+	})
+
 	// Extract content for reranking
-	candidates := make([]string, len(searchResults))
-	for i, result := range searchResults {
+	candidates := make([]string, len(allSearchResults))
+	for i, result := range allSearchResults {
 		candidates[i] = result.Content
 	}
 

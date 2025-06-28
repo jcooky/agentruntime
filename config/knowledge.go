@@ -48,6 +48,20 @@ type KnowledgeConfig struct {
 	// Individual processing makes separate calls for each candidate (more accurate)
 	// Default: true
 	UseBatchRerank bool `json:"useBatchRerank,omitempty"`
+
+	// Query Rewrite Settings
+	// QueryRewriteEnabled controls whether to use query rewriting for better search
+	// Default: false
+	QueryRewriteEnabled bool `json:"queryRewriteEnabled,omitempty"`
+
+	// QueryRewriteStrategy specifies which rewriting strategy to use
+	// Options: "hyde" (Hypothetical Document Embeddings), "expansion", "multi", "none"
+	// Default: "hyde"
+	QueryRewriteStrategy string `json:"queryRewriteStrategy,omitempty"`
+
+	// QueryRewriteModel specifies which LLM model to use for query rewriting
+	// Default: same as RerankModel
+	QueryRewriteModel string `json:"queryRewriteModel,omitempty"`
 }
 
 // NewKnowledgeConfig creates a new KnowledgeConfig with sensible defaults
@@ -72,5 +86,10 @@ func NewKnowledgeConfig() *KnowledgeConfig {
 		RerankTopK:      10,
 		RetrievalFactor: 3,    // Retrieve 3x candidates for reranking
 		UseBatchRerank:  true, // Use batch reranker for better performance
+
+		// Query Rewrite Settings
+		QueryRewriteEnabled:  false, // Disabled by default
+		QueryRewriteStrategy: "hyde",
+		// QueryRewriteModel will default to RerankModel if not set
 	}
 }
