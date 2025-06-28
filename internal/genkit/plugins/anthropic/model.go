@@ -220,12 +220,23 @@ func convertContent(parts []*ai.Part) ([]anthropic.ContentBlockParamUnion, error
 			// Handle image content
 			data := part.Text
 
-			// Check if it's a base64 data URL
-			if strings.HasPrefix(data, "data:") && strings.Contains(data, ";base64,") {
-				// Extract base64 data from data URL
-				parts := strings.SplitN(data, ",", 2)
-				if len(parts) == 2 {
-					data = parts[1]
+			// Check if it's a URL
+			if strings.HasPrefix(data, "http://") || strings.HasPrefix(data, "https://") {
+				// Create URL image source param
+				imageSource := anthropic.URLImageSourceParam{
+					URL: data,
+				}
+
+				// Create image block with URL source
+				blocks = append(blocks, anthropic.NewImageBlock(imageSource))
+			} else {
+				// Assume it's base64 data
+				// If it has data URL prefix, extract the base64 part
+				if strings.HasPrefix(data, "data:") && strings.Contains(data, ";base64,") {
+					parts := strings.SplitN(data, ",", 2)
+					if len(parts) == 2 {
+						data = parts[1]
+					}
 				}
 
 				// Create base64 image source param
@@ -235,15 +246,6 @@ func convertContent(parts []*ai.Part) ([]anthropic.ContentBlockParamUnion, error
 				}
 
 				// Create image block with base64 source
-				blocks = append(blocks, anthropic.NewImageBlock(imageSource))
-			} else {
-				// Assume it's a URL
-				// Create URL image source param
-				imageSource := anthropic.URLImageSourceParam{
-					URL: data,
-				}
-
-				// Create image block with URL source
 				blocks = append(blocks, anthropic.NewImageBlock(imageSource))
 			}
 		} else if part.IsToolRequest() {
