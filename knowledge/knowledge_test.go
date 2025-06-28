@@ -1,4 +1,4 @@
-package memory
+package knowledge
 
 import (
 	"context"
@@ -24,7 +24,7 @@ func (m *mockEmbedder) Embed(ctx context.Context, texts ...string) ([][]float32,
 }
 
 func TestKnowledgeProcessing(t *testing.T) {
-	service := &SqliteService{embedder: &mockEmbedder{}}
+	service := &service{embedder: &mockEmbedder{}}
 
 	knowledge := []map[string]any{
 		{
@@ -56,7 +56,7 @@ func TestKnowledgeProcessing(t *testing.T) {
 }
 
 func TestTextExtraction(t *testing.T) {
-	service := &SqliteService{}
+	service := &service{}
 
 	testCases := []struct {
 		name     string

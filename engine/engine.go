@@ -1,32 +1,32 @@
 package engine
 
 import (
-	"github.com/firebase/genkit/go/genkit"
+	"log/slog"
 
-	"github.com/habiliai/agentruntime/internal/mylog"
-	"github.com/habiliai/agentruntime/internal/tool"
-	"github.com/habiliai/agentruntime/memory"
+	"github.com/firebase/genkit/go/genkit"
+	tool2 "github.com/habiliai/agentruntime/internal/tool"
+	"github.com/habiliai/agentruntime/knowledge"
 )
 
 type (
 	Engine struct {
-		logger        *mylog.Logger
-		toolManager   tool.Manager
-		genkit        *genkit.Genkit
-		memoryService memory.Service
+		logger           *slog.Logger
+		toolManager      tool2.Manager
+		genkit           *genkit.Genkit
+		knowledgeService knowledge.Service
 	}
 )
 
 func NewEngine(
-	logger *mylog.Logger,
-	toolManager tool.Manager,
+	logger *slog.Logger,
+	toolManager tool2.Manager,
 	genkit *genkit.Genkit,
-	memoryService memory.Service,
+	knowledgeService knowledge.Service,
 ) *Engine {
 	return &Engine{
-		logger:        logger,
-		toolManager:   toolManager,
-		genkit:        genkit,
-		memoryService: memoryService,
+		logger:           logger,
+		toolManager:      toolManager,
+		genkit:           genkit,
+		knowledgeService: knowledgeService,
 	}
 }

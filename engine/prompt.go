@@ -74,7 +74,7 @@ func (s *Engine) BuildPromptValues(ctx context.Context, agent entity.Agent, hist
 		}
 
 		if queryContext != "" {
-			retrievedKnowledge, err := s.memoryService.RetrieveRelevantKnowledge(ctx, agent.Name, queryContext, 5)
+			retrievedKnowledge, err := s.knowledgeService.RetrieveRelevantKnowledge(ctx, agent.Name, queryContext, 5)
 			if err != nil {
 				s.logger.Warn("failed to retrieve relevant knowledge", "agent", agent.Name, "error", err)
 			} else {

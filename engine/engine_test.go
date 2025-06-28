@@ -8,9 +8,9 @@ import (
 
 	"github.com/habiliai/agentruntime/config"
 	"github.com/habiliai/agentruntime/engine"
-	"github.com/habiliai/agentruntime/internal/genkit"
+	genkitinternal "github.com/habiliai/agentruntime/internal/genkit"
 	"github.com/habiliai/agentruntime/internal/mytesting"
-	"github.com/habiliai/agentruntime/memory"
+	"github.com/habiliai/agentruntime/knowledge"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -23,14 +23,14 @@ type EngineTestSuite struct {
 func (s *EngineTestSuite) SetupTest() {
 	s.Suite.SetupTest()
 
-	g, err := genkit.NewGenkit(s, &config.ModelConfig{
+	g, err := genkitinternal.NewGenkit(s, &config.ModelConfig{
 		OpenAIAPIKey:    os.Getenv("OPENAI_API_KEY"),
 		XAIAPIKey:       os.Getenv("XAI_API_KEY"),
 		AnthropicAPIKey: os.Getenv("ANTHROPIC_API_KEY"),
 	}, slog.Default(), true)
 	s.Require().NoError(err)
 
-	memoryService, err := memory.NewService(s, &config.MemoryConfig{
+	knowledgeService, err := knowledge.NewService(s, &config.KnowledgeConfig{
 		SqliteEnabled: true,
 		SqlitePath:    ":memory:",
 		VectorEnabled: true,
@@ -41,7 +41,7 @@ func (s *EngineTestSuite) SetupTest() {
 		slog.Default(),
 		nil,
 		g,
-		memoryService,
+		knowledgeService,
 	)
 }
 

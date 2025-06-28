@@ -12,7 +12,7 @@ import (
 	"github.com/habiliai/agentruntime/internal/genkit"
 	"github.com/habiliai/agentruntime/internal/mylog"
 	"github.com/habiliai/agentruntime/internal/tool"
-	"github.com/habiliai/agentruntime/memory"
+	"github.com/habiliai/agentruntime/knowledge"
 )
 
 type (
@@ -22,11 +22,12 @@ type (
 		logger      *slog.Logger
 		agent       *entity.Agent
 
-		modelConfig  *config.ModelConfig
-		memoryConfig *config.MemoryConfig
-		logConfig    *config.LogConfig
-		traceVerbose bool
-		rag          bool
+		modelConfig     *config.ModelConfig
+		knowledgeConfig *config.KnowledgeConfig
+		logConfig       *config.LogConfig
+		traceVerbose    bool
+		rag             bool
+		store           knowledge.Store
 	}
 	Option func(*AgentRuntime)
 )
@@ -53,9 +54,9 @@ func (a *AgentRuntime) Close() {
 
 func NewAgentRuntime(ctx context.Context, optionFuncs ...Option) (*AgentRuntime, error) {
 	e := &AgentRuntime{
-		modelConfig:  &config.ModelConfig{},
-		memoryConfig: config.NewMemoryConfig(),
-		logConfig:    config.NewLogConfig(),
+		modelConfig:     &config.ModelConfig{},
+		knowledgeConfig: config.NewKnowledgeConfig(),
+		logConfig:       config.NewLogConfig(),
 	}
 	for _, f := range optionFuncs {
 		f(e)
@@ -83,14 +84,21 @@ func NewAgentRuntime(ctx context.Context, optionFuncs ...Option) (*AgentRuntime,
 		return nil, err
 	}
 
-	memoryService, err := memory.NewService(ctx, e.memoryConfig, e.logger, g)
+	var knowledgeService knowledge.Service
+	if e.store != nil {
+		// Use custom knowledge store
+		knowledgeService, err = knowledge.NewServiceWithStore(ctx, e.knowledgeConfig, e.logger, g, e.store)
+	} else {
+		// Use default SQLite knowledge store
+		knowledgeService, err = knowledge.NewService(ctx, e.knowledgeConfig, e.logger, g)
+	}
 	if err != nil {
 		return nil, err
 	}
 
 	if e.rag && len(e.agent.Knowledge) > 0 {
 		// Index knowledge for RAG if available
-		if err := memoryService.IndexKnowledge(ctx, e.agent.Name, e.agent.Knowledge); err != nil {
+		if err := knowledgeService.IndexKnowledge(ctx, e.agent.Name, e.agent.Knowledge); err != nil {
 			e.logger.Warn("failed to index knowledge for agent - agent will work without RAG functionality",
 				"agent", e.agent.Name,
 				"error", err)
@@ -102,7 +110,7 @@ func NewAgentRuntime(ctx context.Context, optionFuncs ...Option) (*AgentRuntime,
 		e.logger,
 		e.toolManager,
 		g,
-		memoryService,
+		knowledgeService,
 	)
 
 	return e, nil
@@ -150,9 +158,15 @@ func WithAgent(agent entity.Agent) func(e *AgentRuntime) {
 	}
 }
 
-func WithMemoryConfig(memoryConfig *config.MemoryConfig) func(e *AgentRuntime) {
+func WithKnowledgeConfig(knowledgeConfig *config.KnowledgeConfig) func(e *AgentRuntime) {
 	return func(e *AgentRuntime) {
-		e.memoryConfig = memoryConfig
+		e.knowledgeConfig = knowledgeConfig
+	}
+}
+
+func WithStore(store knowledge.Store) func(e *AgentRuntime) {
+	return func(e *AgentRuntime) {
+		e.store = store
 	}
 }
 

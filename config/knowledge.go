@@ -5,14 +5,14 @@ import (
 	"os"
 )
 
-type MemoryConfig struct {
+type KnowledgeConfig struct {
 	// Core Database Settings
-	// SqliteEnabled controls whether SQLite memory service is activated
+	// SqliteEnabled controls whether SQLite knowledge service is activated
 	// Default: true
 	SqliteEnabled bool `json:"sqliteEnabled,omitempty"`
 
 	// SqlitePath specifies the file path for the SQLite database
-	// Default: ~/.agentruntime/memory.db
+	// Default: ~/.agentruntime/knowledge.db
 	SqlitePath string `json:"sqlitePath,omitempty"`
 
 	// Vector Search Settings
@@ -50,18 +50,18 @@ type MemoryConfig struct {
 	UseBatchRerank bool `json:"useBatchRerank,omitempty"`
 }
 
-// NewMemoryConfig creates a new MemoryConfig with sensible defaults
+// NewKnowledgeConfig creates a new KnowledgeConfig with sensible defaults
 // These defaults can be overridden by environment variables
-func NewMemoryConfig() *MemoryConfig {
+func NewKnowledgeConfig() *KnowledgeConfig {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		panic(err)
 	}
 
-	return &MemoryConfig{
+	return &KnowledgeConfig{
 		// Core Database Settings
 		SqliteEnabled: true,
-		SqlitePath:    fmt.Sprintf("%s/.agentruntime/memory.db", home),
+		SqlitePath:    fmt.Sprintf("%s/.agentruntime/knowledge.db", home),
 
 		// Vector Search Settings
 		VectorEnabled: true,
