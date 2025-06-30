@@ -1,35 +1,63 @@
-package knowledge
+package knowledge_test
 
 import (
 	"context"
 	"testing"
 
+	"github.com/habiliai/agentruntime/knowledge"
+	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 // MockReranker is a mock implementation for testing
 type MockReranker struct {
-	rerankFunc func(ctx context.Context, query string, candidates []string, topK int) ([]RerankResult, error)
+	rerankFunc func(ctx context.Context, query string, candidates []*knowledge.KnowledgeSearchResult, topK int) ([]*knowledge.KnowledgeSearchResult, error)
 }
 
-func (m *MockReranker) Rerank(ctx context.Context, query string, candidates []string, topK int) ([]RerankResult, error) {
+func (m *MockReranker) Rerank(ctx context.Context, query string, candidates []*knowledge.KnowledgeSearchResult, topK int) ([]*knowledge.KnowledgeSearchResult, error) {
 	if m.rerankFunc != nil {
 		return m.rerankFunc(ctx, query, candidates, topK)
 	}
 	return nil, nil
 }
 
+// Helper function to create KnowledgeSearchResult from string content
+func createKnowledgeSearchResult(content string) *knowledge.KnowledgeSearchResult {
+	return &knowledge.KnowledgeSearchResult{
+		Document: &knowledge.Document{
+			Contents: []mcp.Content{
+				mcp.NewTextContent(content),
+			},
+		},
+		Score: 1.0,
+	}
+}
+
+// Helper function to get text content from KnowledgeSearchResult
+func getTextContent(result *knowledge.KnowledgeSearchResult) string {
+	if result.Document != nil && len(result.Document.Contents) > 0 {
+		// Try both value type and pointer type
+		switch c := result.Document.Contents[0].(type) {
+		case mcp.TextContent:
+			return c.Text
+		case *mcp.TextContent:
+			return c.Text
+		}
+	}
+	return ""
+}
+
 func TestNoOpReranker(t *testing.T) {
 	ctx := context.Background()
-	reranker := NewNoOpReranker()
+	reranker := knowledge.NewNoOpReranker()
 
-	candidates := []string{
-		"First candidate",
-		"Second candidate",
-		"Third candidate",
-		"Fourth candidate",
-		"Fifth candidate",
+	candidates := []*knowledge.KnowledgeSearchResult{
+		createKnowledgeSearchResult("First candidate"),
+		createKnowledgeSearchResult("Second candidate"),
+		createKnowledgeSearchResult("Third candidate"),
+		createKnowledgeSearchResult("Fourth candidate"),
+		createKnowledgeSearchResult("Fifth candidate"),
 	}
 
 	t.Run("returns requested number of results", func(t *testing.T) {
@@ -38,13 +66,13 @@ func TestNoOpReranker(t *testing.T) {
 		assert.Len(t, results, 3)
 
 		// Check that results maintain original order
-		assert.Equal(t, "First candidate", results[0].Content)
-		assert.Equal(t, "Second candidate", results[1].Content)
-		assert.Equal(t, "Third candidate", results[2].Content)
+		assert.Equal(t, "First candidate", getTextContent(results[0]))
+		assert.Equal(t, "Second candidate", getTextContent(results[1]))
+		assert.Equal(t, "Third candidate", getTextContent(results[2]))
 
-		// All should have the same score
+		// NoOpReranker doesn't modify scores
 		for _, result := range results {
-			assert.Equal(t, 1.0, result.Score)
+			assert.Equal(t, float32(1.0), result.Score)
 		}
 	})
 
@@ -55,21 +83,42 @@ func TestNoOpReranker(t *testing.T) {
 	})
 
 	t.Run("handles empty candidates", func(t *testing.T) {
-		results, err := reranker.Rerank(ctx, "test query", []string{}, 5)
+		results, err := reranker.Rerank(ctx, "test query", []*knowledge.KnowledgeSearchResult{}, 5)
 		require.NoError(t, err)
 		assert.Empty(t, results)
 	})
 }
 
 func TestRerankResult(t *testing.T) {
-	results := []RerankResult{
-		{Content: "Low relevance", Score: 0.2},
-		{Content: "High relevance", Score: 0.9},
-		{Content: "Medium relevance", Score: 0.5},
+	results := []*knowledge.KnowledgeSearchResult{
+		{
+			Document: &knowledge.Document{
+				Contents: []mcp.Content{
+					mcp.NewTextContent("Low relevance"),
+				},
+			},
+			Score: 0.2,
+		},
+		{
+			Document: &knowledge.Document{
+				Contents: []mcp.Content{
+					mcp.NewTextContent("High relevance"),
+				},
+			},
+			Score: 0.9,
+		},
+		{
+			Document: &knowledge.Document{
+				Contents: []mcp.Content{
+					mcp.NewTextContent("Medium relevance"),
+				},
+			},
+			Score: 0.5,
+		},
 	}
 
 	// Test manual sorting (like in the actual implementation)
-	sorted := make([]RerankResult, len(results))
+	sorted := make([]*knowledge.KnowledgeSearchResult, len(results))
 	copy(sorted, results)
 
 	for i := 0; i < len(sorted)-1; i++ {
@@ -80,12 +129,12 @@ func TestRerankResult(t *testing.T) {
 		}
 	}
 
-	assert.Equal(t, "High relevance", sorted[0].Content)
-	assert.Equal(t, 0.9, sorted[0].Score)
-	assert.Equal(t, "Medium relevance", sorted[1].Content)
-	assert.Equal(t, 0.5, sorted[1].Score)
-	assert.Equal(t, "Low relevance", sorted[2].Content)
-	assert.Equal(t, 0.2, sorted[2].Score)
+	assert.Equal(t, "High relevance", getTextContent(sorted[0]))
+	assert.Equal(t, float32(0.9), sorted[0].Score)
+	assert.Equal(t, "Medium relevance", getTextContent(sorted[1]))
+	assert.Equal(t, float32(0.5), sorted[1].Score)
+	assert.Equal(t, "Low relevance", getTextContent(sorted[2]))
+	assert.Equal(t, float32(0.2), sorted[2].Score)
 }
 
 func TestRerankWithMock(t *testing.T) {
@@ -94,12 +143,13 @@ func TestRerankWithMock(t *testing.T) {
 
 		// Mock reranker that assigns scores based on content
 		mockReranker := &MockReranker{
-			rerankFunc: func(ctx context.Context, query string, candidates []string, topK int) ([]RerankResult, error) {
-				results := make([]RerankResult, 0, len(candidates))
+			rerankFunc: func(ctx context.Context, query string, candidates []*knowledge.KnowledgeSearchResult, topK int) ([]*knowledge.KnowledgeSearchResult, error) {
+				results := make([]*knowledge.KnowledgeSearchResult, 0, len(candidates))
 
 				for _, candidate := range candidates {
-					var score float64
-					switch candidate {
+					content := getTextContent(candidate)
+					var score float32
+					switch content {
 					case "Highly relevant":
 						score = 0.95
 					case "Somewhat relevant":
@@ -112,9 +162,10 @@ func TestRerankWithMock(t *testing.T) {
 						score = 0.5
 					}
 
-					results = append(results, RerankResult{
-						Content: candidate,
-						Score:   score,
+					// Create new result with updated score
+					results = append(results, &knowledge.KnowledgeSearchResult{
+						Document: candidate.Document,
+						Score:    score,
 					})
 				}
 
@@ -135,11 +186,11 @@ func TestRerankWithMock(t *testing.T) {
 			},
 		}
 
-		candidates := []string{
-			"Not relevant",
-			"Highly relevant",
-			"Barely relevant",
-			"Somewhat relevant",
+		candidates := []*knowledge.KnowledgeSearchResult{
+			createKnowledgeSearchResult("Not relevant"),
+			createKnowledgeSearchResult("Highly relevant"),
+			createKnowledgeSearchResult("Barely relevant"),
+			createKnowledgeSearchResult("Somewhat relevant"),
 		}
 
 		results, err := mockReranker.Rerank(ctx, "test query", candidates, 2)
@@ -147,9 +198,9 @@ func TestRerankWithMock(t *testing.T) {
 		require.Len(t, results, 2)
 
 		// Should return top 2 by score
-		assert.Equal(t, "Highly relevant", results[0].Content)
-		assert.Equal(t, 0.95, results[0].Score)
-		assert.Equal(t, "Somewhat relevant", results[1].Content)
-		assert.Equal(t, 0.6, results[1].Score)
+		assert.Equal(t, "Highly relevant", getTextContent(results[0]))
+		assert.Equal(t, float32(0.95), results[0].Score)
+		assert.Equal(t, "Somewhat relevant", getTextContent(results[1]))
+		assert.Equal(t, float32(0.6), results[1].Score)
 	})
 }

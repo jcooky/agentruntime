@@ -3,6 +3,7 @@ package agentruntime
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 
 	"github.com/firebase/genkit/go/ai"
@@ -85,24 +86,27 @@ func NewAgentRuntime(ctx context.Context, optionFuncs ...Option) (*AgentRuntime,
 	}
 
 	var knowledgeService knowledge.Service
-	if e.store != nil {
-		// Use custom knowledge store
-		knowledgeService, err = knowledge.NewServiceWithStore(ctx, e.knowledgeConfig, e.logger, g, e.store)
-	} else {
-		// Use default SQLite knowledge store
-		knowledgeService, err = knowledge.NewService(ctx, e.knowledgeConfig, e.logger, g)
-	}
-	if err != nil {
-		return nil, err
-	}
+	if e.rag {
+		if e.store != nil {
+			// Use custom knowledge store
+			knowledgeService, err = knowledge.NewServiceWithStore(ctx, e.knowledgeConfig, e.logger, g, e.store)
+		} else {
+			// Use default SQLite knowledge store
+			knowledgeService, err = knowledge.NewService(ctx, e.knowledgeConfig, e.logger, g)
+		}
+		if err != nil {
+			return nil, err
+		}
 
-	if e.rag && len(e.agent.Knowledge) > 0 {
-		// Index knowledge for RAG if available
-		if err := knowledgeService.IndexKnowledge(ctx, e.agent.Name, e.agent.Knowledge); err != nil {
-			e.logger.Warn("failed to index knowledge for agent - agent will work without RAG functionality",
-				"agent", e.agent.Name,
-				"error", err)
-			// Continue without failing agent creation
+		if len(e.agent.Knowledge) > 0 {
+			// Index knowledge for RAG if available
+			knowledgeId := fmt.Sprintf("%s-knowledge", e.agent.Name)
+			if _, err := knowledgeService.IndexKnowledgeFromMap(ctx, knowledgeId, e.agent.Knowledge); err != nil {
+				e.logger.Warn("failed to index knowledge for agent - agent will work without RAG functionality",
+					"agent", e.agent.Name,
+					"error", err)
+				// Continue without failing agent creation
+			}
 		}
 	}
 

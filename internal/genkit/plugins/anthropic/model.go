@@ -236,12 +236,38 @@ func convertContent(parts []*ai.Part) ([]anthropic.ContentBlockParamUnion, error
 	var blocks []anthropic.ContentBlockParamUnion
 
 	for _, part := range parts {
-		if part.IsReasoning() {
-			signature, ok := part.Metadata["signature"].(string)
+		if part.IsCustom() {
+			custom := part.Custom
+			customType, ok := custom["type"].(string)
+			if !ok {
+				return nil, fmt.Errorf("custom type not found in custom part")
+			}
+			body, ok := custom["body"].(string)
+			if !ok {
+				return nil, fmt.Errorf("custom body not found in custom part")
+			}
+			switch customType {
+			case "web_search_tool_result":
+				block := anthropic.WebSearchToolResultBlockParam{}
+				block.UnmarshalJSON([]byte(body))
+				blocks = append(blocks, anthropic.ContentBlockParamUnion{
+					OfWebSearchToolResult: &block,
+				})
+			case "redacted_thinking":
+				block := anthropic.RedactedThinkingBlockParam{}
+				block.UnmarshalJSON([]byte(body))
+				blocks = append(blocks, anthropic.ContentBlockParamUnion{
+					OfRedactedThinking: &block,
+				})
+			default:
+				return nil, fmt.Errorf("unsupported custom type: %s", customType)
+			}
+		} else if part.IsReasoning() {
+			signature, ok := part.Metadata["signature"].([]byte)
 			if !ok {
 				return nil, fmt.Errorf("signature not found in reasoning part")
 			}
-			blocks = append(blocks, anthropic.NewThinkingBlock(signature, part.Text))
+			blocks = append(blocks, anthropic.NewThinkingBlock(string(signature), part.Text))
 		} else if part.IsText() {
 			// Use the NewTextBlock helper function
 			blocks = append(blocks, anthropic.NewTextBlock(part.Text))
@@ -365,6 +391,16 @@ func translateResponse(resp anthropic.Message) (*ai.ModelResponse, error) {
 				Ref:   block.ID,
 				Name:  block.Name,
 				Input: json.RawMessage(block.Input),
+			}))
+		case anthropic.WebSearchToolResultBlock:
+			parts = append(parts, ai.NewCustomPart(map[string]any{
+				"type": "web_search_tool_result",
+				"body": block.RawJSON(),
+			}))
+		case anthropic.RedactedThinkingBlock:
+			parts = append(parts, ai.NewCustomPart(map[string]any{
+				"type": "redacted_thinking",
+				"body": block.RawJSON(),
 			}))
 		case anthropic.ThinkingBlock:
 			parts = append(parts, ai.NewReasoningPart(block.Thinking, []byte(block.Signature)))

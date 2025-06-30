@@ -2,24 +2,23 @@ package knowledge
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"sort"
-	"strings"
-	"time"
 
 	"github.com/firebase/genkit/go/genkit"
 	"github.com/habiliai/agentruntime/config"
 	"github.com/pkg/errors"
+	"github.com/samber/lo"
 )
 
 type (
 	Service interface {
 		// Knowledge management methods
-		IndexKnowledge(ctx context.Context, agentName string, knowledge []map[string]any) error
-		RetrieveRelevantKnowledge(ctx context.Context, agentName string, query string, limit int) ([]string, error)
-		DeleteAgentKnowledge(ctx context.Context, agentName string) error
+		IndexKnowledgeFromMap(ctx context.Context, id string, input []map[string]any) (*Knowledge, error)
+		RetrieveRelevantKnowledge(ctx context.Context, query string, limit int) ([]*KnowledgeSearchResult, error)
+		DeleteKnowledge(ctx context.Context, knowledgeId string) error
 		Close() error
+		GetKnowledge(ctx context.Context, knowledgeId string) (*Knowledge, error)
 	}
 
 	service struct {
@@ -28,11 +27,6 @@ type (
 		reranker      Reranker
 		queryRewriter QueryRewriter
 		config        *config.KnowledgeConfig
-	}
-
-	KnowledgeChunk struct {
-		Content  string
-		Metadata map[string]any
 	}
 )
 
@@ -49,14 +43,14 @@ func NewService(ctx context.Context, conf *config.KnowledgeConfig, logger *slog.
 		return nil, errors.New("sqlite knowledge service path is not configured. Please check your configuration.")
 	}
 
+	// Create embedder for RAG functionality
+	embedder := NewGenkitEmbedder(genkit)
+
 	// Create default SQLite knowledge store
-	store, err := NewSqliteStore(conf.SqlitePath, 1536) // Default to OpenAI embedding dimension
+	store, err := NewSqliteStore(conf.SqlitePath, embedder.GetEmbedSize()) // Default to OpenAI embedding dimension
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create SQLite knowledge store")
 	}
-
-	// Create embedder for RAG functionality
-	embedder := NewGenkitEmbedder(genkit)
 
 	// Create reranker if enabled
 	var reranker Reranker
@@ -135,6 +129,10 @@ func NewServiceWithStore(
 	}, nil
 }
 
+func (s *service) GetKnowledge(ctx context.Context, knowledgeId string) (*Knowledge, error) {
+	return s.store.GetKnowledgeById(ctx, knowledgeId)
+}
+
 func (s *service) Close() error {
 	if s.store != nil {
 		return s.store.Close()
@@ -143,67 +141,66 @@ func (s *service) Close() error {
 }
 
 // IndexKnowledge indexes knowledge documents for an agent
-func (s *service) IndexKnowledge(ctx context.Context, agentName string, knowledge []map[string]any) error {
+func (s *service) IndexKnowledgeFromMap(ctx context.Context, id string, input []map[string]any) (*Knowledge, error) {
 	if s.embedder == nil {
 		// Return error instead of silently failing - this indicates a configuration issue
-		return errors.New("embedder is not available - check OpenAI API key configuration. Knowledge indexing requires a valid OpenAI API key")
+		return nil, errors.New("embedder is not available - check OpenAI API key configuration. Knowledge indexing requires a valid OpenAI API key")
 	}
 
 	// First, delete existing knowledge for this agent
-	if err := s.DeleteAgentKnowledge(ctx, agentName); err != nil {
-		return errors.Wrapf(err, "failed to delete existing knowledge")
-	}
-
-	if len(knowledge) == 0 {
-		return nil
-	}
-
-	// Process knowledge into text chunks
-	chunks := s.processKnowledge(knowledge)
-	if len(chunks) == 0 {
-		return nil
-	}
-
-	// Extract text content for embedding
-	texts := make([]string, len(chunks))
-	for i, chunk := range chunks {
-		texts[i] = chunk.Content
-	}
-
-	// Generate embeddings
-	embeddings, err := s.embedder.Embed(ctx, texts...)
-	if err != nil {
-		return errors.Wrapf(err, "failed to generate embeddings")
-	}
-
-	if len(embeddings) != len(chunks) {
-		return errors.Errorf("embedding count mismatch: got %d, expected %d", len(embeddings), len(chunks))
-	}
-
-	// Create knowledge items for storage
-	now := time.Now()
-	items := make([]KnowledgeItem, len(chunks))
-	for i, chunk := range chunks {
-		items[i] = KnowledgeItem{
-			AgentName: agentName,
-			Content:   chunk.Content,
-			Embedding: embeddings[i],
-			Metadata:  chunk.Metadata,
-			CreatedAt: now,
-			UpdatedAt: now,
+	if id != "" {
+		if err := s.DeleteKnowledge(ctx, id); err != nil {
+			return nil, errors.Wrapf(err, "failed to delete existing knowledge")
 		}
 	}
 
-	// Store all items
-	if err := s.store.Store(ctx, items); err != nil {
-		return errors.Wrapf(err, "failed to store knowledge")
+	knowledge := &Knowledge{
+		ID: id,
+		Source: Source{
+			Title: "Map",
+			Type:  SourceTypeMap,
+		},
 	}
 
-	return nil
+	// Process knowledge into text chunks
+	knowledge.Documents = ProcessKnowledgeFromMap(input)
+	if len(knowledge.Documents) == 0 {
+		return nil, errors.Errorf("no documents found for knowledge %s", id)
+	}
+
+	// Extract text content for embedding
+	embeddingTexts := make([]string, len(knowledge.Documents))
+	for i, chunk := range knowledge.Documents {
+		embeddingTexts[i] = chunk.EmbeddingText
+	}
+
+	// Generate embeddings
+	embeddings, err := s.embedder.Embed(ctx, lo.Map(knowledge.Documents, func(d *Document, _ int) string {
+		return d.EmbeddingText
+	})...)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to generate embeddings")
+	}
+
+	if len(embeddings) != len(knowledge.Documents) {
+		return nil, errors.Errorf("embedding count mismatch: got %d, expected %d", len(embeddings), len(knowledge.Documents))
+	}
+
+	// Create knowledge items for storage
+	for i := range knowledge.Documents {
+		knowledge.Documents[i].Embeddings = embeddings[i]
+	}
+
+	// Store all items
+	if err := s.store.Store(ctx, knowledge); err != nil {
+		return nil, errors.Wrapf(err, "failed to store knowledge")
+	}
+
+	return knowledge, nil
 }
 
 // RetrieveRelevantKnowledge retrieves relevant knowledge chunks based on query
-func (s *service) RetrieveRelevantKnowledge(ctx context.Context, agentName string, query string, limit int) ([]string, error) {
+func (s *service) RetrieveRelevantKnowledge(ctx context.Context, query string, limit int) ([]*KnowledgeSearchResult, error) {
 	if s.embedder == nil {
 		// Gracefully handle when no embedder is available
 		return nil, nil
@@ -246,7 +243,7 @@ func (s *service) RetrieveRelevantKnowledge(ctx context.Context, agentName strin
 		queryEmbedding := embeddings[0]
 
 		// Search for relevant knowledge
-		searchResults, err := s.store.Search(ctx, agentName, queryEmbedding, retrievalLimit)
+		searchResults, err := s.store.Search(ctx, queryEmbedding, retrievalLimit)
 		if err != nil {
 			logger := slog.Default()
 			logger.Warn("search failed for rewritten query",
@@ -282,9 +279,9 @@ func (s *service) RetrieveRelevantKnowledge(ctx context.Context, agentName strin
 	})
 
 	// Extract content for reranking
-	candidates := make([]string, len(allSearchResults))
+	candidates := make([]*KnowledgeSearchResult, len(allSearchResults))
 	for i, result := range allSearchResults {
-		candidates[i] = result.Content
+		candidates[i] = &result
 	}
 
 	// Apply reranking if enabled
@@ -300,12 +297,7 @@ func (s *service) RetrieveRelevantKnowledge(ctx context.Context, agentName strin
 			return candidates, nil
 		}
 
-		// Extract content from rerank results
-		results := make([]string, len(rerankResults))
-		for i, result := range rerankResults {
-			results[i] = result.Content
-		}
-		return results, nil
+		return rerankResults, nil
 	}
 
 	// If reranking is not enabled or not needed, return original results
@@ -316,66 +308,6 @@ func (s *service) RetrieveRelevantKnowledge(ctx context.Context, agentName strin
 }
 
 // DeleteAgentKnowledge removes all knowledge for an agent
-func (s *service) DeleteAgentKnowledge(ctx context.Context, agentName string) error {
-	return s.store.DeleteByAgent(ctx, agentName)
-}
-
-// processKnowledge converts knowledge maps into indexable text chunks
-func (s *service) processKnowledge(knowledge []map[string]any) []KnowledgeChunk {
-	var chunks []KnowledgeChunk
-
-	for _, item := range knowledge {
-		// Convert the knowledge item to a searchable text representation
-		content := s.extractTextFromKnowledge(item)
-		if content == "" {
-			continue
-		}
-
-		chunks = append(chunks, KnowledgeChunk{
-			Content:  content,
-			Metadata: item,
-		})
-	}
-
-	return chunks
-}
-
-// extractTextFromKnowledge extracts searchable text from a knowledge map
-func (s *service) extractTextFromKnowledge(item map[string]any) string {
-	var textParts []string
-
-	// Common text fields to extract (in priority order)
-	textFields := []string{"content", "description", "title", "summary", "text", "name"}
-
-	// First, look for standard text fields
-	var foundStandardFields []string
-	for _, field := range textFields {
-		if value, exists := item[field]; exists {
-			if str, ok := value.(string); ok && str != "" {
-				foundStandardFields = append(foundStandardFields, str)
-			}
-		}
-	}
-
-	// If we found standard text fields, use them
-	if len(foundStandardFields) > 0 {
-		textParts = foundStandardFields
-	} else {
-		// If no standard text fields found, try to extract from all string values
-		// Sort keys for deterministic ordering
-		var keys []string
-		for k := range item {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-
-		for _, key := range keys {
-			value := item[key]
-			if str, ok := value.(string); ok && str != "" {
-				textParts = append(textParts, fmt.Sprintf("%s: %s", key, str))
-			}
-		}
-	}
-
-	return strings.Join(textParts, " ")
+func (s *service) DeleteKnowledge(ctx context.Context, knowledgeId string) error {
+	return s.store.DeleteKnowledgeById(ctx, knowledgeId)
 }

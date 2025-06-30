@@ -11,6 +11,7 @@ type (
 	// Embedder interface for generating embeddings
 	Embedder interface {
 		Embed(ctx context.Context, texts ...string) ([][]float32, error)
+		GetEmbedSize() int
 	}
 
 	// GenkitEmbedder implements Embedder using genkit functionality
@@ -39,4 +40,8 @@ func (e *GenkitEmbedder) Embed(ctx context.Context, texts ...string) ([][]float3
 	}
 
 	return embeddings, nil
+}
+
+func (e *GenkitEmbedder) GetEmbedSize() int {
+	return 1536
 }

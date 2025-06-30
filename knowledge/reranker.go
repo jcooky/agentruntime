@@ -13,13 +13,7 @@ import (
 // Reranker interface for reranking retrieval results
 type Reranker interface {
 	// Rerank takes a query and candidate results, returns reranked results with scores
-	Rerank(ctx context.Context, query string, candidates []string, topK int) ([]RerankResult, error)
-}
-
-// RerankResult represents a reranked result with its score
-type RerankResult struct {
-	Content string
-	Score   float64
+	Rerank(ctx context.Context, query string, candidates []*KnowledgeSearchResult, topK int) ([]*KnowledgeSearchResult, error)
 }
 
 // GenkitReranker implements Reranker using genkit LLM for relevance scoring
@@ -41,7 +35,7 @@ func NewGenkitReranker(genkit *genkit.Genkit, model string) Reranker {
 }
 
 // Rerank reranks the candidates based on relevance to the query
-func (r *GenkitReranker) Rerank(ctx context.Context, query string, candidates []string, topK int) ([]RerankResult, error) {
+func (r *GenkitReranker) Rerank(ctx context.Context, query string, candidates []*KnowledgeSearchResult, topK int) ([]*KnowledgeSearchResult, error) {
 	if len(candidates) == 0 {
 		return nil, nil
 	}
@@ -51,19 +45,17 @@ func (r *GenkitReranker) Rerank(ctx context.Context, query string, candidates []
 		topK = len(candidates)
 	}
 
-	results := make([]RerankResult, len(candidates))
+	results := make([]*KnowledgeSearchResult, 0, len(candidates))
 
 	// Score each candidate
-	for i, candidate := range candidates {
+	for _, candidate := range candidates {
 		score, err := r.scoreRelevance(ctx, query, candidate)
 		if err != nil {
 			// If scoring fails for one candidate, use a default low score
 			score = 0.0
 		}
-		results[i] = RerankResult{
-			Content: candidate,
-			Score:   score,
-		}
+		candidate.Score = float32(score)
+		results = append(results, candidate)
 	}
 
 	// Sort by score (descending)
@@ -80,23 +72,27 @@ func (r *GenkitReranker) Rerank(ctx context.Context, query string, candidates []
 }
 
 // scoreRelevance uses LLM to score the relevance of a candidate to a query
-func (r *GenkitReranker) scoreRelevance(ctx context.Context, query string, candidate string) (float64, error) {
-	prompt := fmt.Sprintf(`Rate the relevance of the following text to the query on a scale from 0 to 10.
+func (r *GenkitReranker) scoreRelevance(ctx context.Context, query string, candidate *KnowledgeSearchResult) (float64, error) {
+	prompt := fmt.Sprintf(`Rate the relevance of the document to the query on a scale from 0 to 10.
 Query: %s
-
-Text: %s
 
 Respond with only a number between 0 and 10, where:
 - 0 means completely irrelevant
 - 5 means somewhat relevant
 - 10 means highly relevant
 
-Score:`, query, candidate)
+Score:`, query)
+
+	doc, err := candidate.Document.ToDoc()
+	if err != nil {
+		return 0, err
+	}
 
 	resp, err := genkit.Generate(ctx, r.genkit,
 		ai.WithModelName(r.model),
 		ai.WithPrompt(prompt),
 		ai.WithOutputFormat(ai.OutputFormatText),
+		ai.WithDocs(doc),
 	)
 	if err != nil {
 		return 0, err
@@ -120,17 +116,14 @@ func NewNoOpReranker() Reranker {
 	return &NoOpReranker{}
 }
 
-func (r *NoOpReranker) Rerank(ctx context.Context, query string, candidates []string, topK int) ([]RerankResult, error) {
+func (r *NoOpReranker) Rerank(ctx context.Context, query string, candidates []*KnowledgeSearchResult, topK int) ([]*KnowledgeSearchResult, error) {
 	if topK > len(candidates) {
 		topK = len(candidates)
 	}
 
-	results := make([]RerankResult, topK)
+	results := make([]*KnowledgeSearchResult, topK)
 	for i := 0; i < topK; i++ {
-		results[i] = RerankResult{
-			Content: candidates[i],
-			Score:   1.0, // All have the same score
-		}
+		results[i] = candidates[i]
 	}
 
 	return results, nil
@@ -155,7 +148,7 @@ func NewBatchGenkitReranker(genkit *genkit.Genkit, model string) Reranker {
 }
 
 // Rerank reranks the candidates based on relevance to the query in a single batch
-func (r *BatchGenkitReranker) Rerank(ctx context.Context, query string, candidates []string, topK int) ([]RerankResult, error) {
+func (r *BatchGenkitReranker) Rerank(ctx context.Context, query string, candidates []*KnowledgeSearchResult, topK int) ([]*KnowledgeSearchResult, error) {
 	if len(candidates) == 0 {
 		return nil, nil
 	}
@@ -166,16 +159,10 @@ func (r *BatchGenkitReranker) Rerank(ctx context.Context, query string, candidat
 	}
 
 	// Create batch prompt
-	prompt := fmt.Sprintf(`Given the following query and candidate texts, rate the relevance of each candidate on a scale from 0 to 10.
+	prompt := fmt.Sprintf(`Given the following query and documents, rate the relevance of each documents on a scale from 0 to 10.
 
 Query: %s
-
-Candidates:
 `, query)
-
-	for i, candidate := range candidates {
-		prompt += fmt.Sprintf("\n[%d] %s\n", i+1, candidate)
-	}
 
 	prompt += `
 Please respond with a JSON array of objects, each containing:
@@ -193,11 +180,21 @@ Response:`
 		Score float64 `json:"score"`
 	}
 
+	docs := make([]*ai.Document, 0, len(candidates))
+	for _, candidate := range candidates {
+		doc, err := candidate.Document.ToDoc()
+		if err != nil {
+			return nil, err
+		}
+		docs = append(docs, doc)
+	}
+
 	var scores []ScoreResult
 	resp, err := genkit.Generate(ctx, r.genkit,
 		ai.WithModelName(r.model),
 		ai.WithPrompt(prompt),
 		ai.WithOutputType(&scores),
+		ai.WithDocs(docs...),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate batch scores: %w", err)
@@ -208,7 +205,7 @@ Response:`
 	}
 
 	// Build results
-	results := make([]RerankResult, 0, len(candidates))
+	results := make([]*KnowledgeSearchResult, 0, len(candidates))
 	scoreMap := make(map[int]float64)
 	for _, score := range scores {
 		if score.Index > 0 && score.Index <= len(candidates) {
@@ -222,10 +219,8 @@ Response:`
 		if !exists {
 			score = 0.0 // Default score if missing
 		}
-		results = append(results, RerankResult{
-			Content: candidate,
-			Score:   score,
-		})
+		candidate.Score = float32(score)
+		results = append(results, candidate)
 	}
 
 	// Sort by score (descending)

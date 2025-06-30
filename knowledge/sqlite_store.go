@@ -2,13 +2,14 @@ package knowledge
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
 	sqlite_vec "github.com/asg017/sqlite-vec-go-bindings/cgo"
 	"github.com/google/uuid"
+	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/pkg/errors"
+	"gorm.io/datatypes"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -19,19 +20,38 @@ type SqliteStore struct {
 	vecDim int
 }
 
-// knowledgeRecord represents the database structure for knowledge items
-type knowledgeRecord struct {
+// KnowledgeRecord represents the database structure for knowledge items
+type SqliteKnowledgeRecord struct {
 	ID        string `gorm:"primaryKey"`
-	AgentName string `gorm:"index"`
-	Content   string `gorm:"type:text"`
-	Metadata  string `gorm:"type:text"` // JSON string
 	CreatedAt time.Time
 	UpdatedAt time.Time
+
+	Source   datatypes.JSONType[Source]
+	Metadata datatypes.JSONType[map[string]any]
+
+	Documents []*SqliteDocumentRecord `gorm:"foreignKey:KnowledgeRecordID"`
 }
 
 // TableName specifies the table name for GORM
-func (knowledgeRecord) TableName() string {
-	return "knowledge"
+func (SqliteKnowledgeRecord) TableName() string {
+	return "knowledges"
+}
+
+type SqliteDocumentRecord struct {
+	ID        string `gorm:"primaryKey"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+
+	Contents      datatypes.JSONSlice[mcp.Content]
+	EmbeddingText string
+	Metadata      datatypes.JSONType[map[string]any]
+
+	KnowledgeRecordID string
+	KnowledgeRecord   *SqliteKnowledgeRecord `gorm:"foreignKey:KnowledgeRecordID"`
+}
+
+func (SqliteDocumentRecord) TableName() string {
+	return "documents"
 }
 
 // NewSqliteStore creates a new SQLite-based knowledge store
@@ -54,7 +74,7 @@ func NewSqliteStore(dbPath string, dimension int) (*SqliteStore, error) {
 	}
 
 	// Auto-migrate the knowledge table
-	if err := db.AutoMigrate(&knowledgeRecord{}); err != nil {
+	if err := db.AutoMigrate(&SqliteKnowledgeRecord{}, &SqliteDocumentRecord{}); err != nil {
 		return nil, errors.Wrapf(err, "failed to migrate knowledge table")
 	}
 
@@ -77,93 +97,91 @@ func (s *SqliteStore) createVectorTable() error {
 
 	// Create virtual table for vectors
 	createTableSQL := fmt.Sprintf(`
-		CREATE VIRTUAL TABLE IF NOT EXISTS knowledge_vectors USING vec0(
-			knowledge_id TEXT PRIMARY KEY,
+		CREATE VIRTUAL TABLE IF NOT EXISTS document_vectors USING vec0(
+			document_id TEXT PRIMARY KEY,
 			embedding float[%d]
 		);
 	`, s.vecDim)
 
 	if err := s.db.Exec(createTableSQL).Error; err != nil {
-		return errors.Wrapf(err, "failed to create knowledge_vectors table")
+		return errors.Wrapf(err, "failed to create document_vectors table")
 	}
 
 	return nil
 }
 
 // Store implements Store.Store
-func (s *SqliteStore) Store(ctx context.Context, items []KnowledgeItem) error {
-	if len(items) == 0 {
+func (s *SqliteStore) Store(ctx context.Context, knowledge *Knowledge) error {
+	if len(knowledge.Documents) == 0 {
 		return nil
 	}
 
 	// Begin transaction
-	tx := s.db.WithContext(ctx).Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
+	tx := s.db.WithContext(ctx)
+	if err := tx.Transaction(func(tx *gorm.DB) error {
+		if knowledge.ID == "" {
+			knowledge.ID = uuid.NewString()
 		}
-	}()
-
-	now := time.Now()
-
-	for _, item := range items {
-		// Generate ID if not provided
-		if item.ID == "" {
-			item.ID = uuid.New().String()
+		record := SqliteKnowledgeRecord{
+			ID:        knowledge.ID,
+			Source:    datatypes.NewJSONType(knowledge.Source),
+			Metadata:  datatypes.NewJSONType(knowledge.Metadata),
+			Documents: make([]*SqliteDocumentRecord, 0, len(knowledge.Documents)),
 		}
 
-		// Serialize metadata
-		metadataJSON, err := json.Marshal(item.Metadata)
-		if err != nil {
-			tx.Rollback()
-			return errors.Wrapf(err, "failed to serialize metadata")
-		}
-
-		// Create or update knowledge record
-		record := knowledgeRecord{
-			ID:        item.ID,
-			AgentName: item.AgentName,
-			Content:   item.Content,
-			Metadata:  string(metadataJSON),
-			CreatedAt: now,
-			UpdatedAt: now,
-		}
-
-		// Use Save to create or update
 		if err := tx.Save(&record).Error; err != nil {
-			tx.Rollback()
 			return errors.Wrapf(err, "failed to save knowledge record")
 		}
 
-		// Store embedding in vector table
-		if len(item.Embedding) > 0 {
-			// Delete existing vector (if updating)
-			if err := tx.Exec("DELETE FROM knowledge_vectors WHERE knowledge_id = ?", item.ID).Error; err != nil {
-				tx.Rollback()
-				return errors.Wrapf(err, "failed to delete existing vector")
+		for _, item := range knowledge.Documents {
+			if item.ID == "" {
+				item.ID = uuid.NewString()
 			}
 
-			// Serialize embedding
-			serializedEmbedding, err := sqlite_vec.SerializeFloat32(item.Embedding)
-			if err != nil {
-				tx.Rollback()
-				return errors.Wrapf(err, "failed to serialize embedding")
+			// Create or update knowledge record
+			record := SqliteDocumentRecord{
+				ID:            item.ID,
+				Contents:      item.Contents,
+				EmbeddingText: item.EmbeddingText,
+				Metadata:      datatypes.NewJSONType(item.Metadata),
 			}
 
-			// Insert new vector
-			insertSQL := `INSERT INTO knowledge_vectors (knowledge_id, embedding) VALUES (?, ?)`
-			if err := tx.Exec(insertSQL, item.ID, serializedEmbedding).Error; err != nil {
-				tx.Rollback()
-				return errors.Wrapf(err, "failed to insert knowledge vector")
+			// Use Save to create or update
+			if err := tx.Save(&record).Error; err != nil {
+				return errors.Wrapf(err, "failed to save knowledge record")
+			}
+
+			// Store embedding in vector table
+			if len(item.Embeddings) > 0 {
+				// Delete existing vector (if updating)
+				if err := tx.Exec("DELETE FROM document_vectors WHERE document_id = ?", item.ID).Error; err != nil {
+					return errors.Wrapf(err, "failed to delete existing vector")
+				}
+
+				// Serialize embedding
+				serializedEmbedding, err := sqlite_vec.SerializeFloat32(item.Embeddings)
+				if err != nil {
+					return errors.Wrapf(err, "failed to serialize embedding")
+				}
+
+				// Insert new vector
+				insertSQL := "INSERT INTO document_vectors (document_id, embedding) VALUES (?, ?)"
+				if err := tx.Exec(insertSQL, item.ID, serializedEmbedding).Error; err != nil {
+					return errors.Wrapf(err, "failed to insert knowledge vector")
+				}
 			}
 		}
+
+		return nil
+	}); err != nil {
+		return err
 	}
 
 	return tx.Commit().Error
 }
 
 // Search implements Store.Search
-func (s *SqliteStore) Search(ctx context.Context, agentName string, queryEmbedding []float32, limit int) ([]KnowledgeSearchResult, error) {
+func (s *SqliteStore) Search(ctx context.Context, queryEmbedding []float32, limit int) ([]KnowledgeSearchResult, error) {
 	// Serialize query embedding
 	serializedQuery, err := sqlite_vec.SerializeFloat32(queryEmbedding)
 	if err != nil {
@@ -172,8 +190,8 @@ func (s *SqliteStore) Search(ctx context.Context, agentName string, queryEmbeddi
 
 	// Perform vector similarity search to get knowledge IDs and distances
 	searchSQL := `
-		SELECT knowledge_id, distance
-		FROM knowledge_vectors
+		SELECT document_id, distance
+		FROM document_vectors
 		WHERE embedding MATCH ?
 		ORDER BY distance
 		LIMIT ?
@@ -212,8 +230,8 @@ func (s *SqliteStore) Search(ctx context.Context, agentName string, queryEmbeddi
 		distanceMap[result.ID] = result.Distance
 	}
 
-	var records []knowledgeRecord
-	if err := s.db.WithContext(ctx).Where("id IN ? AND agent_name = ?", ids, agentName).Find(&records).Error; err != nil {
+	var records []SqliteDocumentRecord
+	if err := s.db.WithContext(ctx).Where("id IN ?", ids).Find(&records).Error; err != nil {
 		return nil, errors.Wrapf(err, "failed to fetch knowledge records")
 	}
 
@@ -221,22 +239,20 @@ func (s *SqliteStore) Search(ctx context.Context, agentName string, queryEmbeddi
 	var results []KnowledgeSearchResult
 	for _, record := range records {
 		// Parse metadata
-		var metadata map[string]interface{}
-		if record.Metadata != "" {
-			if err := json.Unmarshal([]byte(record.Metadata), &metadata); err != nil {
-				return nil, errors.Wrapf(err, "failed to parse metadata")
+		metadata := record.Metadata.Data()
+		if metadata == nil {
+			metadata = map[string]any{
+				"knowledge_id": record.KnowledgeRecordID,
 			}
 		}
 
 		distance := distanceMap[record.ID]
 		results = append(results, KnowledgeSearchResult{
-			KnowledgeItem: KnowledgeItem{
-				ID:        record.ID,
-				AgentName: record.AgentName,
-				Content:   record.Content,
-				Metadata:  metadata,
-				CreatedAt: record.CreatedAt,
-				UpdatedAt: record.UpdatedAt,
+			Document: &Document{
+				ID:            record.ID,
+				Contents:      record.Contents,
+				Metadata:      metadata,
+				EmbeddingText: record.EmbeddingText,
 			},
 			Score: 1.0 - distance, // Convert distance to similarity score
 		})
@@ -250,69 +266,71 @@ func (s *SqliteStore) Search(ctx context.Context, agentName string, queryEmbeddi
 	return results, nil
 }
 
-// GetByAgent implements Store.GetByAgent
-func (s *SqliteStore) GetByAgent(ctx context.Context, agentName string) ([]KnowledgeItem, error) {
-	var records []knowledgeRecord
-	if err := s.db.WithContext(ctx).Where("agent_name = ?", agentName).Find(&records).Error; err != nil {
+// GetKnowledgeById implements Store.GetKnowledgeById
+func (s *SqliteStore) GetKnowledgeById(ctx context.Context, knowledgeId string) (*Knowledge, error) {
+	var record SqliteKnowledgeRecord
+	if err := s.db.WithContext(ctx).Preload("Documents").First(&record, "id = ?", knowledgeId).Error; err != nil {
 		return nil, errors.Wrapf(err, "failed to fetch knowledge records")
 	}
 
-	items := make([]KnowledgeItem, 0, len(records))
-	for _, record := range records {
+	knowledge := &Knowledge{
+		ID:        record.ID,
+		Source:    record.Source.Data(),
+		Metadata:  record.Metadata.Data(),
+		Documents: make([]*Document, 0, len(record.Documents)),
+	}
+
+	for _, document := range record.Documents {
 		// Parse metadata
-		var metadata map[string]interface{}
-		if record.Metadata != "" {
-			if err := json.Unmarshal([]byte(record.Metadata), &metadata); err != nil {
-				return nil, errors.Wrapf(err, "failed to parse metadata")
+		metadata := document.Metadata.Data()
+		if metadata == nil {
+			metadata = map[string]any{
+				"knowledge_id": record.ID,
 			}
 		}
 
-		items = append(items, KnowledgeItem{
-			ID:        record.ID,
-			AgentName: record.AgentName,
-			Content:   record.Content,
-			Metadata:  metadata,
-			CreatedAt: record.CreatedAt,
-			UpdatedAt: record.UpdatedAt,
-			// Note: Embedding is not loaded here for performance
+		knowledge.Documents = append(knowledge.Documents, &Document{
+			ID:            document.ID,
+			Contents:      document.Contents,
+			Metadata:      metadata,
+			EmbeddingText: document.EmbeddingText,
 		})
 	}
 
-	return items, nil
+	return knowledge, nil
 }
 
-// DeleteByAgent implements Store.DeleteByAgent
-func (s *SqliteStore) DeleteByAgent(ctx context.Context, agentName string) error {
+// DeleteKnowledgeById implements Store.DeleteKnowledgeById
+func (s *SqliteStore) DeleteKnowledgeById(ctx context.Context, knowledgeId string) error {
 	// Begin transaction
-	tx := s.db.WithContext(ctx).Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
+	if err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var documentIds []string
+		if err := tx.Where("knowledge_record_id = ?", knowledgeId).Pluck("id", &documentIds).Error; err != nil {
+			return errors.Wrapf(err, "failed to get knowledge record")
 		}
-	}()
 
-	// Get IDs of knowledge to delete
-	var ids []string
-	if err := tx.Model(&knowledgeRecord{}).Where("agent_name = ?", agentName).Pluck("id", &ids).Error; err != nil {
-		tx.Rollback()
-		return errors.Wrapf(err, "failed to get knowledge IDs")
+		if len(documentIds) > 0 {
+			// Delete from vector table
+			if err := tx.Exec("DELETE FROM document_vectors WHERE document_id IN ?", documentIds).Error; err != nil {
+				return errors.Wrapf(err, "failed to delete vectors")
+			}
+
+			// Delete from knowledge table
+			if err := tx.Delete(&SqliteDocumentRecord{}, "id IN ?", documentIds).Error; err != nil {
+				return errors.Wrapf(err, "failed to delete knowledge records")
+			}
+		}
+
+		if err := tx.Delete(&SqliteKnowledgeRecord{}, "id = ?", knowledgeId).Error; err != nil {
+			return errors.Wrapf(err, "failed to delete knowledge record")
+		}
+
+		return nil
+	}); err != nil {
+		return err
 	}
 
-	if len(ids) > 0 {
-		// Delete from vector table
-		if err := tx.Exec("DELETE FROM knowledge_vectors WHERE knowledge_id IN ?", ids).Error; err != nil {
-			tx.Rollback()
-			return errors.Wrapf(err, "failed to delete vectors")
-		}
-
-		// Delete from knowledge table
-		if err := tx.Where("agent_name = ?", agentName).Delete(&knowledgeRecord{}).Error; err != nil {
-			tx.Rollback()
-			return errors.Wrapf(err, "failed to delete knowledge records")
-		}
-	}
-
-	return tx.Commit().Error
+	return nil
 }
 
 // Close implements Store.Close

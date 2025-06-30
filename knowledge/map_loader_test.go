@@ -1,9 +1,11 @@
-package knowledge
+package knowledge_test
 
 import (
 	"context"
 	"testing"
 
+	"github.com/habiliai/agentruntime/knowledge"
+	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/stretchr/testify/require"
 )
 
@@ -23,10 +25,22 @@ func (m *mockEmbedder) Embed(ctx context.Context, texts ...string) ([][]float32,
 	return embeddings, nil
 }
 
-func TestKnowledgeProcessing(t *testing.T) {
-	service := &service{embedder: &mockEmbedder{}}
+// Helper function to get text content from Document
+func getDocumentText(doc *knowledge.Document) string {
+	if doc != nil && len(doc.Contents) > 0 {
+		// Try both value type and pointer type
+		switch c := doc.Contents[0].(type) {
+		case mcp.TextContent:
+			return c.Text
+		case *mcp.TextContent:
+			return c.Text
+		}
+	}
+	return ""
+}
 
-	knowledge := []map[string]any{
+func TestKnowledgeProcessing(t *testing.T) {
+	knowledgeData := []map[string]any{
 		{
 			"cityName": "Seoul",
 			"aliases":  "Seoul, SEOUL, KOR, Korea",
@@ -41,23 +55,28 @@ func TestKnowledgeProcessing(t *testing.T) {
 		},
 	}
 
-	chunks := service.processKnowledge(knowledge)
-	require.Len(t, chunks, 2)
+	documents := knowledge.ProcessKnowledgeFromMap(knowledgeData)
+	require.Len(t, documents, 2)
 
 	// Check that content is extracted properly
-	require.Contains(t, chunks[0].Content, "Seoul")
-	require.Contains(t, chunks[0].Content, "South Korea")
-	require.Contains(t, chunks[1].Content, "Tokyo")
-	require.Contains(t, chunks[1].Content, "Japan")
+	seoulText := getDocumentText(documents[0])
+	tokyoText := getDocumentText(documents[1])
+
+	require.Contains(t, seoulText, "Seoul")
+	require.Contains(t, seoulText, "South Korea")
+	require.Contains(t, tokyoText, "Tokyo")
+	require.Contains(t, tokyoText, "Japan")
 
 	// Check that metadata is preserved
-	require.Equal(t, knowledge[0], chunks[0].Metadata)
-	require.Equal(t, knowledge[1], chunks[1].Metadata)
+	require.Equal(t, knowledgeData[0], documents[0].Metadata)
+	require.Equal(t, knowledgeData[1], documents[1].Metadata)
+
+	// Check embedding text is set
+	require.NotEmpty(t, documents[0].EmbeddingText)
+	require.NotEmpty(t, documents[1].EmbeddingText)
 }
 
 func TestTextExtraction(t *testing.T) {
-	service := &service{}
-
 	testCases := []struct {
 		name     string
 		input    map[string]any
@@ -95,7 +114,7 @@ func TestTextExtraction(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := service.extractTextFromKnowledge(tc.input)
+			result := knowledge.ExtractTextFromMap(tc.input)
 			require.Equal(t, tc.expected, result)
 		})
 	}
