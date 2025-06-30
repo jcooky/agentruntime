@@ -1,6 +1,6 @@
 package anthropic
 
 type ExtendedThinkingConfig struct {
-	Enabled      bool  `json:"enabled,omitempty"`
-	BudgetTokens int64 `json:"budgetTokens,omitempty"`
+	ExtendedThinkingEnabled     bool    `json:"extendedThinkingEnabled,omitempty"`
+	ExtendedThinkingBudgetRatio float64 `json:"extendedThinkingBudgetRatio,omitempty"`
 }

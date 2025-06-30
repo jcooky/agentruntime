@@ -79,6 +79,11 @@ func generateStream(ctx context.Context, client *anthropic.Client, genRequest *a
 					return nil, err
 				}
 			}
+		case anthropic.ContentBlockStartEvent:
+			// Handle the start of a new content block (e.g., thinking block)
+			// This is where we might detect the beginning of a reasoning block
+			// For now, we'll just continue as the accumulated message will handle it
+			// TODO: Implement proper handling of reasoning blocks
 		}
 	}
 
@@ -95,10 +100,14 @@ func buildMessageParams(genRequest *ai.ModelRequest, apiModelName string) (anthr
 		return anthropic.MessageNewParams{}, err
 	}
 
+	defaultParams, ok := defaultModelParams[apiModelName]
+	if !ok {
+		return anthropic.MessageNewParams{}, fmt.Errorf("model %s not found", apiModelName)
+	}
+
 	params := anthropic.MessageNewParams{
-		Model:     anthropic.Model(apiModelName),
-		Messages:  messages,
-		MaxTokens: 4096, // Default max tokens
+		Model:    anthropic.Model(apiModelName),
+		Messages: messages,
 	}
 
 	// Convert systems prompt to TextBlockParam array
@@ -111,44 +120,65 @@ func buildMessageParams(genRequest *ai.ModelRequest, apiModelName string) (anthr
 		})
 	}
 
+	if genRequest.Config == nil {
+		genRequest.Config = map[string]any{}
+	}
+
 	// Handle generation config
-	if genRequest.Config != nil {
-		jsonBytes, err := json.Marshal(genRequest.Config)
-		if err != nil {
-			return anthropic.MessageNewParams{}, err
+	jsonBytes, err := json.Marshal(genRequest.Config)
+	if err != nil {
+		return anthropic.MessageNewParams{}, err
+	}
+
+	// Extract and apply extended thinking config
+	type configWithExtendedThinking struct {
+		ai.GenerationCommonConfig
+		ExtendedThinkingConfig
+	}
+
+	// Start with defaults
+	config := configWithExtendedThinking{
+		GenerationCommonConfig: defaultParams.GenerationCommonConfig,
+		ExtendedThinkingConfig: defaultParams.ExtendedThinkingConfig,
+	}
+
+	// Unmarshal user config - this will only override provided fields
+	if err := json.Unmarshal(jsonBytes, &config); err != nil {
+		return anthropic.MessageNewParams{}, fmt.Errorf("failed to unmarshal config: %w", err)
+	}
+
+	// Apply basic config
+	if config.MaxOutputTokens > 0 {
+		params.MaxTokens = int64(config.MaxOutputTokens)
+	} else {
+		return anthropic.MessageNewParams{}, fmt.Errorf("maxOutputTokens is required")
+	}
+	if config.Temperature > 0 {
+		params.Temperature = anthropic.Float(config.Temperature)
+	}
+	if config.TopP > 0 {
+		params.TopP = anthropic.Float(config.TopP)
+	}
+	if config.TopK > 0 {
+		params.TopK = anthropic.Int(int64(config.TopK))
+	}
+	if len(config.StopSequences) > 0 {
+		params.StopSequences = config.StopSequences
+	}
+
+	// Apply extended thinking configuration
+	if config.ExtendedThinkingEnabled {
+		// Calculate budget based on ratio
+		budgetRatio := config.ExtendedThinkingBudgetRatio
+		if budgetRatio == 0 {
+			budgetRatio = 0.25 // Default to 25% if not specified
 		}
 
-		// Try to parse as GenerationCommonConfig
-		{
-			var c ai.GenerationCommonConfig
-			if err := json.Unmarshal(jsonBytes, &c); err == nil {
-				if c.MaxOutputTokens > 0 {
-					params.MaxTokens = int64(c.MaxOutputTokens)
-				}
-				if c.Temperature > 0 {
-					params.Temperature = anthropic.Float(c.Temperature)
-				}
-				if c.TopP > 0 {
-					params.TopP = anthropic.Float(c.TopP)
-				}
-				if c.TopK > 0 {
-					params.TopK = anthropic.Int(int64(c.TopK))
-				}
-				if len(c.StopSequences) > 0 {
-					params.StopSequences = c.StopSequences
-				}
-			}
-		}
+		budget := int64(float64(config.MaxOutputTokens) * budgetRatio)
 
-		// Try to parse as GenerationReasoningConfig for extended thinking
-		{
-			var c ExtendedThinkingConfig
-			if err := json.Unmarshal(jsonBytes, &c); err == nil && c.Enabled {
-				// Enable extended thinking
-				// For Claude 4 models, extended thinking is enabled automatically
-				// when the model determines it would be helpful
-				params.Thinking = anthropic.ThinkingConfigParamOfEnabled(c.BudgetTokens)
-			}
+		// Only enable if budget meets minimum requirement (1024 tokens)
+		if budget >= 1024 {
+			params.Thinking = anthropic.ThinkingConfigParamOfEnabled(budget)
 		}
 	}
 
@@ -206,13 +236,12 @@ func convertContent(parts []*ai.Part) ([]anthropic.ContentBlockParamUnion, error
 	var blocks []anthropic.ContentBlockParamUnion
 
 	for _, part := range parts {
-		if part.IsCustom() {
-			switch part.Custom["type"].(string) {
-			case "thinking":
-				blocks = append(blocks, anthropic.NewThinkingBlock(part.Custom["signature"].(string), part.Custom["thinking"].(string)))
-			default:
-				return nil, fmt.Errorf("unsupported custom part type: %s", part.Custom["type"])
+		if part.IsReasoning() {
+			signature, ok := part.Metadata["signature"].(string)
+			if !ok {
+				return nil, fmt.Errorf("signature not found in reasoning part")
 			}
+			blocks = append(blocks, anthropic.NewThinkingBlock(signature, part.Text))
 		} else if part.IsText() {
 			// Use the NewTextBlock helper function
 			blocks = append(blocks, anthropic.NewTextBlock(part.Text))
@@ -338,11 +367,7 @@ func translateResponse(resp anthropic.Message) (*ai.ModelResponse, error) {
 				Input: json.RawMessage(block.Input),
 			}))
 		case anthropic.ThinkingBlock:
-			parts = append(parts, ai.NewCustomPart(map[string]any{
-				"type":      "thinking",
-				"thinking":  block.Thinking,
-				"signature": block.Signature,
-			}))
+			parts = append(parts, ai.NewReasoningPart(block.Thinking, []byte(block.Signature)))
 		}
 	}
 

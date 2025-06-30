@@ -25,9 +25,49 @@ var (
 		"claude-sonnet-4-20250514": config.Multimodal,
 		"claude-3-7-sonnet-latest": config.Multimodal,
 		"claude-3-5-sonnet-latest": config.Multimodal,
-		"claude-3-opus-latest":     config.Multimodal,
 	}
 	defaultRequestTimeout = 10 * time.Minute
+	defaultModelParams    = map[string]struct {
+		ai.GenerationCommonConfig
+		ExtendedThinkingConfig
+	}{
+		"claude-opus-4-20250514": {
+			GenerationCommonConfig: ai.GenerationCommonConfig{
+				MaxOutputTokens: 32_000,
+			},
+			ExtendedThinkingConfig: ExtendedThinkingConfig{
+				ExtendedThinkingEnabled:     true,
+				ExtendedThinkingBudgetRatio: 0.25, // Default to 25% of maxTokens
+			},
+		},
+		"claude-sonnet-4-20250514": {
+			GenerationCommonConfig: ai.GenerationCommonConfig{
+				MaxOutputTokens: 64_000,
+			},
+			ExtendedThinkingConfig: ExtendedThinkingConfig{
+				ExtendedThinkingEnabled:     true,
+				ExtendedThinkingBudgetRatio: 0.25, // Default to 25% of maxTokens
+			},
+		},
+		"claude-3-7-sonnet-latest": {
+			GenerationCommonConfig: ai.GenerationCommonConfig{
+				MaxOutputTokens: 64_000,
+			},
+			ExtendedThinkingConfig: ExtendedThinkingConfig{
+				ExtendedThinkingEnabled:     true,
+				ExtendedThinkingBudgetRatio: 0.25, // Default to 25% of maxTokens
+			},
+		},
+		"claude-3-5-sonnet-latest": {
+			GenerationCommonConfig: ai.GenerationCommonConfig{
+				MaxOutputTokens: 8192,
+			},
+			ExtendedThinkingConfig: ExtendedThinkingConfig{
+				ExtendedThinkingEnabled:     false,
+				ExtendedThinkingBudgetRatio: 0, // Will be calculated dynamically based on actual maxTokens
+			},
+		},
+	}
 )
 
 type Plugin struct {
@@ -62,7 +102,7 @@ func (o *Plugin) Init(_ context.Context, g *genkit.Genkit) (err error) {
 	if apiKey == "" {
 		apiKey = os.Getenv(apiKeyEnv)
 		if apiKey == "" {
-			return fmt.Errorf("Anthropic API key not found in environment variable: %s", apiKeyEnv)
+			return fmt.Errorf("the Anthropic API key not found in environment variable: %s", apiKeyEnv)
 		}
 	}
 
@@ -82,7 +122,6 @@ func (o *Plugin) Init(_ context.Context, g *genkit.Genkit) (err error) {
 	// Also define Claude 3.7 and 3.5 models as alternatives
 	DefineModel(g, &client, labelPrefix, provider, "claude-3.7-sonnet", "claude-3-7-sonnet-latest", knownCaps["claude-3-7-sonnet-latest"])
 	DefineModel(g, &client, labelPrefix, provider, "claude-3.5-sonnet", "claude-3-5-sonnet-latest", knownCaps["claude-3-5-sonnet-latest"])
-	DefineModel(g, &client, labelPrefix, provider, "claude-3-opus", "claude-3-opus-latest", knownCaps["claude-3-opus-latest"])
 
 	return nil
 }
