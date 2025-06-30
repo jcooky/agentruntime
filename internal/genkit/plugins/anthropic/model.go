@@ -186,7 +186,16 @@ func buildMessageParams(genRequest *ai.ModelRequest, apiModelName string) (anthr
 	if len(genRequest.Tools) > 0 {
 		tools := make([]anthropic.ToolUnionParam, len(genRequest.Tools))
 		for i, tool := range genRequest.Tools {
-			tools[i] = convertTool(tool)
+			switch tool.Name {
+			case "web_search":
+				tools[i] = anthropic.ToolUnionParam{
+					OfWebSearchTool20250305: &anthropic.WebSearchTool20250305Param{
+						MaxUses: anthropic.Int(99),
+					},
+				}
+			default:
+				tools[i] = convertTool(tool)
+			}
 		}
 		params.Tools = tools
 	}
@@ -249,13 +258,17 @@ func convertContent(parts []*ai.Part) ([]anthropic.ContentBlockParamUnion, error
 			switch customType {
 			case "web_search_tool_result":
 				block := anthropic.WebSearchToolResultBlockParam{}
-				block.UnmarshalJSON([]byte(body))
+				if err := block.UnmarshalJSON([]byte(body)); err != nil {
+					return nil, fmt.Errorf("failed to unmarshal web search tool result: %w", err)
+				}
 				blocks = append(blocks, anthropic.ContentBlockParamUnion{
 					OfWebSearchToolResult: &block,
 				})
 			case "redacted_thinking":
 				block := anthropic.RedactedThinkingBlockParam{}
-				block.UnmarshalJSON([]byte(body))
+				if err := block.UnmarshalJSON([]byte(body)); err != nil {
+					return nil, fmt.Errorf("failed to unmarshal redacted thinking: %w", err)
+				}
 				blocks = append(blocks, anthropic.ContentBlockParamUnion{
 					OfRedactedThinking: &block,
 				})

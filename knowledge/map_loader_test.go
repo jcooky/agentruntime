@@ -1,29 +1,12 @@
 package knowledge_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/habiliai/agentruntime/knowledge"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/stretchr/testify/require"
 )
-
-// mockEmbedder for testing
-type mockEmbedder struct{}
-
-func (m *mockEmbedder) Embed(ctx context.Context, texts ...string) ([][]float32, error) {
-	embeddings := make([][]float32, len(texts))
-	for i := range texts {
-		// Create simple mock embeddings (in real usage, these would be from OpenAI)
-		embedding := make([]float32, 1536)
-		for j := range embedding {
-			embedding[j] = float32(i+j) * 0.001 // Simple pattern for testing
-		}
-		embeddings[i] = embedding
-	}
-	return embeddings, nil
-}
 
 // Helper function to get text content from Document
 func getDocumentText(doc *knowledge.Document) string {

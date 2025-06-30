@@ -162,7 +162,7 @@ func WithAgent(agent entity.Agent) func(e *AgentRuntime) {
 	}
 }
 
-func WithKnowledgeConfig(knowledgeConfig *config.KnowledgeConfig) func(e *AgentRuntime) {
+func WithKnowledgeService(knowledgeConfig *config.KnowledgeConfig) func(e *AgentRuntime) {
 	return func(e *AgentRuntime) {
 		e.knowledgeConfig = knowledgeConfig
 	}

@@ -137,6 +137,8 @@ func (m *manager) registerNativeTool(name string, description string, env map[st
 	switch strings.ToLower(name) {
 	case "get_weather":
 		m.registerGetWeatherTool(description, env)
+	case "web_search":
+		m.registerWebSearchTool()
 	}
 }
 
