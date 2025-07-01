@@ -10,6 +10,7 @@ import (
 	"github.com/firebase/genkit/go/genkit"
 	"github.com/habiliai/agentruntime/entity"
 	"github.com/habiliai/agentruntime/internal/mylog"
+	"github.com/habiliai/agentruntime/knowledge"
 	mcpclient "github.com/mark3labs/mcp-go/client"
 	"github.com/pkg/errors"
 )
@@ -34,7 +35,7 @@ var (
 	_ Manager = (*manager)(nil)
 )
 
-func NewToolManager(ctx context.Context, skills []entity.AgentSkill, logger *slog.Logger, genkit *genkit.Genkit) (Manager, error) {
+func NewToolManager(ctx context.Context, skills []entity.AgentSkill, logger *slog.Logger, genkit *genkit.Genkit, knowledgeService knowledge.Service) (Manager, error) {
 	s := &manager{
 		logger:     logger,
 		mcpClients: make(map[string]*mcpclient.Client),
@@ -104,7 +105,14 @@ func NewToolManager(ctx context.Context, skills []entity.AgentSkill, logger *slo
 			if skill.Name == "" {
 				return nil, errors.New("native tool name is required")
 			}
-			s.registerNativeTool(skill.Name, skill.Description, skill.Env)
+			switch strings.ToLower(skill.Name) {
+			case "get_weather":
+				s.registerGetWeatherTool(skill.Description, skill.Env)
+			case "web_search":
+				s.registerWebSearchTool()
+			case "knowledge_search":
+				s.registerKnowledgeSearchTool(knowledgeService)
+			}
 		default:
 			return nil, errors.Errorf("invalid skill type: %s", skill.Type)
 		}
@@ -130,15 +138,6 @@ func (m *manager) Close() {
 		if err := client.Close(); err != nil {
 			return
 		}
-	}
-}
-
-func (m *manager) registerNativeTool(name string, description string, env map[string]string) {
-	switch strings.ToLower(name) {
-	case "get_weather":
-		m.registerGetWeatherTool(description, env)
-	case "web_search":
-		m.registerWebSearchTool()
 	}
 }
 

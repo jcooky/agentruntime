@@ -33,8 +33,17 @@ type (
 	}
 
 	KnowledgeSearchResult struct {
-		*Document `json:"document,omitzero"`
+		*Document `json:",inline"`
 		Score     float32 `json:"score,omitzero"`
+	}
+
+	ContentStorage struct {
+		Type     string `json:"type"`
+		Text     string `json:"text,omitempty"`
+		Data     string `json:"data,omitempty"`
+		MIMEType string `json:"mimeType,omitempty"`
+		URI      string `json:"uri,omitempty"`
+		Blob     string `json:"blob,omitempty"`
 	}
 )
 
@@ -42,6 +51,37 @@ const (
 	SourceTypeMap = "map"
 	SourceTypePDF = "pdf"
 )
+
+func (c *ContentStorage) FromContent(content mcp.Content) {
+	switch v := content.(type) {
+	case mcp.TextContent:
+		c.Type = v.Type
+		c.Text = v.Text
+	case mcp.ImageContent:
+		c.Type = v.Type
+		c.Data = v.Data
+		c.MIMEType = v.MIMEType
+	case mcp.AudioContent:
+		c.Type = v.Type
+		c.Data = v.Data
+		c.MIMEType = v.MIMEType
+	default:
+		panic(errors.Errorf("unknown content type: %T", c))
+	}
+}
+
+func (c *ContentStorage) ToContent() mcp.Content {
+	switch c.Type {
+	case "text":
+		return mcp.TextContent{Type: c.Type, Text: c.Text}
+	case "image":
+		return mcp.ImageContent{Type: c.Type, Data: c.Data, MIMEType: c.MIMEType}
+	case "audio":
+		return mcp.AudioContent{Type: c.Type, Data: c.Data, MIMEType: c.MIMEType}
+	default:
+		panic(errors.Errorf("unknown content type: %s", c.Type))
+	}
+}
 
 func (d *Document) ToDoc() (*ai.Document, error) {
 	doc := &ai.Document{

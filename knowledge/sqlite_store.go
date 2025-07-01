@@ -8,6 +8,7 @@ import (
 	sqlite_vec "github.com/asg017/sqlite-vec-go-bindings/cgo"
 	"github.com/google/uuid"
 	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/mokiat/gog"
 	"github.com/pkg/errors"
 	"gorm.io/datatypes"
 	"gorm.io/driver/sqlite"
@@ -42,7 +43,7 @@ type SqliteDocumentRecord struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 
-	Contents      datatypes.JSONSlice[mcp.Content]
+	Contents      datatypes.JSONSlice[ContentStorage]
 	EmbeddingText string
 	Metadata      datatypes.JSONType[map[string]any]
 
@@ -139,16 +140,21 @@ func (s *SqliteStore) Store(ctx context.Context, knowledge *Knowledge) error {
 			}
 
 			// Create or update knowledge record
-			record := SqliteDocumentRecord{
-				ID:            item.ID,
-				Contents:      item.Contents,
-				EmbeddingText: item.EmbeddingText,
-				Metadata:      datatypes.NewJSONType(item.Metadata),
+			docRecord := SqliteDocumentRecord{
+				ID:                item.ID,
+				EmbeddingText:     item.EmbeddingText,
+				Metadata:          datatypes.NewJSONType(item.Metadata),
+				KnowledgeRecordID: knowledge.ID, // Set the foreign key
+				Contents: gog.Map(item.Contents, func(c mcp.Content) ContentStorage {
+					var content ContentStorage
+					content.FromContent(c)
+					return content
+				}),
 			}
 
 			// Use Save to create or update
-			if err := tx.Save(&record).Error; err != nil {
-				return errors.Wrapf(err, "failed to save knowledge record")
+			if err := tx.Save(&docRecord).Error; err != nil {
+				return errors.Wrapf(err, "failed to save document record")
 			}
 
 			// Store embedding in vector table
@@ -177,7 +183,7 @@ func (s *SqliteStore) Store(ctx context.Context, knowledge *Knowledge) error {
 		return err
 	}
 
-	return tx.Commit().Error
+	return nil
 }
 
 // Search implements Store.Search
@@ -249,8 +255,10 @@ func (s *SqliteStore) Search(ctx context.Context, queryEmbedding []float32, limi
 		distance := distanceMap[record.ID]
 		results = append(results, KnowledgeSearchResult{
 			Document: &Document{
-				ID:            record.ID,
-				Contents:      record.Contents,
+				ID: record.ID,
+				Contents: gog.Map(record.Contents, func(c ContentStorage) mcp.Content {
+					return c.ToContent()
+				}),
 				Metadata:      metadata,
 				EmbeddingText: record.EmbeddingText,
 			},
@@ -290,8 +298,10 @@ func (s *SqliteStore) GetKnowledgeById(ctx context.Context, knowledgeId string) 
 		}
 
 		knowledge.Documents = append(knowledge.Documents, &Document{
-			ID:            document.ID,
-			Contents:      document.Contents,
+			ID: document.ID,
+			Contents: gog.Map(document.Contents, func(c ContentStorage) mcp.Content {
+				return c.ToContent()
+			}),
 			Metadata:      metadata,
 			EmbeddingText: document.EmbeddingText,
 		})
@@ -305,7 +315,7 @@ func (s *SqliteStore) DeleteKnowledgeById(ctx context.Context, knowledgeId strin
 	// Begin transaction
 	if err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var documentIds []string
-		if err := tx.Where("knowledge_record_id = ?", knowledgeId).Pluck("id", &documentIds).Error; err != nil {
+		if err := tx.Model(&SqliteDocumentRecord{}).Where("knowledge_record_id = ?", knowledgeId).Pluck("id", &documentIds).Error; err != nil {
 			return errors.Wrapf(err, "failed to get knowledge record")
 		}
 

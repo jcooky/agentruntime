@@ -17,15 +17,6 @@
 {{- end }}
 </thread>
 
-
-{{- if .Agent.Knowledge }}
-<knowledge>
-{{- range .Agent.Knowledge }}
-- {{ . }}
-{{- end }}
-</knowledge>
-{{- end }}
-
 <agent>
 # About {{ .Agent.Name }}:
 

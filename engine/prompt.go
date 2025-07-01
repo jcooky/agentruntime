@@ -2,8 +2,6 @@ package engine
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"strings"
 
 	"github.com/firebase/genkit/go/ai"
@@ -57,43 +55,6 @@ func (s *Engine) BuildPromptValues(ctx context.Context, agent entity.Agent, hist
 				})
 				promptValues.Tools = append(promptValues.Tools, tool)
 			}
-		}
-	}
-
-	// Retrieve relevant knowledge using RAG
-	promptValues.Knowledge = make([]string, 0)
-	if s.knowledgeService != nil {
-		if len(history) > 0 {
-			// Use the most recent conversation as context for knowledge retrieval
-			lastConversation := history[len(history)-1]
-			queryContext := lastConversation.Text
-			if queryContext == "" && len(lastConversation.Actions) > 0 {
-				// If no text, use action names as context
-				actionNames := make([]string, len(lastConversation.Actions))
-				for i, action := range lastConversation.Actions {
-					actionNames[i] = action.Name
-				}
-				queryContext = strings.Join(actionNames, " ")
-			}
-
-			if queryContext != "" {
-				retrievedKnowledge, err := s.knowledgeService.RetrieveRelevantKnowledge(ctx, queryContext, 5)
-				if err != nil {
-					s.logger.Warn("failed to retrieve relevant knowledge", "agent", agent.Name, "error", err)
-				} else {
-					for _, k := range retrievedKnowledge {
-						promptValues.Knowledge = append(promptValues.Knowledge, k.Document.EmbeddingText)
-					}
-				}
-			}
-		}
-	} else {
-		for _, k := range agent.Knowledge {
-			b, err := json.Marshal(k)
-			if err != nil {
-				return nil, err
-			}
-			promptValues.Knowledge = append(promptValues.Knowledge, fmt.Sprintf("`%s`", string(b)))
 		}
 	}
 

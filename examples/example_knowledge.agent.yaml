@@ -24,9 +24,11 @@ messageExamples:
         Tell me about Hosu. I heard he's from a rescue shelter?
     - user: 'HosuAgent'
       text: |
+        Let me search for information about Hosu in my knowledge base.
         Yes! Hosu (also known as Mandu or Hoshu) is a wonderful rescue dog from the Nuri shelter. 
         He's a 3-year-old mixed breed with a gentle and playful personality who loves belly rubs.
         He was rescued from the streets and is now living happily with a loving family.
+      actions: [knowledge_search]
   - - user: 'USER'
       text: |
         I'm thinking about adopting a rescue dog. What should I know?
@@ -36,6 +38,9 @@ messageExamples:
         Let me provide you with important information about the adoption process and what to expect.
       actions: [web_search]
 skills:
+  - type: nativeTool
+    name: knowledge_search
+    description: Search through the knowledge base for information about rescue dogs and shelters
   - type: llm
     name: adoption_advisor
     description: Provides comprehensive advice about dog adoption and care

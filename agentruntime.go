@@ -78,17 +78,18 @@ func NewAgentRuntime(ctx context.Context, optionFuncs ...Option) (*AgentRuntime,
 		return nil, err
 	}
 
-	e.toolManager, err = tool.NewToolManager(ctx, e.agent.Skills, e.logger, g)
-	if err != nil {
-		return nil, err
-	}
-
 	if e.knowledgeService == nil {
 		e.knowledgeService, err = knowledge.NewServiceWithStore(ctx, e.knowledgeConfig, e.modelConfig, e.logger, knowledge.NewInMemoryStore())
 		if err != nil {
 			return nil, err
 		}
 	}
+
+	e.toolManager, err = tool.NewToolManager(ctx, e.agent.Skills, e.logger, g, e.knowledgeService)
+	if err != nil {
+		return nil, err
+	}
+
 	if len(e.agent.Knowledge) > 0 {
 		// Index knowledge for RAG if available
 		knowledgeId := fmt.Sprintf("%s-knowledge", e.agent.Name)

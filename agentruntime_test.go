@@ -405,26 +405,29 @@ func TestAgentWithKnowledgeService(t *testing.T) {
 	require.Len(t, agent.MessageExamples, 2, "Should have 2 message examples")
 	firstExample := agent.MessageExamples[0]
 	require.Contains(t, firstExample[0].Text, "Tell me about Hosu", "First example should ask about Hosu")
-	// First example should not have any actions since knowledge is accessed directly
-	require.Len(t, firstExample[1].Actions, 0, "First example should not have actions")
+	// First example should have knowledge_search action since knowledge is accessed via tool
+	require.Contains(t, firstExample[1].Actions, "knowledge_search", "First example should use knowledge_search")
 
 	// Second example should have web_search action
 	secondExample := agent.MessageExamples[1]
 	require.Contains(t, secondExample[0].Text, "adopting a rescue dog", "Second example should ask about adoption")
 	require.Contains(t, secondExample[1].Actions, "web_search", "Second example should use web_search")
 
-	// Test skills - now only 2 skills (adoption_advisor and web_search)
-	require.Len(t, agent.Skills, 2, "Should have 2 skills")
+	// Test skills - now should include knowledge_search skill
+	require.GreaterOrEqual(t, len(agent.Skills), 3, "Should have at least 3 skills")
 
-	// Find and test the web_search skill
+	// Find and test the skills
 	var webSearchSkill *entity.AgentSkill
 	var adoptionAdvisorSkill *entity.AgentSkill
+	var knowledgeSearchSkill *entity.AgentSkill
 	for i, skill := range agent.Skills {
 		switch skill.Name {
 		case "web_search":
 			webSearchSkill = &agent.Skills[i]
 		case "adoption_advisor":
 			adoptionAdvisorSkill = &agent.Skills[i]
+		case "knowledge_search":
+			knowledgeSearchSkill = &agent.Skills[i]
 		}
 	}
 	require.NotNil(t, webSearchSkill, "Should have web_search skill")
@@ -434,6 +437,9 @@ func TestAgentWithKnowledgeService(t *testing.T) {
 	require.NotNil(t, adoptionAdvisorSkill, "Should have adoption_advisor skill")
 	require.Equal(t, "llm", adoptionAdvisorSkill.Type, "adoption_advisor should be llm type")
 	require.Contains(t, adoptionAdvisorSkill.Description, "adoption and care", "adoption_advisor description should mention adoption and care")
+
+	require.NotNil(t, knowledgeSearchSkill, "Should have knowledge_search skill")
+	require.Equal(t, "nativeTool", knowledgeSearchSkill.Type, "knowledge_search should be nativeTool type")
 
 	// Test metadata
 	require.NotNil(t, agent.Metadata, "Metadata should not be nil")
@@ -486,7 +492,24 @@ func TestAgentWithKnowledgeService(t *testing.T) {
 	require.True(t, hasRelevantContent,
 		"Output should mention Hosu, Mandu, rescue, or Nuri context")
 
-	// Additional verification for RAG functionality
+	// Check if knowledge_search tool was called
+	knowledgeSearchCalled := false
+	for _, toolCall := range resp.ToolCalls {
+		if toolCall.Name == "knowledge_search" {
+			knowledgeSearchCalled = true
+			t.Logf("Knowledge search tool was called with arguments: %s", string(toolCall.Arguments))
+			t.Logf("Knowledge search results: %s", string(toolCall.Result))
+
+			// Verify the tool call arguments contain relevant query
+			require.Contains(t, strings.ToLower(string(toolCall.Arguments)), "hosu",
+				"Knowledge search query should contain 'hosu'")
+		}
+	}
+
+	// With the new tool-based approach, knowledge_search should be called
+	require.True(t, knowledgeSearchCalled, "knowledge_search tool should have been called")
+
+	// Additional verification for tool-based knowledge retrieval
 	// Check if the response contains specific details from the knowledge base
 	detailsFound := strings.Contains(outputLower, "3 years") ||
 		strings.Contains(outputLower, "mixed breed") ||
@@ -497,11 +520,13 @@ func TestAgentWithKnowledgeService(t *testing.T) {
 
 	t.Logf("Knowledge details found: %v", detailsFound)
 
-	// Log a message if RAG is working properly
-	if detailsFound {
-		t.Log("RAG is working correctly - agent accessed knowledge base details")
+	// Log a message about the new tool-based approach
+	if knowledgeSearchCalled && detailsFound {
+		t.Log("Tool-based knowledge retrieval is working correctly - agent called knowledge_search and used the results")
+	} else if knowledgeSearchCalled && !detailsFound {
+		t.Log("Warning: Agent called knowledge_search but may not have used the results effectively")
 	} else {
-		t.Log("Warning: Agent may not be using RAG - specific knowledge details not found in response")
+		t.Log("Warning: Agent did not call knowledge_search tool - may need to update agent configuration")
 	}
 }
 
@@ -531,6 +556,14 @@ func TestAgentWithRAGAndCustomKnowledge(t *testing.T) {
 				"topic":   "Health Benefits",
 				"content": "Full health insurance coverage including dental and vision.",
 				"details": "Coverage begins on the first day of employment. Family members can be added.",
+			},
+		},
+		// Add knowledge_search skill for tool-based knowledge retrieval
+		Skills: []entity.AgentSkill{
+			{
+				Name:        "knowledge_search",
+				Type:        "nativeTool",
+				Description: "Search through the knowledge base for relevant information",
 			},
 		},
 	}
@@ -574,6 +607,16 @@ func TestAgentWithRAGAndCustomKnowledge(t *testing.T) {
 	t.Logf("Test 1 - Vacation Query Response: %s", out1)
 	require.Contains(t, strings.ToLower(out1), "15 days", "Should mention 15 days of vacation")
 
+	// Verify knowledge_search tool was called for vacation query
+	vacationSearchCalled := false
+	for _, toolCall := range resp1.ToolCalls {
+		if toolCall.Name == "knowledge_search" {
+			vacationSearchCalled = true
+			t.Logf("Test 1 - Knowledge search called with: %s", string(toolCall.Arguments))
+		}
+	}
+	require.True(t, vacationSearchCalled, "knowledge_search should be called for vacation query")
+
 	// Test 2: Query about remote work
 	var out2 string
 	resp2, err := runtime.Run(context.TODO(), engine.RunRequest{
@@ -594,6 +637,16 @@ func TestAgentWithRAGAndCustomKnowledge(t *testing.T) {
 		strings.Contains(outputLower, "remote")
 	require.True(t, hasRemoteInfo, "Should mention remote work days")
 
+	// Verify knowledge_search tool was called for remote work query
+	remoteSearchCalled := false
+	for _, toolCall := range resp2.ToolCalls {
+		if toolCall.Name == "knowledge_search" {
+			remoteSearchCalled = true
+			t.Logf("Test 2 - Knowledge search called with: %s", string(toolCall.Arguments))
+		}
+	}
+	require.True(t, remoteSearchCalled, "knowledge_search should be called for remote work query")
+
 	// Test 3: Query about health benefits
 	var out3 string
 	resp3, err := runtime.Run(context.TODO(), engine.RunRequest{
@@ -613,4 +666,16 @@ func TestAgentWithRAGAndCustomKnowledge(t *testing.T) {
 		strings.Contains(outputLower3, "dental") ||
 		strings.Contains(outputLower3, "vision")
 	require.True(t, hasHealthInfo, "Should mention health insurance details")
+
+	// Verify knowledge_search tool was called for health benefits query
+	healthSearchCalled := false
+	for _, toolCall := range resp3.ToolCalls {
+		if toolCall.Name == "knowledge_search" {
+			healthSearchCalled = true
+			t.Logf("Test 3 - Knowledge search called with: %s", string(toolCall.Arguments))
+		}
+	}
+	require.True(t, healthSearchCalled, "knowledge_search should be called for health benefits query")
+
+	t.Log("All tests passed - Tool-based knowledge retrieval is working correctly")
 }
