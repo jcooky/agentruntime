@@ -13,6 +13,7 @@ import (
 	"github.com/habiliai/agentruntime/config"
 	"github.com/habiliai/agentruntime/engine"
 	"github.com/habiliai/agentruntime/entity"
+	"github.com/habiliai/agentruntime/knowledge"
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/stretchr/testify/require"
 )
@@ -439,14 +440,19 @@ func TestAgentWithKnowledgeService(t *testing.T) {
 	require.Equal(t, "1.0", agent.Metadata["version"], "Version should be 1.0")
 	require.Equal(t, "Rescue dogs and animal welfare", agent.Metadata["specialization"], "Specialization should match")
 
+	knowledgeService, err := knowledge.NewService(context.TODO(), &config.ModelConfig{
+		OpenAIAPIKey:    os.Getenv("OPENAI_API_KEY"),
+		AnthropicAPIKey: os.Getenv("ANTHROPIC_API_KEY"),
+	}, config.NewKnowledgeConfig(), slog.Default())
+	require.NoError(t, err)
+
 	// Test runtime creation and execution with knowledge query
 	runtime, err := agentruntime.NewAgentRuntime(
 		context.TODO(),
 		agentruntime.WithAgent(agent),
 		agentruntime.WithOpenAIAPIKey(os.Getenv("OPENAI_API_KEY")),
 		agentruntime.WithAnthropicAPIKey(os.Getenv("ANTHROPIC_API_KEY")),
-		agentruntime.WithRAG(true),
-		agentruntime.WithKnowledgeService(config.NewKnowledgeConfig()),
+		agentruntime.WithKnowledgeService(knowledgeService),
 		agentruntime.WithLogger(slog.Default()),
 	)
 	require.NoError(t, err)
@@ -535,13 +541,18 @@ func TestAgentWithRAGAndCustomKnowledge(t *testing.T) {
 	knowledgeConfig.RerankTopK = 2
 	knowledgeConfig.VectorEnabled = true
 
+	knowledgeService, err := knowledge.NewService(context.TODO(), &config.ModelConfig{
+		OpenAIAPIKey:    os.Getenv("OPENAI_API_KEY"),
+		AnthropicAPIKey: os.Getenv("ANTHROPIC_API_KEY"),
+	}, knowledgeConfig, slog.Default())
+	require.NoError(t, err)
+
 	runtime, err := agentruntime.NewAgentRuntime(
 		context.TODO(),
 		agentruntime.WithAgent(agent),
 		agentruntime.WithOpenAIAPIKey(os.Getenv("OPENAI_API_KEY")),
 		agentruntime.WithAnthropicAPIKey(os.Getenv("ANTHROPIC_API_KEY")),
-		agentruntime.WithRAG(true),
-		agentruntime.WithKnowledgeService(knowledgeConfig),
+		agentruntime.WithKnowledgeService(knowledgeService),
 		agentruntime.WithLogger(slog.Default()),
 	)
 	require.NoError(t, err)

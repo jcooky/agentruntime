@@ -18,17 +18,15 @@ import (
 
 type (
 	AgentRuntime struct {
-		engine      *engine.Engine
-		toolManager tool.Manager
-		logger      *slog.Logger
-		agent       *entity.Agent
+		engine           *engine.Engine
+		toolManager      tool.Manager
+		logger           *slog.Logger
+		agent            *entity.Agent
+		knowledgeService knowledge.Service
 
 		modelConfig     *config.ModelConfig
 		knowledgeConfig *config.KnowledgeConfig
 		logConfig       *config.LogConfig
-		traceVerbose    bool
-		rag             bool
-		store           knowledge.Store
 	}
 	Option func(*AgentRuntime)
 )
@@ -75,7 +73,7 @@ func NewAgentRuntime(ctx context.Context, optionFuncs ...Option) (*AgentRuntime,
 		return nil, errors.New("model config is required")
 	}
 
-	g, err := genkit.NewGenkit(ctx, e.modelConfig, e.logger, e.traceVerbose)
+	g, err := genkit.NewGenkit(ctx, e.modelConfig, e.logger, e.modelConfig.TraceVerbose)
 	if err != nil {
 		return nil, err
 	}
@@ -85,28 +83,20 @@ func NewAgentRuntime(ctx context.Context, optionFuncs ...Option) (*AgentRuntime,
 		return nil, err
 	}
 
-	var knowledgeService knowledge.Service
-	if e.rag {
-		if e.store != nil {
-			// Use custom knowledge store
-			knowledgeService, err = knowledge.NewServiceWithStore(ctx, e.knowledgeConfig, e.logger, g, e.store)
-		} else {
-			// Use default SQLite knowledge store
-			knowledgeService, err = knowledge.NewService(ctx, e.knowledgeConfig, e.logger, g)
-		}
+	if e.knowledgeService == nil {
+		e.knowledgeService, err = knowledge.NewServiceWithStore(ctx, e.knowledgeConfig, e.modelConfig, e.logger, knowledge.NewInMemoryStore())
 		if err != nil {
 			return nil, err
 		}
-
-		if len(e.agent.Knowledge) > 0 {
-			// Index knowledge for RAG if available
-			knowledgeId := fmt.Sprintf("%s-knowledge", e.agent.Name)
-			if _, err := knowledgeService.IndexKnowledgeFromMap(ctx, knowledgeId, e.agent.Knowledge); err != nil {
-				e.logger.Warn("failed to index knowledge for agent - agent will work without RAG functionality",
-					"agent", e.agent.Name,
-					"error", err)
-				// Continue without failing agent creation
-			}
+	}
+	if len(e.agent.Knowledge) > 0 {
+		// Index knowledge for RAG if available
+		knowledgeId := fmt.Sprintf("%s-knowledge", e.agent.Name)
+		if _, err := e.knowledgeService.IndexKnowledgeFromMap(ctx, knowledgeId, e.agent.Knowledge); err != nil {
+			e.logger.Warn("failed to index knowledge for agent - agent will work without RAG functionality",
+				"agent", e.agent.Name,
+				"error", err)
+			// Continue without failing agent creation
 		}
 	}
 
@@ -114,7 +104,7 @@ func NewAgentRuntime(ctx context.Context, optionFuncs ...Option) (*AgentRuntime,
 		e.logger,
 		e.toolManager,
 		g,
-		knowledgeService,
+		e.knowledgeService,
 	)
 
 	return e, nil
@@ -134,7 +124,7 @@ func WithLogger(logger *slog.Logger) func(e *AgentRuntime) {
 
 func WithTraceVerbose(traceVerbose bool) func(e *AgentRuntime) {
 	return func(e *AgentRuntime) {
-		e.traceVerbose = traceVerbose
+		e.modelConfig.TraceVerbose = traceVerbose
 	}
 }
 
@@ -162,20 +152,8 @@ func WithAgent(agent entity.Agent) func(e *AgentRuntime) {
 	}
 }
 
-func WithKnowledgeService(knowledgeConfig *config.KnowledgeConfig) func(e *AgentRuntime) {
+func WithKnowledgeService(knowledgeService knowledge.Service) func(e *AgentRuntime) {
 	return func(e *AgentRuntime) {
-		e.knowledgeConfig = knowledgeConfig
-	}
-}
-
-func WithStore(store knowledge.Store) func(e *AgentRuntime) {
-	return func(e *AgentRuntime) {
-		e.store = store
-	}
-}
-
-func WithRAG(rag bool) func(e *AgentRuntime) {
-	return func(e *AgentRuntime) {
-		e.rag = rag
+		e.knowledgeService = knowledgeService
 	}
 }

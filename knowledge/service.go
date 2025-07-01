@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"sort"
 
-	"github.com/firebase/genkit/go/genkit"
 	"github.com/habiliai/agentruntime/config"
+	xgenkit "github.com/habiliai/agentruntime/internal/genkit"
 	"github.com/pkg/errors"
 	"github.com/samber/lo"
 )
@@ -35,7 +35,12 @@ var (
 )
 
 // NewService creates a new knowledge service with default SQLite-based storage
-func NewService(ctx context.Context, conf *config.KnowledgeConfig, logger *slog.Logger, genkit *genkit.Genkit) (Service, error) {
+func NewService(ctx context.Context, modelConfig *config.ModelConfig, conf *config.KnowledgeConfig, logger *slog.Logger) (Service, error) {
+	genkit, err := xgenkit.NewGenkit(ctx, modelConfig, logger, modelConfig.TraceVerbose)
+	if err != nil {
+		return nil, err
+	}
+
 	if !conf.SqliteEnabled {
 		return nil, errors.New("sqlite knowledge service is not enabled. Please check your configuration.")
 	}
@@ -89,10 +94,15 @@ func NewService(ctx context.Context, conf *config.KnowledgeConfig, logger *slog.
 func NewServiceWithStore(
 	ctx context.Context,
 	conf *config.KnowledgeConfig,
+	modelConfig *config.ModelConfig,
 	logger *slog.Logger,
-	genkit *genkit.Genkit,
 	store Store,
 ) (Service, error) {
+	genkit, err := xgenkit.NewGenkit(ctx, modelConfig, logger, modelConfig.TraceVerbose)
+	if err != nil {
+		return nil, err
+	}
+
 	// Create embedder for RAG functionality
 	embedder := NewGenkitEmbedder(genkit)
 

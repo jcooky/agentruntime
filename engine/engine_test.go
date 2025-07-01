@@ -30,11 +30,15 @@ func (s *EngineTestSuite) SetupTest() {
 	}, slog.Default(), true)
 	s.Require().NoError(err)
 
-	knowledgeService, err := knowledge.NewService(s, &config.KnowledgeConfig{
+	knowledgeService, err := knowledge.NewService(s, &config.ModelConfig{
+		OpenAIAPIKey:    os.Getenv("OPENAI_API_KEY"),
+		XAIAPIKey:       os.Getenv("XAI_API_KEY"),
+		AnthropicAPIKey: os.Getenv("ANTHROPIC_API_KEY"),
+	}, &config.KnowledgeConfig{
 		SqliteEnabled: true,
 		SqlitePath:    ":memory:",
 		VectorEnabled: true,
-	}, slog.Default(), g)
+	}, slog.Default())
 	s.Require().NoError(err)
 
 	s.engine = engine.NewEngine(
