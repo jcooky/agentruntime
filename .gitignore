@@ -7,3 +7,4 @@
 node_modules
 __debug*
 /agentruntime.db
+.DS_Store

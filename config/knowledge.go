@@ -62,6 +62,15 @@ type KnowledgeConfig struct {
 	// QueryRewriteModel specifies which LLM model to use for query rewriting
 	// Default: same as RerankModel
 	QueryRewriteModel string `json:"queryRewriteModel,omitempty"`
+
+	// PDFExtractionMethod specifies which method to use for PDF extraction
+	// Options: "llm" (use LLM to extract text), "library" (use standard PDF library to extract text)
+	// Default: "llm"
+	PDFExtractionMethod string `json:"pdfExtractionMethod,omitempty"`
+
+	// PDFExtractionTextModel specifies which LLM model to use for PDF extraction text
+	// Default: "anthropic/claude-4-sonnet"
+	PDFExtractionTextModel string `json:"pdfExtractionTextModel,omitempty"`
 }
 
 // NewKnowledgeConfig creates a new KnowledgeConfig with sensible defaults
@@ -91,5 +100,8 @@ func NewKnowledgeConfig() *KnowledgeConfig {
 		QueryRewriteEnabled:  false, // Disabled by default
 		QueryRewriteStrategy: "hyde",
 		// QueryRewriteModel will default to RerankModel if not set
+
+		PDFExtractionTextModel: "anthropic/claude-4-sonnet",
+		PDFExtractionMethod:    "library",
 	}
 }

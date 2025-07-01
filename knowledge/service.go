@@ -2,19 +2,21 @@ package knowledge
 
 import (
 	"context"
+	"io"
 	"log/slog"
 	"sort"
 
+	"github.com/firebase/genkit/go/genkit"
 	"github.com/habiliai/agentruntime/config"
 	xgenkit "github.com/habiliai/agentruntime/internal/genkit"
 	"github.com/pkg/errors"
-	"github.com/samber/lo"
 )
 
 type (
 	Service interface {
 		// Knowledge management methods
 		IndexKnowledgeFromMap(ctx context.Context, id string, input []map[string]any) (*Knowledge, error)
+		IndexKnowledgeFromPDF(ctx context.Context, id string, input io.Reader) (*Knowledge, error)
 		RetrieveRelevantKnowledge(ctx context.Context, query string, limit int) ([]*KnowledgeSearchResult, error)
 		DeleteKnowledge(ctx context.Context, knowledgeId string) error
 		Close() error
@@ -22,11 +24,14 @@ type (
 	}
 
 	service struct {
+		genkit *genkit.Genkit
+
 		store         Store
 		embedder      Embedder
 		reranker      Reranker
 		queryRewriter QueryRewriter
 		config        *config.KnowledgeConfig
+		logger        *slog.Logger
 	}
 )
 
@@ -82,11 +87,13 @@ func NewService(ctx context.Context, modelConfig *config.ModelConfig, conf *conf
 	}
 
 	return &service{
+		genkit:        genkit,
 		store:         store,
 		embedder:      embedder,
 		reranker:      reranker,
 		queryRewriter: queryRewriter,
 		config:        conf,
+		logger:        logger,
 	}, nil
 }
 
@@ -131,11 +138,13 @@ func NewServiceWithStore(
 	}
 
 	return &service{
+		genkit:        genkit,
 		store:         store,
 		embedder:      embedder,
 		reranker:      reranker,
 		queryRewriter: queryRewriter,
 		config:        conf,
+		logger:        logger,
 	}, nil
 }
 
@@ -148,65 +157,6 @@ func (s *service) Close() error {
 		return s.store.Close()
 	}
 	return nil
-}
-
-// IndexKnowledge indexes knowledge documents for an agent
-func (s *service) IndexKnowledgeFromMap(ctx context.Context, id string, input []map[string]any) (*Knowledge, error) {
-	if s.embedder == nil {
-		// Return error instead of silently failing - this indicates a configuration issue
-		return nil, errors.New("embedder is not available - check OpenAI API key configuration. Knowledge indexing requires a valid OpenAI API key")
-	}
-
-	// First, delete existing knowledge for this agent
-	if id != "" {
-		if err := s.DeleteKnowledge(ctx, id); err != nil {
-			return nil, errors.Wrapf(err, "failed to delete existing knowledge")
-		}
-	}
-
-	knowledge := &Knowledge{
-		ID: id,
-		Source: Source{
-			Title: "Map",
-			Type:  SourceTypeMap,
-		},
-	}
-
-	// Process knowledge into text chunks
-	knowledge.Documents = ProcessKnowledgeFromMap(input)
-	if len(knowledge.Documents) == 0 {
-		return nil, errors.Errorf("no documents found for knowledge %s", id)
-	}
-
-	// Extract text content for embedding
-	embeddingTexts := make([]string, len(knowledge.Documents))
-	for i, chunk := range knowledge.Documents {
-		embeddingTexts[i] = chunk.EmbeddingText
-	}
-
-	// Generate embeddings
-	embeddings, err := s.embedder.Embed(ctx, lo.Map(knowledge.Documents, func(d *Document, _ int) string {
-		return d.EmbeddingText
-	})...)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to generate embeddings")
-	}
-
-	if len(embeddings) != len(knowledge.Documents) {
-		return nil, errors.Errorf("embedding count mismatch: got %d, expected %d", len(embeddings), len(knowledge.Documents))
-	}
-
-	// Create knowledge items for storage
-	for i := range knowledge.Documents {
-		knowledge.Documents[i].Embeddings = embeddings[i]
-	}
-
-	// Store all items
-	if err := s.store.Store(ctx, knowledge); err != nil {
-		return nil, errors.Wrapf(err, "failed to store knowledge")
-	}
-
-	return knowledge, nil
 }
 
 // RetrieveRelevantKnowledge retrieves relevant knowledge chunks based on query
