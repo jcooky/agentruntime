@@ -171,7 +171,7 @@ func buildMessageParams(genRequest *ai.ModelRequest, apiModelName string) (anthr
 		// Calculate budget based on ratio
 		budgetRatio := config.ExtendedThinkingBudgetRatio
 		if budgetRatio == 0 {
-			budgetRatio = 0.25 // Default to 25% if not specified
+			budgetRatio = 0.5 // Default to 50% if not specified
 		}
 
 		budget := int64(float64(config.MaxOutputTokens) * budgetRatio)
@@ -333,7 +333,6 @@ func convertContent(parts []*ai.Part) ([]anthropic.ContentBlockParamUnion, error
 				inputMsg = json.RawMessage("{}")
 			}
 
-			println("inputStr", inputMsg)
 			toolUse := anthropic.NewToolUseBlock(
 				toolReq.Ref,  // ID
 				inputMsg,     // Input as JSON string
@@ -344,30 +343,115 @@ func convertContent(parts []*ai.Part) ([]anthropic.ContentBlockParamUnion, error
 			// Convert tool response to Anthropic format
 			toolResp := part.ToolResponse
 
-			// Handle tool response content
-			var content string
-			switch v := toolResp.Output.(type) {
-			case string:
-				content = v
-			default:
-				// Marshal non-string outputs to JSON
-				jsonBytes, err := json.Marshal(v)
-				if err != nil {
-					return nil, fmt.Errorf("failed to marshal tool output: %w", err)
-				}
-				content = string(jsonBytes)
+			contents, err := convertToolResultBlockContents(toolResp.Output)
+			if err != nil {
+				blocks = append(blocks, anthropic.NewToolResultBlock(
+					toolResp.Ref,
+					err.Error(),
+					true,
+				))
+			} else {
+				blocks = append(blocks, anthropic.ContentBlockParamUnion{
+					OfToolResult: &anthropic.ToolResultBlockParam{
+						ToolUseID: toolResp.Ref,
+						Content:   contents,
+						IsError:   anthropic.Opt(false),
+					},
+				})
 			}
-
-			toolResult := anthropic.NewToolResultBlock(
-				toolResp.Ref, // Tool use ID
-				content,      // Content
-				false,        // Is error
-			)
-			blocks = append(blocks, toolResult)
 		}
 	}
 
 	return blocks, nil
+}
+
+func convertToolResultBlockContents(output any) (contents []anthropic.ToolResultBlockParamContentUnion, err error) {
+	// Handle tool response content
+	switch v := output.(type) {
+	case string:
+		contents = append(contents, anthropic.ToolResultBlockParamContentUnion{
+			OfText: &anthropic.TextBlockParam{
+				Text: v,
+			},
+		})
+	case []any:
+		for _, item := range v {
+			children, err := convertToolResultBlockContents(item)
+			if err != nil {
+				return nil, err
+			}
+			contents = append(contents, children...)
+		}
+	case map[string]any:
+		if v, ok := v["error"]; ok {
+			var content string
+			switch err := v.(type) {
+			case string:
+				content = err
+			case error:
+				content = err.Error()
+			default:
+				content = fmt.Sprintf("%v", err)
+			}
+
+			if content != "" {
+				contents = append(contents, anthropic.ToolResultBlockParamContentUnion{
+					OfText: &anthropic.TextBlockParam{
+						Text: content,
+					},
+				})
+			}
+		}
+		if output, ok := v["output"]; ok {
+			children, err := convertToolResultBlockContents(output)
+			if err != nil {
+				return nil, err
+			}
+			contents = append(contents, children...)
+			break
+		}
+
+		if contentType, ok := v["contentType"].(string); ok {
+			if url, ok := v["url"].(string); ok {
+				// Handle ai.Media type
+				contents = append(contents, anthropic.ToolResultBlockParamContentUnion{
+					OfImage: &anthropic.ImageBlockParam{
+						Source: func() (source anthropic.ImageBlockParamSourceUnion) {
+							if strings.HasPrefix(url, "https://") || strings.HasPrefix(url, "http://") {
+								source.OfURL = &anthropic.URLImageSourceParam{
+									URL: url,
+								}
+							} else {
+								source.OfBase64 = &anthropic.Base64ImageSourceParam{
+									Data:      url,
+									MediaType: getAnthropicMediaType(contentType),
+								}
+							}
+							return
+						}(),
+					},
+				})
+				break
+			}
+		}
+
+		// Marshal non-string outputs to JSON
+		jsonBytes, err := json.Marshal(v)
+		if err != nil {
+			return nil, err
+		}
+
+		contents = append(contents, anthropic.ToolResultBlockParamContentUnion{
+			OfText: &anthropic.TextBlockParam{
+				Text: string(jsonBytes),
+			},
+		})
+
+	default:
+		return nil, fmt.Errorf("unsupported tool result block content type: %T", v)
+	}
+
+	return
 }
 
 func convertTool(tool *ai.ToolDefinition) anthropic.ToolUnionParam {

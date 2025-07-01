@@ -2,9 +2,17 @@ package tool
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/firebase/genkit/go/ai"
 	"github.com/habiliai/agentruntime/knowledge"
 )
+
+type Knowledge struct {
+	ai.Media `json:",inline"`
+	Score    float64 `json:"score,omitempty" jsonschema:"description=Score of the search result"`
+	Context  string  `json:"context,omitempty" jsonschema:"description=Text of the search result"`
+}
 
 func (m *manager) registerKnowledgeSearchTool(knowledgeService knowledge.Service) {
 	registerLocalTool(
@@ -45,32 +53,43 @@ Error handling:
 The search uses semantic similarity, so exact keyword matches are not required. Results are ranked by relevance and include context about when and where the information was stored.`,
 		func(ctx context.Context, input struct {
 			Query string `json:"query" jsonschema:"description=The search query to find relevant information"`
-			Limit int    `json:"limit,omitempty" jsonschema:"description=The maximum number of results to return,default=10"`
+			Limit *int   `json:"limit,omitempty" jsonschema:"description=The maximum number of results to return,default=5"`
 		}) (reply struct {
-			Results []*knowledge.KnowledgeSearchResult `json:"results" jsonschema:"description=List of search results with relevant knowledge"`
-			Count   int                                `json:"count" jsonschema:"description=Number of results returned"`
-			Error   string                             `json:"error,omitempty" jsonschema:"description=Error message if the search fails"`
+			Output []Knowledge `json:"output,omitempty" jsonschema:"description=List of search results with relevant knowledge"`
+			Error  string      `json:"error,omitempty" jsonschema:"description=Error message if the search fails"`
 		}, err error) {
 			// Set default limit if not provided
-			limit := input.Limit
-			if limit <= 0 {
-				limit = 10
+			limit := 5
+			if input.Limit != nil {
+				limit = *input.Limit
 			}
 
 			// Retrieve relevant knowledge
-			reply.Results, err = knowledgeService.RetrieveRelevantKnowledge(ctx, input.Query, limit)
+			results, err := knowledgeService.RetrieveRelevantKnowledge(ctx, input.Query, limit)
 			if err != nil {
 				reply.Error = err.Error()
 				return reply, nil
 			}
 
 			// Clean up embedding data to reduce response size
-			for _, res := range reply.Results {
-				res.EmbeddingText = ""
-				res.Embeddings = nil
+			for _, res := range results {
+				k := Knowledge{
+					Score: float64(res.Score),
+				}
+				switch res.Content.Type {
+				case knowledge.ContentTypeImage:
+					k.Media = ai.Media{
+						ContentType: res.Content.MIMEType,
+						Url:         res.Content.Image,
+					}
+				case knowledge.ContentTypeText:
+					k.Context = res.Content.Text
+				default:
+					return reply, fmt.Errorf("unknown content type: %s", res.Content.Type)
+				}
+				reply.Output = append(reply.Output, k)
 			}
 
-			reply.Count = len(reply.Results)
 			return
 		},
 	)

@@ -1,6 +1,7 @@
 package agentruntime_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"log/slog"
@@ -678,4 +679,64 @@ func TestAgentWithRAGAndCustomKnowledge(t *testing.T) {
 	require.True(t, healthSearchCalled, "knowledge_search should be called for health benefits query")
 
 	t.Log("All tests passed - Tool-based knowledge retrieval is working correctly")
+}
+
+func TestAgentWithRAGAndPDFKnowledge(t *testing.T) {
+	ctx := context.TODO()
+	pdfFile, err := os.ReadFile("./knowledge/testdata/solana-whitepaper-en.pdf")
+	require.NoError(t, err)
+
+	agentFile, err := os.ReadFile("./examples/solana_expert.agent.yaml")
+	require.NoError(t, err)
+
+	var agent entity.Agent
+	err = yaml.Unmarshal(agentFile, &agent)
+	require.NoError(t, err)
+
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	}))
+
+	knowledgeConfig := config.NewKnowledgeConfig()
+	knowledgeConfig.SqlitePath = ":memory:"
+
+	knowledgeService, err := knowledge.NewService(ctx, &config.ModelConfig{
+		OpenAIAPIKey:    os.Getenv("OPENAI_API_KEY"),
+		AnthropicAPIKey: os.Getenv("ANTHROPIC_API_KEY"),
+	}, knowledgeConfig, logger)
+	require.NoError(t, err)
+
+	if _, err := knowledgeService.IndexKnowledgeFromPDF(ctx, "solana-whitepaper", bytes.NewReader(pdfFile)); err != nil {
+		t.Fatalf("Failed to index knowledge from PDF: %v", err)
+	}
+
+	runtime, err := agentruntime.NewAgentRuntime(
+		ctx,
+		agentruntime.WithAgent(agent),
+		agentruntime.WithOpenAIAPIKey(os.Getenv("OPENAI_API_KEY")),
+		agentruntime.WithAnthropicAPIKey(os.Getenv("ANTHROPIC_API_KEY")),
+		agentruntime.WithKnowledgeService(knowledgeService),
+		agentruntime.WithLogger(logger),
+	)
+
+	require.NoError(t, err)
+	defer runtime.Close()
+
+	var out string
+	resp, err := runtime.Run(ctx, engine.RunRequest{
+		History: []engine.Conversation{
+			{
+				User: "USER",
+				Text: "What is Solana? Can you explain the details to me?",
+			},
+		},
+	}, &out)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	t.Logf("Response: %+v", resp)
+	t.Logf("Output: %s", out)
+
+	require.True(t, strings.Contains(out, "Solana"), "Output should contain `Solana`")
+	require.True(t, strings.Contains(strings.ToLower(out), "high performance"), "Output should contain `high performance`")
 }

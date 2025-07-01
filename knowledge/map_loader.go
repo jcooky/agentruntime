@@ -6,7 +6,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mokiat/gog"
 	"github.com/pkg/errors"
 )
@@ -81,8 +80,9 @@ func ProcessKnowledgeFromMap(data []map[string]any) []*Document {
 		}
 
 		documents = append(documents, &Document{
-			Contents: []mcp.Content{
-				mcp.NewTextContent(content),
+			Content: Content{
+				Type: ContentTypeText,
+				Text: content,
 			},
 			Metadata:      item,
 			EmbeddingText: content,

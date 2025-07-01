@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/habiliai/agentruntime/knowledge"
-	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -28,8 +27,9 @@ func TestInMemoryStore_StoreAndRetrieve(t *testing.T) {
 		Documents: []*knowledge.Document{
 			{
 				ID: "doc-1",
-				Contents: []mcp.Content{
-					mcp.NewTextContent("This is a test document about Python programming"),
+				Content: knowledge.Content{
+					Type: knowledge.ContentTypeText,
+					Text: "This is a test document about Python programming",
 				},
 				EmbeddingText: "This is a test document about Python programming",
 				Embeddings:    generateTestEmbedding(128, 1), // 128-dim embedding with seed 1
@@ -39,8 +39,9 @@ func TestInMemoryStore_StoreAndRetrieve(t *testing.T) {
 			},
 			{
 				ID: "doc-2",
-				Contents: []mcp.Content{
-					mcp.NewTextContent("JavaScript is a dynamic programming language"),
+				Content: knowledge.Content{
+					Type: knowledge.ContentTypeText,
+					Text: "JavaScript is a dynamic programming language",
 				},
 				EmbeddingText: "JavaScript is a dynamic programming language",
 				Embeddings:    generateTestEmbedding(128, 2), // 128-dim embedding with seed 2
@@ -79,20 +80,29 @@ func TestInMemoryStore_Search(t *testing.T) {
 	// Store multiple documents with different embeddings
 	documents := []*knowledge.Document{
 		{
-			ID:            "doc-1",
-			Contents:      []mcp.Content{mcp.NewTextContent("Python programming basics")},
+			ID: "doc-1",
+			Content: knowledge.Content{
+				Type: knowledge.ContentTypeText,
+				Text: "Python programming basics",
+			},
 			EmbeddingText: "Python programming basics",
 			Embeddings:    generateTestEmbedding(128, 1),
 		},
 		{
-			ID:            "doc-2",
-			Contents:      []mcp.Content{mcp.NewTextContent("Advanced Python techniques")},
+			ID: "doc-2",
+			Content: knowledge.Content{
+				Type: knowledge.ContentTypeText,
+				Text: "Advanced Python techniques",
+			},
 			EmbeddingText: "Advanced Python techniques",
 			Embeddings:    generateTestEmbedding(128, 2),
 		},
 		{
-			ID:            "doc-3",
-			Contents:      []mcp.Content{mcp.NewTextContent("JavaScript fundamentals")},
+			ID: "doc-3",
+			Content: knowledge.Content{
+				Type: knowledge.ContentTypeText,
+				Text: "JavaScript fundamentals",
+			},
 			EmbeddingText: "JavaScript fundamentals",
 			Embeddings:    generateTestEmbedding(128, 3),
 		},
@@ -133,8 +143,11 @@ func TestInMemoryStore_Delete(t *testing.T) {
 		ID: "test-knowledge",
 		Documents: []*knowledge.Document{
 			{
-				ID:            "doc-1",
-				Contents:      []mcp.Content{mcp.NewTextContent("Test document")},
+				ID: "doc-1",
+				Content: knowledge.Content{
+					Type: knowledge.ContentTypeText,
+					Text: "Test document",
+				},
 				EmbeddingText: "Test document",
 				Embeddings:    generateTestEmbedding(128, 1),
 			},
@@ -175,8 +188,11 @@ func TestInMemoryStore_Concurrency(t *testing.T) {
 				ID: string(rune('a' + id)),
 				Documents: []*knowledge.Document{
 					{
-						ID:            string(rune('a'+id)) + "-doc",
-						Contents:      []mcp.Content{mcp.NewTextContent("Concurrent test")},
+						ID: string(rune('a'+id)) + "-doc",
+						Content: knowledge.Content{
+							Type: knowledge.ContentTypeText,
+							Text: "Concurrent test",
+						},
 						EmbeddingText: "Concurrent test",
 						Embeddings:    generateTestEmbedding(128, id),
 					},

@@ -7,8 +7,6 @@ import (
 
 	sqlite_vec "github.com/asg017/sqlite-vec-go-bindings/cgo"
 	"github.com/google/uuid"
-	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/mokiat/gog"
 	"github.com/pkg/errors"
 	"gorm.io/datatypes"
 	"gorm.io/driver/sqlite"
@@ -43,7 +41,7 @@ type SqliteDocumentRecord struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 
-	Contents      datatypes.JSONSlice[ContentStorage]
+	Content       datatypes.JSONType[Content]
 	EmbeddingText string
 	Metadata      datatypes.JSONType[map[string]any]
 
@@ -145,11 +143,7 @@ func (s *SqliteStore) Store(ctx context.Context, knowledge *Knowledge) error {
 				EmbeddingText:     item.EmbeddingText,
 				Metadata:          datatypes.NewJSONType(item.Metadata),
 				KnowledgeRecordID: knowledge.ID, // Set the foreign key
-				Contents: gog.Map(item.Contents, func(c mcp.Content) ContentStorage {
-					var content ContentStorage
-					content.FromContent(c)
-					return content
-				}),
+				Content:           datatypes.NewJSONType(item.Content),
 			}
 
 			// Use Save to create or update
@@ -255,10 +249,8 @@ func (s *SqliteStore) Search(ctx context.Context, queryEmbedding []float32, limi
 		distance := distanceMap[record.ID]
 		results = append(results, KnowledgeSearchResult{
 			Document: &Document{
-				ID: record.ID,
-				Contents: gog.Map(record.Contents, func(c ContentStorage) mcp.Content {
-					return c.ToContent()
-				}),
+				ID:            record.ID,
+				Content:       record.Content.Data(),
 				Metadata:      metadata,
 				EmbeddingText: record.EmbeddingText,
 			},
@@ -298,10 +290,8 @@ func (s *SqliteStore) GetKnowledgeById(ctx context.Context, knowledgeId string) 
 		}
 
 		knowledge.Documents = append(knowledge.Documents, &Document{
-			ID: document.ID,
-			Contents: gog.Map(document.Contents, func(c ContentStorage) mcp.Content {
-				return c.ToContent()
-			}),
+			ID:            document.ID,
+			Content:       document.Content.Data(),
 			Metadata:      metadata,
 			EmbeddingText: document.EmbeddingText,
 		})

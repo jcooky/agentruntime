@@ -76,7 +76,7 @@ func TestProcessKnowledgeFromPDF(t *testing.T) {
 	if len(result.Documents) > 0 {
 		doc := result.Documents[0]
 		assert.Equal(t, "test-pdf_page_1", doc.ID)
-		assert.Len(t, doc.Contents, 2) // Text and Image
+		assert.Len(t, doc.Content, 2) // Text and Image
 		assert.Equal(t, "library", doc.Metadata["extraction_method"])
 		assert.NotEmpty(t, doc.EmbeddingText)
 

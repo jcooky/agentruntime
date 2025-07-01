@@ -17,7 +17,6 @@ import (
 	"github.com/firebase/genkit/go/genkit"
 	"github.com/gen2brain/go-fitz"
 	"github.com/habiliai/agentruntime/config"
-	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mokiat/gog"
 	"github.com/pkg/errors"
 )
@@ -122,7 +121,7 @@ func ProcessKnowledgeFromPDF(ctx context.Context, g *genkit.Genkit, id string, i
 		// Calculate scaling factor if needed
 		width := bounds.Dx()
 		height := bounds.Dy()
-		scale := 1.0
+		var scale float64
 
 		if width > maxWidth || height > maxHeight {
 			scaleW := float64(maxWidth) / float64(width)
@@ -173,16 +172,10 @@ func ProcessKnowledgeFromPDF(ctx context.Context, g *genkit.Genkit, id string, i
 		// Create document for this page
 		document := &Document{
 			ID: fmt.Sprintf("%s_page_%d", id, pageNum+1),
-			Contents: []mcp.Content{
-				mcp.TextContent{
-					Type: "text",
-					Text: extractedText,
-				},
-				mcp.ImageContent{
-					Type:     "image",
-					Data:     base64Image,
-					MIMEType: "image/jpeg", // Changed from image/png
-				},
+			Content: Content{
+				Type:     ContentTypeImage,
+				Image:    base64Image,
+				MIMEType: "image/jpeg",
 			},
 			EmbeddingText: extractedText,
 			Metadata: map[string]any{

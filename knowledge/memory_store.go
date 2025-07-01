@@ -44,7 +44,7 @@ func (i *InMemoryStore) Store(ctx context.Context, knowledge *Knowledge) error {
 		// Deep copy document
 		storedDoc := &Document{
 			ID:            doc.ID,
-			Contents:      doc.Contents, // Contents are immutable, so shallow copy is ok
+			Content:       doc.Content, // Contents are immutable, so shallow copy is ok
 			Embeddings:    copyFloat32Slice(doc.Embeddings),
 			EmbeddingText: doc.EmbeddingText,
 			Metadata:      copyMap(doc.Metadata),
@@ -108,7 +108,7 @@ func (i *InMemoryStore) Search(ctx context.Context, queryEmbedding []float32, li
 		// Deep copy document for result
 		resultDoc := &Document{
 			ID:            sd.doc.ID,
-			Contents:      sd.doc.Contents,
+			Content:       sd.doc.Content,
 			Embeddings:    nil, // Don't include embeddings in search results
 			EmbeddingText: sd.doc.EmbeddingText,
 			Metadata:      copyMap(sd.doc.Metadata),
@@ -145,7 +145,7 @@ func (i *InMemoryStore) GetKnowledgeById(ctx context.Context, knowledgeId string
 	for idx, doc := range knowledge.Documents {
 		result.Documents[idx] = &Document{
 			ID:            doc.ID,
-			Contents:      doc.Contents,
+			Content:       doc.Content,
 			Embeddings:    nil, // Don't include embeddings in get results
 			EmbeddingText: doc.EmbeddingText,
 			Metadata:      copyMap(doc.Metadata),

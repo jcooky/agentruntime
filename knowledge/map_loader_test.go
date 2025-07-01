@@ -4,20 +4,13 @@ import (
 	"testing"
 
 	"github.com/habiliai/agentruntime/knowledge"
-	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/stretchr/testify/require"
 )
 
 // Helper function to get text content from Document
 func getDocumentText(doc *knowledge.Document) string {
-	if doc != nil && len(doc.Contents) > 0 {
-		// Try both value type and pointer type
-		switch c := doc.Contents[0].(type) {
-		case mcp.TextContent:
-			return c.Text
-		case *mcp.TextContent:
-			return c.Text
-		}
+	if doc != nil && doc.Content.Type == knowledge.ContentTypeText {
+		return doc.Content.Text
 	}
 	return ""
 }

@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/habiliai/agentruntime/knowledge"
-	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -26,8 +25,9 @@ func (m *MockReranker) Rerank(ctx context.Context, query string, candidates []*k
 func createKnowledgeSearchResult(content string) *knowledge.KnowledgeSearchResult {
 	return &knowledge.KnowledgeSearchResult{
 		Document: &knowledge.Document{
-			Contents: []mcp.Content{
-				mcp.NewTextContent(content),
+			Content: knowledge.Content{
+				Type: knowledge.ContentTypeText,
+				Text: content,
 			},
 		},
 		Score: 1.0,
@@ -36,14 +36,8 @@ func createKnowledgeSearchResult(content string) *knowledge.KnowledgeSearchResul
 
 // Helper function to get text content from KnowledgeSearchResult
 func getTextContent(result *knowledge.KnowledgeSearchResult) string {
-	if result.Document != nil && len(result.Document.Contents) > 0 {
-		// Try both value type and pointer type
-		switch c := result.Document.Contents[0].(type) {
-		case mcp.TextContent:
-			return c.Text
-		case *mcp.TextContent:
-			return c.Text
-		}
+	if result.Document != nil && result.Document.Content.Type == knowledge.ContentTypeText {
+		return result.Document.Content.Text
 	}
 	return ""
 }
@@ -93,24 +87,27 @@ func TestRerankResult(t *testing.T) {
 	results := []*knowledge.KnowledgeSearchResult{
 		{
 			Document: &knowledge.Document{
-				Contents: []mcp.Content{
-					mcp.NewTextContent("Low relevance"),
+				Content: knowledge.Content{
+					Type: knowledge.ContentTypeText,
+					Text: "Low relevance",
 				},
 			},
 			Score: 0.2,
 		},
 		{
 			Document: &knowledge.Document{
-				Contents: []mcp.Content{
-					mcp.NewTextContent("High relevance"),
+				Content: knowledge.Content{
+					Type: knowledge.ContentTypeText,
+					Text: "High relevance",
 				},
 			},
 			Score: 0.9,
 		},
 		{
 			Document: &knowledge.Document{
-				Contents: []mcp.Content{
-					mcp.NewTextContent("Medium relevance"),
+				Content: knowledge.Content{
+					Type: knowledge.ContentTypeText,
+					Text: "Medium relevance",
 				},
 			},
 			Score: 0.5,
