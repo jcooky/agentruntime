@@ -174,10 +174,6 @@ func ProcessKnowledgeFromPDF(ctx context.Context, g *genkit.Genkit, id string, i
 		document := &Document{
 			ID: fmt.Sprintf("%s_page_%d", id, pageNum+1),
 			Contents: []mcp.Content{
-				mcp.TextContent{
-					Type: "text",
-					Text: extractedText,
-				},
 				mcp.ImageContent{
 					Type:     "image",
 					Data:     base64Image,

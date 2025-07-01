@@ -171,7 +171,7 @@ func buildMessageParams(genRequest *ai.ModelRequest, apiModelName string) (anthr
 		// Calculate budget based on ratio
 		budgetRatio := config.ExtendedThinkingBudgetRatio
 		if budgetRatio == 0 {
-			budgetRatio = 0.25 // Default to 25% if not specified
+			budgetRatio = 0.5 // Default to 50% if not specified
 		}
 
 		budget := int64(float64(config.MaxOutputTokens) * budgetRatio)

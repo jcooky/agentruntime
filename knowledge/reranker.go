@@ -176,16 +176,17 @@ Response:`
 
 	// Call LLM once for all candidates
 	type ScoreResult struct {
-		Index int     `json:"index"`
-		Score float64 `json:"score"`
+		Index int     `json:"index" jsonschema:"description=The candidate number (1-based)"`
+		Score float64 `json:"score" jsonschema:"description=Relevance score (0-10)"`
 	}
 
 	docs := make([]*ai.Document, 0, len(candidates))
-	for _, candidate := range candidates {
+	for idx, candidate := range candidates {
 		doc, err := candidate.Document.ToDoc()
 		if err != nil {
 			return nil, err
 		}
+		doc.Content = append(doc.Content, ai.NewTextPart(fmt.Sprintf("Index: %d", idx+1)))
 		docs = append(docs, doc)
 	}
 

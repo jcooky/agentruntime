@@ -170,8 +170,7 @@ func (s *service) RetrieveRelevantKnowledge(ctx context.Context, query string, l
 	queries, err := s.queryRewriter.Rewrite(ctx, query)
 	if err != nil {
 		// Log error but continue with original query
-		logger := slog.Default()
-		logger.Warn("query rewriting failed, using original query", slog.String("error", err.Error()))
+		s.logger.Warn("query rewriting failed, using original query", slog.String("error", err.Error()))
 		queries = []string{query}
 	}
 
@@ -189,8 +188,7 @@ func (s *service) RetrieveRelevantKnowledge(ctx context.Context, query string, l
 		// Generate embedding for this query
 		embeddings, err := s.embedder.Embed(ctx, q)
 		if err != nil {
-			logger := slog.Default()
-			logger.Warn("failed to generate embedding for rewritten query",
+			s.logger.Warn("failed to generate embedding for rewritten query",
 				slog.String("query", q),
 				slog.String("error", err.Error()))
 			continue
@@ -205,8 +203,7 @@ func (s *service) RetrieveRelevantKnowledge(ctx context.Context, query string, l
 		// Search for relevant knowledge
 		searchResults, err := s.store.Search(ctx, queryEmbedding, retrievalLimit)
 		if err != nil {
-			logger := slog.Default()
-			logger.Warn("search failed for rewritten query",
+			s.logger.Warn("search failed for rewritten query",
 				slog.String("query", q),
 				slog.String("error", err.Error()))
 			continue
@@ -249,8 +246,7 @@ func (s *service) RetrieveRelevantKnowledge(ctx context.Context, query string, l
 		rerankResults, err := s.reranker.Rerank(ctx, query, candidates, limit)
 		if err != nil {
 			// If reranking fails, fall back to original results
-			logger := slog.Default()
-			logger.Warn("reranking failed, falling back to original results", slog.String("error", err.Error()))
+			s.logger.Warn("reranking failed, falling back to original results", slog.String("error", err.Error()))
 			if len(candidates) > limit {
 				candidates = candidates[:limit]
 			}

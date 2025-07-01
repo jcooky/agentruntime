@@ -91,7 +91,7 @@ func NewKnowledgeConfig() *KnowledgeConfig {
 
 		// Rerank Settings
 		RerankEnabled:   true,
-		RerankModel:     "gpt-4o-mini",
+		RerankModel:     "openai/gpt-4o-mini",
 		RerankTopK:      10,
 		RetrievalFactor: 3,    // Retrieve 3x candidates for reranking
 		UseBatchRerank:  true, // Use batch reranker for better performance
@@ -99,9 +99,10 @@ func NewKnowledgeConfig() *KnowledgeConfig {
 		// Query Rewrite Settings
 		QueryRewriteEnabled:  false, // Disabled by default
 		QueryRewriteStrategy: "hyde",
+		QueryRewriteModel:    "openai/gpt-4o-mini",
 		// QueryRewriteModel will default to RerankModel if not set
 
-		PDFExtractionTextModel: "anthropic/claude-4-sonnet",
+		PDFExtractionTextModel: "openai/gpt-4o-mini",
 		PDFExtractionMethod:    "library",
 	}
 }

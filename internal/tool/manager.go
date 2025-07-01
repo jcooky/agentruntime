@@ -152,6 +152,12 @@ func registerLocalTool[In any, Out any](m *manager, name string, description str
 		name,
 		description,
 		func(ctx *ai.ToolContext, input In) (Out, error) {
+			defer func() {
+				if err := recover(); err != nil {
+					m.logger.Error("tool panicked", "err", err)
+				}
+			}()
+
 			out, err := fn(ctx, input)
 			if err == nil {
 				appendCallData(ctx, CallData{

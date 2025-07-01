@@ -37,7 +37,7 @@ var (
 			},
 			ExtendedThinkingConfig: ExtendedThinkingConfig{
 				ExtendedThinkingEnabled:     true,
-				ExtendedThinkingBudgetRatio: 0.8, // Default to 80% of maxTokens
+				ExtendedThinkingBudgetRatio: 0.5, // Default to 50% of maxTokens
 			},
 		},
 		"claude-sonnet-4-20250514": {
@@ -46,7 +46,7 @@ var (
 			},
 			ExtendedThinkingConfig: ExtendedThinkingConfig{
 				ExtendedThinkingEnabled:     true,
-				ExtendedThinkingBudgetRatio: 0.8, // Default to 80% of maxTokens
+				ExtendedThinkingBudgetRatio: 0.5, // Default to 50% of maxTokens
 			},
 		},
 		"claude-3-7-sonnet-latest": {
@@ -55,7 +55,7 @@ var (
 			},
 			ExtendedThinkingConfig: ExtendedThinkingConfig{
 				ExtendedThinkingEnabled:     true,
-				ExtendedThinkingBudgetRatio: 0.8, // Default to 80% of maxTokens
+				ExtendedThinkingBudgetRatio: 0.5, // Default to 50% of maxTokens
 			},
 		},
 		"claude-3-5-sonnet-latest": {
