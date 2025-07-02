@@ -181,7 +181,24 @@ func (s *SqliteStore) Store(ctx context.Context, knowledge *Knowledge) error {
 }
 
 // Search implements Store.Search
-func (s *SqliteStore) Search(ctx context.Context, queryEmbedding []float32, limit int) ([]KnowledgeSearchResult, error) {
+func (s *SqliteStore) Search(ctx context.Context, queryEmbedding []float32, limit int, allowedKnowledgeIds []string) ([]KnowledgeSearchResult, error) {
+	var allowedDocumentIds []string
+
+	// Get document IDs from allowed knowledge IDs
+	if len(allowedKnowledgeIds) > 0 {
+		if err := s.db.WithContext(ctx).
+			Model(&SqliteDocumentRecord{}).
+			Where("knowledge_record_id IN ?", allowedKnowledgeIds).
+			Pluck("id", &allowedDocumentIds).Error; err != nil {
+			return nil, errors.Wrapf(err, "failed to get document IDs from knowledge IDs")
+		}
+
+		// If no documents found for the allowed knowledge IDs, return empty results
+		if len(allowedDocumentIds) == 0 {
+			return []KnowledgeSearchResult{}, nil
+		}
+	}
+
 	// Serialize query embedding
 	serializedQuery, err := sqlite_vec.SerializeFloat32(queryEmbedding)
 	if err != nil {
@@ -189,15 +206,32 @@ func (s *SqliteStore) Search(ctx context.Context, queryEmbedding []float32, limi
 	}
 
 	// Perform vector similarity search to get knowledge IDs and distances
-	searchSQL := `
-		SELECT document_id, distance
-		FROM document_vectors
-		WHERE embedding MATCH ?
-		ORDER BY distance
-		LIMIT ?
-	`
+	var searchSQL string
+	var args []interface{}
 
-	rows, err := s.db.WithContext(ctx).Raw(searchSQL, serializedQuery, limit*2).Rows() // Get more results for filtering
+	if len(allowedDocumentIds) > 0 {
+		// Filter by allowed document IDs if specified
+		searchSQL = `
+			SELECT document_id, distance
+			FROM document_vectors
+			WHERE embedding MATCH ? AND document_id IN ?
+			ORDER BY distance
+			LIMIT ?
+		`
+		args = []interface{}{serializedQuery, allowedDocumentIds, limit * 2}
+	} else {
+		// No filtering - search all documents
+		searchSQL = `
+			SELECT document_id, distance
+			FROM document_vectors
+			WHERE embedding MATCH ?
+			ORDER BY distance
+			LIMIT ?
+		`
+		args = []interface{}{serializedQuery, limit * 2}
+	}
+
+	rows, err := s.db.WithContext(ctx).Raw(searchSQL, args...).Rows()
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to execute search query")
 	}

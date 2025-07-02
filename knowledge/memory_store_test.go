@@ -119,7 +119,7 @@ func TestInMemoryStore_Search(t *testing.T) {
 
 	// Search with a query embedding similar to doc-1
 	queryEmbedding := generateTestEmbedding(128, 1) // Same as doc-1
-	results, err := store.Search(ctx, queryEmbedding, 2)
+	results, err := store.Search(ctx, queryEmbedding, 2, nil)
 	require.NoError(t, err)
 	require.Len(t, results, 2)
 
@@ -128,7 +128,7 @@ func TestInMemoryStore_Search(t *testing.T) {
 	assert.Greater(t, results[0].Score, float32(0.99)) // Should be very close to 1.0
 
 	// Test with empty query embedding
-	emptyResults, err := store.Search(ctx, []float32{}, 10)
+	emptyResults, err := store.Search(ctx, []float32{}, 10, nil)
 	require.NoError(t, err)
 	assert.Empty(t, emptyResults)
 }

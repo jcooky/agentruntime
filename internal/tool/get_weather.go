@@ -141,7 +141,7 @@ func (m *manager) GetWeather(ctx context.Context, req *GetWeatherRequest, apiKey
 	return weatherSummary, nil
 }
 
-func (m *manager) registerGetWeatherTool(description string, env map[string]string) {
+func (m *manager) registerGetWeatherTool(description string, env map[string]any) {
 	if description == "" {
 		description = "Get weather information when you need it"
 	}
@@ -154,7 +154,7 @@ func (m *manager) registerGetWeatherTool(description string, env map[string]stri
 		}) (res struct {
 			*GetWeatherResponse
 		}, err error) {
-			res.GetWeatherResponse, err = m.GetWeather(ctx, req.GetWeatherRequest, env["OPENWEATHER_API_KEY"])
+			res.GetWeatherResponse, err = m.GetWeather(ctx, req.GetWeatherRequest, env["OPENWEATHER_API_KEY"].(string))
 			return
 		},
 	)

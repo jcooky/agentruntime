@@ -17,7 +17,7 @@ type (
 		// Knowledge management methods
 		IndexKnowledgeFromMap(ctx context.Context, id string, input []map[string]any) (*Knowledge, error)
 		IndexKnowledgeFromPDF(ctx context.Context, id string, input io.Reader) (*Knowledge, error)
-		RetrieveRelevantKnowledge(ctx context.Context, query string, limit int) ([]*KnowledgeSearchResult, error)
+		RetrieveRelevantKnowledge(ctx context.Context, query string, limit int, allowedKnowledgeIds []string) ([]*KnowledgeSearchResult, error)
 		DeleteKnowledge(ctx context.Context, knowledgeId string) error
 		Close() error
 		GetKnowledge(ctx context.Context, knowledgeId string) (*Knowledge, error)
@@ -160,7 +160,7 @@ func (s *service) Close() error {
 }
 
 // RetrieveRelevantKnowledge retrieves relevant knowledge chunks based on query
-func (s *service) RetrieveRelevantKnowledge(ctx context.Context, query string, limit int) ([]*KnowledgeSearchResult, error) {
+func (s *service) RetrieveRelevantKnowledge(ctx context.Context, query string, limit int, allowedKnowledgeIds []string) ([]*KnowledgeSearchResult, error) {
 	if s.embedder == nil {
 		// Gracefully handle when no embedder is available
 		return nil, nil
@@ -201,7 +201,7 @@ func (s *service) RetrieveRelevantKnowledge(ctx context.Context, query string, l
 		queryEmbedding := embeddings[0]
 
 		// Search for relevant knowledge
-		searchResults, err := s.store.Search(ctx, queryEmbedding, retrievalLimit)
+		searchResults, err := s.store.Search(ctx, queryEmbedding, retrievalLimit, allowedKnowledgeIds)
 		if err != nil {
 			s.logger.Warn("search failed for rewritten query",
 				slog.String("query", q),

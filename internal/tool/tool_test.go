@@ -43,7 +43,7 @@ func (s *TestSuite) SetupTest() {
 				Type:        "nativeTool",
 				Name:        "get_weather",
 				Description: "Get weather information when you need it",
-				Env: map[string]string{
+				Env: map[string]any{
 					"OPENWEATHER_API_KEY": os.Getenv("OPENWEATHER_API_KEY"),
 				},
 			},

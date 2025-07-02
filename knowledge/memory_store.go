@@ -3,6 +3,7 @@ package knowledge
 import (
 	"context"
 	"math"
+	"slices"
 	"sort"
 	"sync"
 )
@@ -11,7 +12,6 @@ type (
 	InMemoryStore struct {
 		mu         sync.RWMutex
 		knowledges map[string]*Knowledge // key: knowledge ID
-		documents  map[string]*Document  // key: document ID
 	}
 )
 
@@ -19,7 +19,6 @@ type (
 func NewInMemoryStore() *InMemoryStore {
 	return &InMemoryStore{
 		knowledges: make(map[string]*Knowledge),
-		documents:  make(map[string]*Document),
 	}
 }
 
@@ -57,14 +56,13 @@ func (i *InMemoryStore) Store(ctx context.Context, knowledge *Knowledge) error {
 		storedDoc.Metadata["knowledge_id"] = knowledge.ID
 
 		storedKnowledge.Documents[idx] = storedDoc
-		i.documents[doc.ID] = storedDoc
 	}
 
 	return nil
 }
 
 // Search implements Store.Search
-func (i *InMemoryStore) Search(ctx context.Context, queryEmbedding []float32, limit int) ([]KnowledgeSearchResult, error) {
+func (i *InMemoryStore) Search(ctx context.Context, queryEmbedding []float32, limit int, allowedKnowledgeIds []string) ([]KnowledgeSearchResult, error) {
 	i.mu.RLock()
 	defer i.mu.RUnlock()
 
@@ -79,17 +77,22 @@ func (i *InMemoryStore) Search(ctx context.Context, queryEmbedding []float32, li
 	}
 
 	var scoredDocs []scoredDoc
-	for _, doc := range i.documents {
-		if len(doc.Embeddings) == 0 {
+	for _, kl := range i.knowledges {
+		if len(allowedKnowledgeIds) > 0 && !slices.Contains(allowedKnowledgeIds, kl.ID) {
 			continue
 		}
+		for _, doc := range kl.Documents {
+			if len(doc.Embeddings) == 0 {
+				continue
+			}
 
-		// Calculate cosine similarity
-		similarity := cosineSimilarity(queryEmbedding, doc.Embeddings)
-		scoredDocs = append(scoredDocs, scoredDoc{
-			doc:   doc,
-			score: similarity,
-		})
+			// Calculate cosine similarity
+			similarity := cosineSimilarity(queryEmbedding, doc.Embeddings)
+			scoredDocs = append(scoredDocs, scoredDoc{
+				doc:   doc,
+				score: similarity,
+			})
+		}
 	}
 
 	// Sort by score descending
@@ -160,14 +163,8 @@ func (i *InMemoryStore) DeleteKnowledgeById(ctx context.Context, knowledgeId str
 	i.mu.Lock()
 	defer i.mu.Unlock()
 
-	knowledge, exists := i.knowledges[knowledgeId]
-	if !exists {
+	if _, exists := i.knowledges[knowledgeId]; !exists {
 		return nil // Not an error if knowledge doesn't exist
-	}
-
-	// Delete all associated documents
-	for _, doc := range knowledge.Documents {
-		delete(i.documents, doc.ID)
 	}
 
 	// Delete knowledge
@@ -183,7 +180,6 @@ func (i *InMemoryStore) Close() error {
 
 	// Clear all data
 	i.knowledges = make(map[string]*Knowledge)
-	i.documents = make(map[string]*Document)
 
 	return nil
 }

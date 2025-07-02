@@ -11,7 +11,7 @@ type Store interface {
 	Store(ctx context.Context, knowledge *Knowledge) error
 
 	// Search performs semantic search and returns matching results
-	Search(ctx context.Context, queryEmbedding []float32, limit int) ([]KnowledgeSearchResult, error)
+	Search(ctx context.Context, queryEmbedding []float32, limit int, allowedKnowledgeIds []string) ([]KnowledgeSearchResult, error)
 
 	// GetKnowledgeById retrieves all knowledge items for a specific agent
 	GetKnowledgeById(ctx context.Context, knowledgeId string) (*Knowledge, error)

@@ -142,14 +142,14 @@ func (s *TestSuite) TestAgentSkillToMCPServerConfig() {
 				Name:    "local-tools",
 				Command: "/usr/local/bin/mcp-server",
 				Args:    []string{"--verbose"},
-				Env: map[string]string{
+				Env: map[string]any{
 					"DEBUG": "true",
 				},
 			},
 			expectedConfig: tool.MCPServerConfig{
 				Command: "/usr/local/bin/mcp-server",
 				Args:    []string{"--verbose"},
-				Env: map[string]string{
+				Env: map[string]any{
 					"DEBUG": "true",
 				},
 			},

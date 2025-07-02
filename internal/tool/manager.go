@@ -111,7 +111,7 @@ func NewToolManager(ctx context.Context, skills []entity.AgentSkill, logger *slo
 			case "web_search":
 				s.registerWebSearchTool()
 			case "knowledge_search":
-				s.registerKnowledgeSearchTool(knowledgeService)
+				s.registerKnowledgeSearchTool(knowledgeService, skill.Description, skill.Env)
 			}
 		default:
 			return nil, errors.Errorf("invalid skill type: %s", skill.Type)

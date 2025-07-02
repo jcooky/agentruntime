@@ -22,7 +22,7 @@ type RegisterMCPToolRequest struct {
 	// Deprecated: Use ServerConfig instead
 	Args []string
 	// Deprecated: Use ServerConfig instead
-	Env map[string]string
+	Env map[string]any
 
 	// ServerConfig contains the full server configuration
 	// If provided, it takes precedence over the legacy fields

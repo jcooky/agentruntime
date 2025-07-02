@@ -18,9 +18,9 @@ type MCPServerConfig struct {
 	Transport MCPTransportType `json:"transport,omitempty" yaml:"transport,omitempty"`
 
 	// For stdio transport
-	Command string            `json:"command,omitempty" yaml:"command,omitempty"`
-	Args    []string          `json:"args,omitempty" yaml:"args,omitempty"`
-	Env     map[string]string `json:"env,omitempty" yaml:"env,omitempty"`
+	Command string         `json:"command,omitempty" yaml:"command,omitempty"`
+	Args    []string       `json:"args,omitempty" yaml:"args,omitempty"`
+	Env     map[string]any `json:"env,omitempty" yaml:"env,omitempty"`
 
 	// For SSE/HTTP transports
 	URL     string            `json:"url,omitempty" yaml:"url,omitempty"`
