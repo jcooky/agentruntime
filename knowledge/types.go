@@ -26,9 +26,9 @@ type (
 
 	Document struct {
 		ID            string         `json:"id"`
-		Content       Content        `json:"contents"`
+		Content       Content        `json:"content"`
 		Embeddings    []float32      `json:"embeddings"`
-		EmbeddingText string         `json:"embedding_text"`
+		EmbeddingText string         `json:"embeddingText"`
 		Metadata      map[string]any `json:"metadata"`
 	}
 
