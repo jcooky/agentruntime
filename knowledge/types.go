@@ -10,35 +10,35 @@ import (
 type (
 	Knowledge struct {
 		ID        string         `json:"id"`
-		Source    Source         `json:"source,omitzero"`
-		Metadata  map[string]any `json:"metadata,omitzero"`
-		Documents []*Document    `json:"documents,omitzero"`
+		Source    Source         `json:"source"`
+		Metadata  map[string]any `json:"metadata"`
+		Documents []*Document    `json:"documents"`
 	}
 
 	Source struct {
-		Title    string     `json:"title,omitempty"`
-		URL      *string    `json:"url,omitempty"`
-		Filename *string    `json:"filename,omitempty"`
-		Type     SourceType `json:"type,omitempty"`
+		Title    string     `json:"title"`
+		URL      *string    `json:"url"`
+		Filename *string    `json:"filename"`
+		Type     SourceType `json:"type"`
 	}
 
 	SourceType string
 
 	Document struct {
-		ID            string         `json:"id,omitzero"`
-		Content       Content        `json:"contents,omitempty"`
-		Embeddings    []float32      `json:"embeddings,omitempty"`
-		EmbeddingText string         `json:"embedding_text,omitempty"`
-		Metadata      map[string]any `json:"metadata,omitempty"`
+		ID            string         `json:"id"`
+		Content       Content        `json:"contents"`
+		Embeddings    []float32      `json:"embeddings"`
+		EmbeddingText string         `json:"embedding_text"`
+		Metadata      map[string]any `json:"metadata"`
 	}
 
 	KnowledgeSearchResult struct {
 		*Document `json:",inline"`
-		Score     float32 `json:"score,omitzero"`
+		Score     float32 `json:"score"`
 	}
 
 	Content struct {
-		Type string `json:"type,omitempty"`
+		Type string `json:"type"`
 
 		Text     string `json:"text,omitempty"`
 		Image    string `json:"data,omitempty"`
@@ -61,11 +61,12 @@ func (d *Document) ToDoc() (*ai.Document, error) {
 		}),
 	}
 
-	if d.Content.Type == ContentTypeText {
+	switch d.Content.Type {
+	case ContentTypeText:
 		doc.Content = append(doc.Content, ai.NewTextPart(d.Content.Text))
-	} else if d.Content.Type == ContentTypeImage {
+	case ContentTypeImage:
 		doc.Content = append(doc.Content, ai.NewMediaPart(d.Content.MIMEType, d.Content.Image))
-	} else {
+	default:
 		return nil, fmt.Errorf("unknown content type: %s", d.Content.Type)
 	}
 
