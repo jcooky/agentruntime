@@ -1,10 +1,5 @@
 package config
 
-import (
-	"fmt"
-	"os"
-)
-
 type KnowledgeConfig struct {
 	// Core Database Settings
 	// SqliteEnabled controls whether SQLite knowledge service is activated
@@ -76,15 +71,10 @@ type KnowledgeConfig struct {
 // NewKnowledgeConfig creates a new KnowledgeConfig with sensible defaults
 // These defaults can be overridden by environment variables
 func NewKnowledgeConfig() *KnowledgeConfig {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		panic(err)
-	}
-
 	return &KnowledgeConfig{
 		// Core Database Settings
 		SqliteEnabled: true,
-		SqlitePath:    fmt.Sprintf("%s/.agentruntime/knowledge.db", home),
+		SqlitePath:    ":memory:",
 
 		// Vector Search Settings
 		VectorEnabled: true,

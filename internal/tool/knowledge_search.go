@@ -51,7 +51,10 @@ Error handling:
 The search uses semantic similarity, so exact keyword matches are not required. Results are ranked by relevance and include context about when and where the information was stored.`
 	}
 
-	allowedKnowledgeIds := env["knowledge_ids"].([]string)
+	allowedKnowledgeIds, ok := env["knowledge_ids"].([]string)
+	if !ok {
+		allowedKnowledgeIds = nil
+	}
 
 	registerLocalTool(
 		m,
