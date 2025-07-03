@@ -47,7 +47,9 @@ func TestRSSReader_ReadFeed_Success(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/rss+xml")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(mockRSSFeed))
+		if _, err := w.Write([]byte(mockRSSFeed)); err != nil {
+			t.Logf("failed to write response: %v", err)
+		}
 	}))
 	defer server.Close()
 
@@ -97,7 +99,9 @@ func TestRSSReader_ReadFeed_InvalidRSSContent(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/rss+xml")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(invalidRSSFeed))
+		if _, err := w.Write([]byte(invalidRSSFeed)); err != nil {
+			t.Logf("failed to write response: %v", err)
+		}
 	}))
 	defer server.Close()
 
@@ -114,7 +118,9 @@ func TestRSSReader_ReadFeed_ServerError(t *testing.T) {
 	// Create mock HTTP server that returns error
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Internal Server Error"))
+		if _, err := w.Write([]byte("Internal Server Error")); err != nil {
+			t.Logf("failed to write response: %v", err)
+		}
 	}))
 	defer server.Close()
 
@@ -133,7 +139,9 @@ func TestRSSReader_ReadFeed_ContextTimeout(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 		w.Header().Set("Content-Type", "application/rss+xml")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(mockRSSFeed))
+		if _, err := w.Write([]byte(mockRSSFeed)); err != nil {
+			t.Logf("failed to write response: %v", err)
+		}
 	}))
 	defer server.Close()
 
@@ -152,7 +160,9 @@ func TestRSSReader_ReadMultipleFeeds_Success(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/rss+xml")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(mockRSSFeed))
+		if _, err := w.Write([]byte(mockRSSFeed)); err != nil {
+			t.Logf("failed to write response: %v", err)
+		}
 	}))
 	defer server.Close()
 
@@ -179,14 +189,18 @@ func TestRSSReader_ReadMultipleFeeds_MixedResults(t *testing.T) {
 	validServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/rss+xml")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(mockRSSFeed))
+		if _, err := w.Write([]byte(mockRSSFeed)); err != nil {
+			t.Logf("failed to write response: %v", err)
+		}
 	}))
 	defer validServer.Close()
 
 	// Create mock HTTP server that returns error
 	errorServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Internal Server Error"))
+		if _, err := w.Write([]byte("Internal Server Error")); err != nil {
+			t.Logf("failed to write response: %v", err)
+		}
 	}))
 	defer errorServer.Close()
 
@@ -231,7 +245,9 @@ func TestRSSReader_ReadFeed_EmptyFeed(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/rss+xml")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(emptyFeed))
+		if _, err := w.Write([]byte(emptyFeed)); err != nil {
+			t.Logf("failed to write response: %v", err)
+		}
 	}))
 	defer server.Close()
 

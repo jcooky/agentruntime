@@ -142,8 +142,8 @@ func (m *manager) GetWeather(ctx context.Context, req *GetWeatherRequest, apiKey
 	return weatherSummary, nil
 }
 
-func (m *manager) registerGetWeatherTool(skill *entity.NativeAgentSkill) {
-	registerNativeTool(
+func (m *manager) registerGetWeatherTool(skill *entity.NativeAgentSkill) error {
+	return registerNativeTool(
 		m,
 		"get_weather",
 		"Get weather information when you need it",

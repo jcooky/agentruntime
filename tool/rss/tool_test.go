@@ -70,7 +70,9 @@ func TestReadRSS_Success(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/rss+xml")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(mockRSSFeedForTool))
+		if _, err := w.Write([]byte(mockRSSFeedForTool)); err != nil {
+			t.Logf("failed to write response: %v", err)
+		}
 	}))
 	defer server.Close()
 
@@ -95,7 +97,9 @@ func TestReadRSS_WithLimit(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/rss+xml")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(mockRSSFeedForTool))
+		if _, err := w.Write([]byte(mockRSSFeedForTool)); err != nil {
+			t.Logf("failed to write response: %v", err)
+		}
 	}))
 	defer server.Close()
 
@@ -132,14 +136,18 @@ func TestSearchRSS_Success(t *testing.T) {
 	server1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/rss+xml")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(mockRSSFeedForTool))
+		if _, err := w.Write([]byte(mockRSSFeedForTool)); err != nil {
+			t.Logf("failed to write response: %v", err)
+		}
 	}))
 	defer server1.Close()
 
 	server2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/rss+xml")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(mockRSSFeedForTool2))
+		if _, err := w.Write([]byte(mockRSSFeedForTool2)); err != nil {
+			t.Logf("failed to write response: %v", err)
+		}
 	}))
 	defer server2.Close()
 
@@ -170,14 +178,18 @@ func TestSearchRSS_WithMaxItems(t *testing.T) {
 	server1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/rss+xml")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(mockRSSFeedForTool))
+		if _, err := w.Write([]byte(mockRSSFeedForTool)); err != nil {
+			t.Logf("failed to write response: %v", err)
+		}
 	}))
 	defer server1.Close()
 
 	server2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/rss+xml")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(mockRSSFeedForTool2))
+		if _, err := w.Write([]byte(mockRSSFeedForTool2)); err != nil {
+			t.Logf("failed to write response: %v", err)
+		}
 	}))
 	defer server2.Close()
 
@@ -202,7 +214,9 @@ func TestSearchRSS_NoMatches(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/rss+xml")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(mockRSSFeedForTool))
+		if _, err := w.Write([]byte(mockRSSFeedForTool)); err != nil {
+			t.Logf("failed to write response: %v", err)
+		}
 	}))
 	defer server.Close()
 
@@ -224,7 +238,9 @@ func TestSearchRSS_ErrorFeed(t *testing.T) {
 	// Create mock HTTP server that returns error
 	errorServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Internal Server Error"))
+		if _, err := w.Write([]byte("Internal Server Error")); err != nil {
+			t.Logf("failed to write response: %v", err)
+		}
 	}))
 	defer errorServer.Close()
 

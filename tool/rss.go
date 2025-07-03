@@ -188,13 +188,15 @@ func (m *manager) registerRSSSkill(skill *entity.NativeAgentSkill) error {
 			return errors.WithStack(err)
 		}
 
-		registerNativeTool(
+		if err := registerNativeTool(
 			m,
 			"search_rss",
 			description.String(),
 			skill,
 			rss.SearchRSS[*Context],
-		)
+		); err != nil {
+			return err
+		}
 	}
 
 	{
@@ -207,13 +209,15 @@ func (m *manager) registerRSSSkill(skill *entity.NativeAgentSkill) error {
 			return errors.WithStack(err)
 		}
 
-		registerNativeTool(
+		if err := registerNativeTool(
 			m,
 			"read_rss",
 			description.String(),
 			skill,
 			rss.ReadRSS[*Context],
-		)
+		); err != nil {
+			return err
+		}
 	}
 
 	return nil

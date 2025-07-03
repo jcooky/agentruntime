@@ -11,8 +11,8 @@ type (
 	}
 )
 
-func (m *manager) registerWebSearchTool() {
-	registerNativeTool(
+func (m *manager) registerWebSearchTool() error {
+	return registerNativeTool(
 		m,
 		"web_search",
 		"This is dummy tool for web search",

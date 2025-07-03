@@ -14,13 +14,13 @@ type Knowledge struct {
 	Context  string  `json:"context,omitempty" jsonschema:"description=Text of the search result"`
 }
 
-func (m *manager) registerKnowledgeSearchTool(skill *entity.NativeAgentSkill) {
+func (m *manager) registerKnowledgeSearchTool(skill *entity.NativeAgentSkill) error {
 	allowedKnowledgeIds, ok := skill.Env["knowledge_ids"].([]string)
 	if !ok {
 		allowedKnowledgeIds = nil
 	}
 
-	registerNativeTool(
+	return registerNativeTool(
 		m,
 		"knowledge_search",
 		`Search through the external knowledge base to find relevant information, documents, and context.
