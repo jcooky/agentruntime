@@ -1,3 +1,5 @@
+//go:build !without_sqlite
+
 package knowledge
 
 import (

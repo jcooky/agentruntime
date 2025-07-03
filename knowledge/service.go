@@ -9,7 +9,6 @@ import (
 	"github.com/firebase/genkit/go/genkit"
 	"github.com/habiliai/agentruntime/config"
 	xgenkit "github.com/habiliai/agentruntime/internal/genkit"
-	"github.com/pkg/errors"
 )
 
 type (
@@ -41,60 +40,7 @@ var (
 
 // NewService creates a new knowledge service with default SQLite-based storage
 func NewService(ctx context.Context, modelConfig *config.ModelConfig, conf *config.KnowledgeConfig, logger *slog.Logger) (Service, error) {
-	genkit, err := xgenkit.NewGenkit(ctx, modelConfig, logger, modelConfig.TraceVerbose)
-	if err != nil {
-		return nil, err
-	}
-
-	if !conf.SqliteEnabled {
-		return nil, errors.New("sqlite knowledge service is not enabled. Please check your configuration.")
-	}
-	if conf.SqlitePath == "" {
-		return nil, errors.New("sqlite knowledge service path is not configured. Please check your configuration.")
-	}
-
-	// Create embedder for RAG functionality
-	embedder := NewGenkitEmbedder(genkit)
-
-	// Create default SQLite knowledge store
-	store, err := NewSqliteStore(conf.SqlitePath, embedder.GetEmbedSize()) // Default to OpenAI embedding dimension
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to create SQLite knowledge store")
-	}
-
-	// Create reranker if enabled
-	var reranker Reranker
-	if conf.RerankEnabled && embedder != nil {
-		if conf.UseBatchRerank {
-			reranker = NewBatchGenkitReranker(genkit, conf.RerankModel)
-		} else {
-			reranker = NewGenkitReranker(genkit, conf.RerankModel)
-		}
-	} else {
-		reranker = NewNoOpReranker()
-	}
-
-	// Create query rewriter if enabled
-	var queryRewriter QueryRewriter
-	if conf.QueryRewriteEnabled && embedder != nil {
-		model := conf.QueryRewriteModel
-		if model == "" {
-			model = conf.RerankModel // Default to rerank model
-		}
-		queryRewriter = CreateQueryRewriter(genkit, conf.QueryRewriteStrategy, model)
-	} else {
-		queryRewriter = NewNoOpQueryRewriter()
-	}
-
-	return &service{
-		genkit:        genkit,
-		store:         store,
-		embedder:      embedder,
-		reranker:      reranker,
-		queryRewriter: queryRewriter,
-		config:        conf,
-		logger:        logger,
-	}, nil
+	return NewServiceWithStore(ctx, conf, modelConfig, logger, NewInMemoryStore())
 }
 
 // NewServiceWithStore creates a new knowledge service with a custom knowledge store
