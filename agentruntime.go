@@ -12,8 +12,8 @@ import (
 	"github.com/habiliai/agentruntime/entity"
 	"github.com/habiliai/agentruntime/internal/genkit"
 	"github.com/habiliai/agentruntime/internal/mylog"
-	"github.com/habiliai/agentruntime/internal/tool"
 	"github.com/habiliai/agentruntime/knowledge"
+	"github.com/habiliai/agentruntime/tool"
 )
 
 type (
@@ -31,24 +31,24 @@ type (
 	Option func(*AgentRuntime)
 )
 
-func (a *AgentRuntime) Agent() *entity.Agent {
-	return a.agent
+func (r *AgentRuntime) Agent() *entity.Agent {
+	return r.agent
 }
 
-func (a *AgentRuntime) Generate(ctx context.Context, req engine.GenerateRequest, out any, opts ...ai.GenerateOption) (*ai.ModelResponse, error) {
-	return a.engine.Generate(ctx, &req, out, opts...)
+func (r *AgentRuntime) Generate(ctx context.Context, req engine.GenerateRequest, out any, opts ...ai.GenerateOption) (*ai.ModelResponse, error) {
+	return r.engine.Generate(ctx, &req, out, opts...)
 }
 
-func (a *AgentRuntime) Embed(ctx context.Context, texts ...string) ([][]float32, error) {
-	return a.engine.Embed(ctx, texts...)
+func (r *AgentRuntime) Embed(ctx context.Context, texts ...string) ([][]float32, error) {
+	return r.engine.Embed(ctx, texts...)
 }
 
-func (a *AgentRuntime) Run(ctx context.Context, req engine.RunRequest, out any) (*engine.RunResponse, error) {
-	return a.engine.Run(ctx, *a.agent, req, out)
+func (r *AgentRuntime) Run(ctx context.Context, req engine.RunRequest, out any) (*engine.RunResponse, error) {
+	return r.engine.Run(ctx, *r.agent, req, out)
 }
 
-func (a *AgentRuntime) Close() {
-	a.toolManager.Close()
+func (r *AgentRuntime) Close() {
+	r.toolManager.Close()
 }
 
 func NewAgentRuntime(ctx context.Context, optionFuncs ...Option) (*AgentRuntime, error) {
@@ -109,6 +109,10 @@ func NewAgentRuntime(ctx context.Context, optionFuncs ...Option) (*AgentRuntime,
 	)
 
 	return e, nil
+}
+
+func (r *AgentRuntime) GetToolManager() tool.Manager {
+	return r.toolManager
 }
 
 func WithOpenAIAPIKey(apiKey string) func(e *AgentRuntime) {

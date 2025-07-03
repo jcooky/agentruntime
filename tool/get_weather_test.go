@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/habiliai/agentruntime/internal/tool"
+	"github.com/habiliai/agentruntime/tool"
 	"github.com/mitchellh/mapstructure"
 )
 

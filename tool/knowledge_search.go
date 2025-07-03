@@ -1,10 +1,10 @@
 package tool
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/firebase/genkit/go/ai"
+	"github.com/habiliai/agentruntime/entity"
 	"github.com/habiliai/agentruntime/knowledge"
 )
 
@@ -14,7 +14,8 @@ type Knowledge struct {
 	Context  string  `json:"context,omitempty" jsonschema:"description=Text of the search result"`
 }
 
-func (m *manager) registerKnowledgeSearchTool(knowledgeService knowledge.Service, description string, env map[string]any) {
+func (m *manager) registerKnowledgeSearchTool(knowledgeService knowledge.Service, skill *entity.AgentSkill) {
+	description := skill.Description
 	if description == "" {
 		description = `Search through the external knowledge base to find relevant information, documents, and context.
 
@@ -51,16 +52,17 @@ Error handling:
 The search uses semantic similarity, so exact keyword matches are not required. Results are ranked by relevance and include context about when and where the information was stored.`
 	}
 
-	allowedKnowledgeIds, ok := env["knowledge_ids"].([]string)
+	allowedKnowledgeIds, ok := skill.Env["knowledge_ids"].([]string)
 	if !ok {
 		allowedKnowledgeIds = nil
 	}
 
 	registerLocalTool(
 		m,
-		"knowledge_search",
+		skill.Name,
 		description,
-		func(ctx context.Context, input struct {
+		skill,
+		func(ctx *Context, input struct {
 			Query string `json:"query" jsonschema:"description=The search query to find relevant information"`
 			Limit *int   `json:"limit,omitempty" jsonschema:"description=The maximum number of results to return,default=5"`
 		}) (reply struct {

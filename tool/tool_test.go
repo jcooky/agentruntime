@@ -8,7 +8,7 @@ import (
 	"github.com/habiliai/agentruntime/entity"
 	"github.com/habiliai/agentruntime/internal/genkit"
 	"github.com/habiliai/agentruntime/internal/mytesting"
-	"github.com/habiliai/agentruntime/internal/tool"
+	"github.com/habiliai/agentruntime/tool"
 	"github.com/stretchr/testify/suite"
 )
 

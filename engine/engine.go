@@ -4,14 +4,14 @@ import (
 	"log/slog"
 
 	"github.com/firebase/genkit/go/genkit"
-	tool2 "github.com/habiliai/agentruntime/internal/tool"
 	"github.com/habiliai/agentruntime/knowledge"
+	"github.com/habiliai/agentruntime/tool"
 )
 
 type (
 	Engine struct {
 		logger           *slog.Logger
-		toolManager      tool2.Manager
+		toolManager      tool.Manager
 		genkit           *genkit.Genkit
 		knowledgeService knowledge.Service
 	}
@@ -19,7 +19,7 @@ type (
 
 func NewEngine(
 	logger *slog.Logger,
-	toolManager tool2.Manager,
+	toolManager tool.Manager,
 	genkit *genkit.Genkit,
 	knowledgeService knowledge.Service,
 ) *Engine {

@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/habiliai/agentruntime/entity"
-	"github.com/habiliai/agentruntime/internal/tool"
+	"github.com/habiliai/agentruntime/tool"
 )
 
 // TestMCPTransportDetection tests the auto-detection of transport types

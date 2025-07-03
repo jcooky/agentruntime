@@ -9,7 +9,7 @@ import (
 
 	"github.com/firebase/genkit/go/ai"
 	"github.com/habiliai/agentruntime/entity"
-	"github.com/habiliai/agentruntime/internal/tool"
+	"github.com/habiliai/agentruntime/tool"
 	"github.com/pkg/errors"
 )
 

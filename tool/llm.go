@@ -16,7 +16,8 @@ func (m *manager) registerLLMTool(ctx context.Context, name, description, instru
 		m,
 		name,
 		description,
-		func(ctx context.Context, req struct {
+		nil,
+		func(ctx *Context, req struct {
 			*LLMToolRequest
 		}) (res struct {
 			*LLMToolResponse

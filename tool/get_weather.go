@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/habiliai/agentruntime/entity"
 	"github.com/pkg/errors"
 )
 
@@ -141,20 +142,22 @@ func (m *manager) GetWeather(ctx context.Context, req *GetWeatherRequest, apiKey
 	return weatherSummary, nil
 }
 
-func (m *manager) registerGetWeatherTool(description string, env map[string]any) {
+func (m *manager) registerGetWeatherTool(skill *entity.AgentSkill) {
+	description := skill.Description
 	if description == "" {
 		description = "Get weather information when you need it"
 	}
 	registerLocalTool(
 		m,
-		"get_weather",
+		skill.Name,
 		description,
-		func(ctx context.Context, req struct {
+		skill,
+		func(ctx *Context, req struct {
 			*GetWeatherRequest
 		}) (res struct {
 			*GetWeatherResponse
 		}, err error) {
-			res.GetWeatherResponse, err = m.GetWeather(ctx, req.GetWeatherRequest, env["OPENWEATHER_API_KEY"].(string))
+			res.GetWeatherResponse, err = m.GetWeather(ctx, req.GetWeatherRequest, skill.Env["OPENWEATHER_API_KEY"].(string))
 			return
 		},
 	)

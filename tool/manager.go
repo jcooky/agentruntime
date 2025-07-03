@@ -107,11 +107,11 @@ func NewToolManager(ctx context.Context, skills []entity.AgentSkill, logger *slo
 			}
 			switch strings.ToLower(skill.Name) {
 			case "get_weather":
-				s.registerGetWeatherTool(skill.Description, skill.Env)
+				s.registerGetWeatherTool(&skill)
 			case "web_search":
 				s.registerWebSearchTool()
 			case "knowledge_search":
-				s.registerKnowledgeSearchTool(knowledgeService, skill.Description, skill.Env)
+				s.registerKnowledgeSearchTool(knowledgeService, &skill)
 			}
 		default:
 			return nil, errors.Errorf("invalid skill type: %s", skill.Type)
@@ -141,7 +141,7 @@ func (m *manager) Close() {
 	}
 }
 
-func registerLocalTool[In any, Out any](m *manager, name string, description string, fn func(context.Context, In) (Out, error)) ai.Tool {
+func registerLocalTool[In any, Out any](m *manager, name, description string, skill *entity.AgentSkill, fn func(ctx *Context, input In) (Out, error)) ai.Tool {
 	tool := m.GetTool(name)
 	if tool != nil {
 		return tool
@@ -152,7 +152,10 @@ func registerLocalTool[In any, Out any](m *manager, name string, description str
 		name,
 		description,
 		func(ctx *ai.ToolContext, input In) (Out, error) {
-			out, err := fn(ctx, input)
+			out, err := fn(&Context{
+				Context: ctx,
+				skill:   skill,
+			}, input)
 			if err == nil {
 				appendCallData(ctx, CallData{
 					Name:      name,
@@ -163,4 +166,13 @@ func registerLocalTool[In any, Out any](m *manager, name string, description str
 			return out, err
 		},
 	)
+}
+
+func RegisterLocalTool[In any, Out any](m Manager, skill *entity.AgentSkill, fn func(ctx *Context, input In) (Out, error)) ai.Tool {
+	realManager, ok := m.(*manager)
+	if !ok {
+		slog.Error("RegisterLocalTool requires the default manager implementation")
+		return nil
+	}
+	return registerLocalTool(realManager, skill.Name, skill.Description, skill, fn)
 }

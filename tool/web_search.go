@@ -1,9 +1,5 @@
 package tool
 
-import (
-	"context"
-)
-
 type (
 	WebSearchToolRequest struct {
 		Query string `json:"query"`
@@ -18,7 +14,8 @@ func (m *manager) registerWebSearchTool() {
 		m,
 		"web_search",
 		"This is dummy tool for web search",
-		func(ctx context.Context, req struct {
+		nil,
+		func(ctx *Context, req struct {
 			*WebSearchToolRequest
 		}) (res struct {
 			*WebSearchToolResponse
