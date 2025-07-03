@@ -8,7 +8,7 @@ This plugin enables the use of Anthropic's Claude models (including extended thi
   - `claude-4-opus` - Claude Opus 4 (extended thinking support)
   - `claude-4-sonnet` - Claude Sonnet 4 (extended thinking support)
   - `claude-3.7-sonnet` - Claude 3.7 Sonnet (extended thinking support, latest model)
-  - `claude-3.5-sonnet` - Claude 3.5 Sonnet (reliable alternative)
+  - `claude-3.5-haiku` - Claude 3.5 Haiku (fastest, cheaper)
   - `claude-3-opus` - Claude 3 Opus
 - Streaming and non-streaming generation
 - Multimodal support (text and images)
@@ -36,7 +36,7 @@ import (
     "context"
     "fmt"
     "log"
-    
+
     "github.com/firebase/genkit/go/ai"
     "github.com/firebase/genkit/go/genkit"
     "github.com/habiliai/agentruntime/internal/genkit/plugins/anthropic"
@@ -52,8 +52,8 @@ func main() {
     }
 
     // Get a model
-    model := anthropic.Model(g, "claude-3.5-sonnet")
-    
+    model := anthropic.Model(g, "claude-3.5-haiku")
+
     // Generate text
     resp, err := model.Generate(ctx, &ai.GenerateRequest{
         Messages: []*ai.Message{
@@ -69,11 +69,11 @@ func main() {
             Temperature:     ai.Ptr(0.7),
         },
     }, nil)
-    
+
     if err != nil {
         log.Fatal(err)
     }
-    
+
     fmt.Println(resp.Candidates[0].Message.Content[0].Text)
 }
 ```
@@ -176,10 +176,11 @@ req := &ai.ModelRequest{
 - `claude-4-opus`: Claude Opus 4 - Most capable model
 - `claude-4-sonnet`: Claude Sonnet 4 - High-performance model
 - `claude-3.7-sonnet`: Claude 3.7 Sonnet - Extended thinking support, latest model
-- `claude-3.5-sonnet`: Claude 3.5 Sonnet - Reliable alternative
+- `claude-3.5-haiku`: Claude 3.5 Haiku - Fatest, cheaper model
 - `claude-3-opus`: Claude 3 Opus
 
 All models support:
+
 - Multi-turn conversations
 - Tool/function calling
 - System messages
@@ -188,11 +189,13 @@ All models support:
 ## Testing
 
 Run unit tests:
+
 ```bash
 go test ./internal/genkit/plugins/anthropic/...
 ```
 
 Run integration tests (requires API key):
+
 ```bash
 ANTHROPIC_API_KEY=your-key go test ./internal/genkit/plugins/anthropic/... -run TestLive
 ```

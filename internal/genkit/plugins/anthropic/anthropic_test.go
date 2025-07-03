@@ -126,6 +126,6 @@ func TestKnownModels(t *testing.T) {
 	sonnet37 := Model(g, "claude-3.7-sonnet")
 	require.NotNil(t, sonnet37)
 
-	sonnet35 := Model(g, "claude-3.5-sonnet")
-	require.NotNil(t, sonnet35)
+	haiku := Model(g, "claude-3.5-haiku")
+	require.NotNil(t, haiku)
 }

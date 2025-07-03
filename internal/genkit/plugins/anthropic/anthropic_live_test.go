@@ -38,8 +38,8 @@ func TestLive_GenerateText(t *testing.T) {
 		timeout   time.Duration
 	}{
 		{
-			name:      "claude-3.5-sonnet simple",
-			modelName: "claude-3.5-sonnet",
+			name:      "claude-3.5-haiku simple",
+			modelName: "claude-3.5-haiku",
 			prompt:    "What is 2+2? Answer with just the number.",
 			timeout:   30 * time.Minute,
 		},
@@ -56,8 +56,8 @@ func TestLive_GenerateText(t *testing.T) {
 			timeout:   30 * time.Minute,
 		},
 		{
-			name:      "claude-3.5-sonnet with math",
-			modelName: "claude-3.5-sonnet",
+			name:      "claude-3.5-haiku with math",
+			modelName: "claude-3.5-haiku",
 			prompt:    "What is 10 divided by 2? Answer with just the number.",
 			timeout:   30 * time.Minute,
 		},
@@ -117,7 +117,7 @@ func TestLive_GenerateWithStreaming(t *testing.T) {
 	}))
 	require.NoError(t, err)
 
-	model := anthropic.Model(g, "claude-3.5-sonnet")
+	model := anthropic.Model(g, "claude-3.5-haiku")
 	require.NotNil(t, model)
 
 	// Create context with timeout
@@ -165,7 +165,7 @@ func TestLive_GenerateWithImage(t *testing.T) {
 	}))
 	require.NoError(t, err)
 
-	model := anthropic.Model(g, "claude-3.5-sonnet")
+	model := anthropic.Model(g, "claude-3.5-haiku")
 	require.NotNil(t, model)
 
 	// Create a simple base64 encoded image (200x200 red pixel PNG)
@@ -208,7 +208,7 @@ func TestLive_GenerateWithSystemMessage(t *testing.T) {
 	}))
 	require.NoError(t, err)
 
-	model := anthropic.Model(g, "claude-3.5-sonnet")
+	model := anthropic.Model(g, "claude-3.5-haiku")
 	require.NotNil(t, model)
 
 	// Create context with timeout
@@ -267,8 +267,8 @@ func TestLive_GenerateWithReasoning(t *testing.T) {
 		timeout     time.Duration
 	}{
 		{
-			name:        "claude-3.5-sonnet without reasoning",
-			modelName:   "claude-3.5-sonnet",
+			name:        "claude-3.5-haiku without reasoning",
+			modelName:   "claude-3.5-haiku",
 			prompt:      "If a train travels 120 miles in 2 hours, what is its speed in mph? Think step by step.",
 			enabled:     false,
 			budgetRatio: 0,
@@ -354,8 +354,8 @@ func TestLive_GenerateWithReasoning(t *testing.T) {
 				}
 			}
 
-			// claude-3.5-sonnet doesn't support reasoning, so skip assertions for it
-			if tt.modelName != "claude-3.5-sonnet" {
+			// claude-3.5-haiku doesn't support reasoning, so skip assertions for it
+			if tt.modelName != "claude-3.5-haiku" {
 				if tt.enabled && tt.budgetRatio > 0 {
 					assert.True(t, hasReasoning, "Expected reasoning part to be present when reasoning is enabled")
 					assert.NotEmpty(t, reasoningText, "Reasoning text should not be empty")
@@ -519,8 +519,8 @@ func TestLive_Claude4AutomaticReasoning(t *testing.T) {
 			expectReasoning: true, // Claude 3.7 also has reasoning enabled by default
 		},
 		{
-			name:            "Claude 3.5 - Complex problem",
-			modelName:       "claude-3.5-sonnet",
+			name:            "Claude 3.5 - Simple problem",
+			modelName:       "claude-3.5-haiku",
 			prompt:          "If a train travels 120 miles in 2 hours, what is its speed in mph? Think step by step.",
 			expectReasoning: false, // Claude 3.5 has reasoning disabled by default
 		},
@@ -629,7 +629,7 @@ func TestLive_Claude4ExplicitReasoningControl(t *testing.T) {
 		},
 		{
 			name:             "Claude 3.5 - Explicitly enable reasoning (silently ignored)",
-			modelName:        "claude-3.5-sonnet",
+			modelName:        "claude-3.5-haiku",
 			prompt:           "What is 10 * 5? Think step by step.",
 			extendedThinking: ptr(true),
 			budgetRatio:      0.25,
@@ -713,7 +713,7 @@ func TestLive_Claude4ExplicitReasoningControl(t *testing.T) {
 			}
 
 			// Verify based on expected behavior
-			if tt.modelName == "claude-3.5-sonnet" && tt.expectReasoning {
+			if tt.modelName == "claude-3.5-haiku" && tt.expectReasoning {
 				// Claude 3.5 doesn't support reasoning, so skip assertion
 				t.Logf("Note: Claude 3.5 doesn't support reasoning feature")
 			} else {

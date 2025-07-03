@@ -25,9 +25,9 @@ jobs:
       - name: Download dependencies
         run: go mod download
 
-      # Create .env.test file from secret
-      - name: Create .env.test file
-        run: echo "${{ secrets.ENV_TEST_FILE }}" > .env.test
+      # Create .env file from secret
+      - name: Create .env file
+        run: echo "${{ secrets.ENV_TEST_FILE }}" > .env
 
       # Run tests using Makefile
       - name: Run tests using Makefile

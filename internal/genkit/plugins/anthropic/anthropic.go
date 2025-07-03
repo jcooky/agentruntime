@@ -24,7 +24,7 @@ var (
 		"claude-opus-4-20250514":   config.Multimodal,
 		"claude-sonnet-4-20250514": config.Multimodal,
 		"claude-3-7-sonnet-latest": config.Multimodal,
-		"claude-3-5-sonnet-latest": config.Multimodal,
+		"claude-3-5-haiku-latest":  config.Multimodal,
 	}
 	defaultRequestTimeout = 10 * time.Minute
 	defaultModelParams    = map[string]struct {
@@ -58,7 +58,7 @@ var (
 				ExtendedThinkingBudgetRatio: 0.5, // Default to 50% of maxTokens
 			},
 		},
-		"claude-3-5-sonnet-latest": {
+		"claude-3-5-haiku-latest": {
 			GenerationCommonConfig: ai.GenerationCommonConfig{
 				MaxOutputTokens: 8192,
 			},
@@ -121,7 +121,7 @@ func (o *Plugin) Init(_ context.Context, g *genkit.Genkit) (err error) {
 
 	// Also define Claude 3.7 and 3.5 models as alternatives
 	DefineModel(g, &client, labelPrefix, provider, "claude-3.7-sonnet", "claude-3-7-sonnet-latest", knownCaps["claude-3-7-sonnet-latest"])
-	DefineModel(g, &client, labelPrefix, provider, "claude-3.5-sonnet", "claude-3-5-sonnet-latest", knownCaps["claude-3-5-sonnet-latest"])
+	DefineModel(g, &client, labelPrefix, provider, "claude-3.5-haiku", "claude-3-5-haiku-latest", knownCaps["claude-3-5-haiku-latest"])
 
 	return nil
 }
