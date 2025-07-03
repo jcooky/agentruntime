@@ -1,7 +1,7 @@
 # Test agent for MCP functionality
 name: 'test-mcp-agent'
 description: 'Agent for testing MCP servers'
-model: 'claude-3-5-sonnet-20241022'
+model: 'anthropic/claude-3.5-haiku'
 instructions: |
   You are a helpful assistant with access to various MCP tools.
   You can perform file operations, search the web, and more.

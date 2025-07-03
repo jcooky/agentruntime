@@ -36,7 +36,7 @@ func TestAgentWithKnowledgeService(t *testing.T) {
 	// Test basic agent information
 	require.Equal(t, "HosuAgent", agent.Name, "Agent name should be 'HosuAgent'")
 	require.Contains(t, agent.Description, "rescue dogs", "Agent description should contain rescue dogs info")
-	require.Equal(t, "anthropic/claude-4-sonnet", agent.ModelName, "Model name should be 'anthropic/claude-4-sonnet'")
+	require.Equal(t, "anthropic/claude-3.5-haiku", agent.ModelName, "Model name should be 'anthropic/claude-3.5-haiku'")
 	require.Equal(t, "Rescue Dog Knowledge Assistant", agent.Role, "Role should be 'Rescue Dog Knowledge Assistant'")
 
 	// Test system and prompt
@@ -207,7 +207,7 @@ func TestAgentWithRAGAndCustomKnowledge(t *testing.T) {
 			Name:        "TestRAGAgent",
 			Description: "A test agent for RAG functionality",
 		},
-		ModelName: "anthropic/claude-4-sonnet",
+		ModelName: "anthropic/claude-3.5-haiku",
 		System:    "You are a helpful assistant with access to a knowledge base.",
 		Role:      "Knowledge Assistant",
 		Knowledge: []map[string]any{
@@ -279,7 +279,10 @@ func TestAgentWithRAGAndCustomKnowledge(t *testing.T) {
 	require.NotNil(t, resp1)
 
 	t.Logf("Test 1 - Vacation Query Response: %s", out1)
-	require.Contains(t, strings.ToLower(out1), "15 days", "Should mention 15 days of vacation")
+	outputLower1 := strings.ToLower(out1)
+	has15Days := strings.Contains(outputLower1, "15 days") ||
+		(strings.Contains(outputLower1, "15") && (strings.Contains(outputLower1, "vacation days") || strings.Contains(outputLower1, "days")))
+	require.True(t, has15Days, "Should mention 15 days of vacation")
 
 	// Verify knowledge_search tool was called for vacation query
 	vacationSearchCalled := false

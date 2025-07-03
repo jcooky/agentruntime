@@ -1,7 +1,7 @@
 name: Bob
 description: |
   Bob is a filesystem assistant. You can ask him to help with file operations like reading, writing, creating, and managing files and directories.
-model: openai/gpt-4o
+model: openai/gpt-4o-mini
 system: Take a deep breath and relax. Think step by step.
 role: Assistant for Filesystem
 prompt: |

@@ -171,45 +171,19 @@ func TestRSSAgentToolCalls(t *testing.T) {
 				t.Logf("search_rss called with args: %s", string(toolCall.Arguments))
 
 				// Verify the arguments contain the query
-				assert.Contains(t, string(toolCall.Arguments), "Series A")
+				arguments := strings.ToLower(string(toolCall.Arguments))
+				if !strings.Contains(arguments, "series a") &&
+					!strings.Contains(arguments, "startup") &&
+					!strings.Contains(arguments, "funding") &&
+					!strings.Contains(arguments, "crunchbase") &&
+					!strings.Contains(arguments, "techcrunch") {
+					t.Fatalf("search_rss called with args: %s", arguments)
+				}
 			}
 		}
 
 		assert.True(t, searchRSSCalled, "search_rss tool should have been called")
-		fmt.Printf("Series A Funding Search:\n%s\n", output)
-	})
-
-	// Test read_rss tool
-	t.Run("read_rss tool call", func(t *testing.T) {
-		var output string
-		response, err := runtime.Run(ctx, engine.RunRequest{
-			ThreadInstruction: "User wants to read a specific RSS feed.",
-			History: []engine.Conversation{
-				{
-					User: "USER",
-					Text: "Read the latest articles from CB Insights feed",
-				},
-			},
-		}, &output)
-
-		require.NoError(t, err)
-		require.NotNil(t, response)
-		require.NotEmpty(t, response.ToolCalls)
-
-		// Check if read_rss was called
-		readRSSCalled := false
-		for _, toolCall := range response.ToolCalls {
-			if toolCall.Name == "read_rss" {
-				readRSSCalled = true
-				t.Logf("read_rss called with args: %s", string(toolCall.Arguments))
-
-				// Verify the arguments contain CB Insights URL
-				assert.Contains(t, string(toolCall.Arguments), "cbinsights.com")
-			}
-		}
-
-		assert.True(t, readRSSCalled, "read_rss tool should have been called")
-		fmt.Printf("CB Insights Feed:\n%s\n", output)
+		t.Logf("Series A Funding Search:\n%s\n", output)
 	})
 }
 

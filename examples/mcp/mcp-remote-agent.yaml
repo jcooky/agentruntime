@@ -6,7 +6,7 @@
 
 name: 'mcp-remote-agent'
 description: 'An agent with access to remote MCP tools'
-model: 'claude-3-5-sonnet-20241022'
+model: 'anthropic/claude-3.5-haiku'
 instructions: |
   You are a helpful assistant with access to various remote tools via MCP.
   Use the appropriate tools to help users with their requests.

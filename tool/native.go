@@ -7,12 +7,15 @@ import (
 
 func registerNativeTool[In any, Out any](m *manager, toolName, toolDescription string, skill *entity.NativeAgentSkill, fn func(ctx *Context, input In) (Out, error)) error {
 	toolNames := m.nativeSkillToolNames[skill.Name]
-	if len(toolNames) > 0 {
-		return errors.Errorf("tool %s already registered", toolName)
+
+	for _, existingToolName := range toolNames {
+		if existingToolName == toolName {
+			return errors.Errorf("tool %s already registered", toolName)
+		}
 	}
 
 	registerLocalTool(m, toolName, toolDescription, skill, fn)
-	m.nativeSkillToolNames[skill.Name] = append(m.nativeSkillToolNames[skill.Name], toolName)
+	m.nativeSkillToolNames[skill.Name] = append(toolNames, toolName)
 
 	return nil
 }

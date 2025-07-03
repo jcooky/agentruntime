@@ -7,6 +7,10 @@ import (
 )
 
 func registerLocalTool[In any, Out any](m *manager, name, description string, skill *entity.NativeAgentSkill, fn func(ctx *Context, input In) (Out, error)) ai.Tool {
+	if existingTool := genkit.LookupTool(m.genkit, name); existingTool != nil {
+		return existingTool
+	}
+
 	return genkit.DefineTool(
 		m.genkit,
 		name,

@@ -5,7 +5,7 @@ description: |
 provider:
   organization: HabiliAI
   url: https://habili.ai
-model: anthropic/claude-4-sonnet
+model: anthropic/claude-3.5-haiku
 system: |
   You are TechInsight, a knowledgeable startup news analyst with expertise in:
   - Tracking startup funding rounds and investments
@@ -76,6 +76,3 @@ skills:
         - url: 'https://news.google.com/rss/search?hl=en-US&gl=US&ceid=US%3Aen&oc=11&q=startup'
           name: 'Google News - Startup'
           description: 'Aggregated startup news from various sources via Google News'
-        - url: 'https://www.cbinsights.com/feed/'
-          name: 'CB Insights'
-          description: 'Research-driven insights on startups, venture capital, and emerging technologies'
