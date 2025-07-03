@@ -1,0 +1,55 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# AgentRuntime Project Structure Guide
+
+This rule helps understand the structure and key components of the AgentRuntime project.
+
+## Project Overview
+AgentRuntime is a Go-based framework for building AI agents with various capabilities including RSS tools, knowledge management, and MCP (Model Context Protocol) support.
+
+## Key Directories
+
+### Core Components
+- [agentruntime.go](mdc:agentruntime.go) - Main entry point and core runtime logic
+- [go.mod](mdc:go.mod) - Go module dependencies
+- [cmd/](mdc:cmd) - Command line interface and main application
+- [engine/](mdc:engine) - Core engine for agent execution
+- [entity/](mdc:entity) - Core data structures (Agent, Skill definitions)
+
+### Tools and Capabilities
+- [tool/](mdc:tool) - Native tools implementation including RSS, knowledge search, web search
+- [tool/rss.go](mdc:tool/rss.go) - RSS tool implementation with search_rss and read_rss functions
+- [tool/rss/](mdc:tool/rss) - RSS tool components and tests
+- [knowledge/](mdc:knowledge) - Knowledge management system with embeddings and search
+
+### Configuration and Examples
+- [config/](mdc:config) - Configuration files and AI model settings
+- [examples/](mdc:examples) - Agent configuration examples (prefer YAML format)
+- [examples/news_monitor.agent.yaml](mdc:examples/news_monitor.agent.yaml) - RSS agent example
+- [examples/startup_news_agent.yaml](mdc:examples/startup_news_agent.yaml) - Startup news RSS agent
+
+### Documentation and Development
+- [docs/](mdc:docs) - Comprehensive documentation
+- [docs/rss-tools.md](mdc:docs/rss-tools.md) - RSS tools configuration guide
+- [docs/agent.md](mdc:docs/agent.md) - Agent configuration reference
+- [playground/](mdc:playground) - Next.js frontend for testing agents
+
+## Key Patterns
+
+### Agent Configuration
+- Prefer YAML format over JSON for agent configurations
+- Use `type: nativeTool` for RSS tools
+- Configure `allowed_feed_urls` in the `env` section for RSS tools
+
+### RSS Tool Structure
+RSS tools are implemented as native tools with two main functions:
+- `search_rss` - Search across multiple RSS feeds with keywords
+- `read_rss` - Read all items from a single RSS feed
+
+### Testing
+- [agentruntime_test.go](mdc:agentruntime_test.go) - Core runtime tests
+- [agentruntime_rss_test.go](mdc:agentruntime_rss_test.go) - RSS functionality tests
+- [tool/rss/](mdc:tool/rss) - RSS tool specific tests

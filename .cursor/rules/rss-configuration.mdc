@@ -1,0 +1,88 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# RSS Tools Configuration Guide
+
+This rule provides patterns and best practices for configuring RSS tools in AgentRuntime agents.
+
+## RSS Tool Implementation
+RSS tools are implemented in [tool/rss.go](mdc:tool/rss.go) and provide two main functions:
+- `search_rss` - AI agents use this to search across multiple RSS feeds for specific topics
+- `read_rss` - AI agents use this to read all recent items from a single RSS feed
+
+## Configuration Pattern
+RSS tools must be configured as native tools in the agent's skills section:
+
+```yaml
+skills:
+  - type: nativeTool
+    name: rss  # Can be any descriptive name
+    description: Search and read RSS feeds for current information
+    env:
+      allowed_feed_urls:
+        - url: https://feeds.npr.org/1001/rss.xml
+          name: NPR Top Stories
+          description: Latest news and stories from NPR
+        - url: https://feeds.bbci.co.uk/news/rss.xml
+          name: BBC News
+          description: Latest news from BBC
+```
+
+## Required Fields
+Each RSS feed in `allowed_feed_urls` must have:
+- `url` (string, required) - The RSS feed URL
+- `name` (string, required) - Human-readable name for the feed
+- `description` (string, required) - Clear description of the feed's content
+
+## Best Practices
+
+### Feed Selection
+- Choose reputable sources relevant to your agent's purpose
+- Group feeds by category (news, tech, research, etc.)
+- Consider feed volume - high-volume feeds work better with search_rss
+
+### Descriptions
+Write clear, specific descriptions that help the AI agent understand the feed content:
+```yaml
+# Good: Specific and informative
+- url: https://feeds.feedburner.com/techcrunch
+  name: TechCrunch
+  description: Technology news, startup funding, Silicon Valley updates, and tech industry analysis
+
+# Avoid: Vague descriptions
+- url: https://feeds.feedburner.com/techcrunch
+  name: TechCrunch
+  description: Tech stuff
+```
+
+### System Prompts
+Configure agents to use RSS tools effectively:
+```yaml
+system: |
+  You are a news monitoring agent with access to current news feeds.
+  
+  When users ask about current events or specific topics:
+  1. Use search_rss to find relevant articles across multiple sources
+  2. Use read_rss to get general updates from specific sources
+  3. Always cite your sources and include publication dates
+  4. Provide context and summaries, not just raw headlines
+```
+
+## Example Configurations
+
+### News Monitoring Agent
+See [examples/news_monitor.agent.yaml](mdc:examples/news_monitor.agent.yaml) for a complete example.
+
+### Startup News Agent
+See [examples/startup_news_agent.yaml](mdc:examples/startup_news_agent.yaml) for startup-focused RSS configuration.
+
+## Testing RSS Configuration
+Reference the RSS tools guide in [docs/rss-tools.md](mdc:docs/rss-tools.md) for comprehensive testing approaches.
+
+## Common Issues
+- Ensure `type: nativeTool` is set correctly
+- Verify RSS feed URLs are accessible and return valid XML
+- Include clear instructions in system prompts for RSS tool usage
+- Test with different question types to verify agent behavior
