@@ -1,5 +1,7 @@
 package tool
 
+import "github.com/habiliai/agentruntime/entity"
+
 type (
 	WebSearchToolRequest struct {
 		Query string `json:"query"`
@@ -10,11 +12,15 @@ type (
 )
 
 func (m *manager) registerWebSearchTool() {
-	registerLocalTool(
+	registerNativeTool(
 		m,
 		"web_search",
 		"This is dummy tool for web search",
-		nil,
+		&entity.NativeAgentSkill{
+			Name:    "web_search",
+			Details: "This is dummy tool for web search",
+			Env:     map[string]any{},
+		},
 		func(ctx *Context, req struct {
 			*WebSearchToolRequest
 		}) (res struct {

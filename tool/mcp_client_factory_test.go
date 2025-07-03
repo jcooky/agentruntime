@@ -128,22 +128,24 @@ func (s *TestSuite) TestMCPClientFactoryValidation() {
 	}
 }
 
-// TestAgentSkillToMCPServerConfig tests conversion from AgentSkill to MCPServerConfig
-func (s *TestSuite) TestAgentSkillToMCPServerConfig() {
+// TestConvertAgentSkillToMCPServerConfig tests conversion from AgentSkill to MCPServerConfig
+func (s *TestSuite) TestConvertAgentSkillToMCPServerConfig() {
 	tests := []struct {
 		name           string
-		skill          entity.AgentSkill
+		skill          entity.AgentSkillUnion
 		expectedConfig tool.MCPServerConfig
 	}{
 		{
 			name: "local stdio server",
-			skill: entity.AgentSkill{
-				Type:    "mcp",
-				Name:    "local-tools",
-				Command: "/usr/local/bin/mcp-server",
-				Args:    []string{"--verbose"},
-				Env: map[string]any{
-					"DEBUG": "true",
+			skill: entity.AgentSkillUnion{
+				Type: "mcp",
+				OfMCP: &entity.MCPAgentSkill{
+					Name:    "local-tools",
+					Command: "/usr/local/bin/mcp-server",
+					Args:    []string{"--verbose"},
+					Env: map[string]any{
+						"DEBUG": "true",
+					},
 				},
 			},
 			expectedConfig: tool.MCPServerConfig{
@@ -156,12 +158,14 @@ func (s *TestSuite) TestAgentSkillToMCPServerConfig() {
 		},
 		{
 			name: "remote sse server",
-			skill: entity.AgentSkill{
+			skill: entity.AgentSkillUnion{
 				Type: "mcp",
-				Name: "remote-tools",
-				URL:  "https://mcp.example.com/api",
-				Headers: map[string]string{
-					"Authorization": "Bearer token",
+				OfMCP: &entity.MCPAgentSkill{
+					Name: "remote-tools",
+					URL:  "https://mcp.example.com/api",
+					Headers: map[string]string{
+						"Authorization": "Bearer token",
+					},
 				},
 			},
 			expectedConfig: tool.MCPServerConfig{
@@ -173,18 +177,20 @@ func (s *TestSuite) TestAgentSkillToMCPServerConfig() {
 		},
 		{
 			name: "oauth sse server",
-			skill: entity.AgentSkill{
-				Type:      "mcp",
-				Name:      "oauth-tools",
-				URL:       "https://api.example.com/mcp",
-				Transport: "oauth-sse",
-				OAuth: &entity.AgentSkillOAuthConfig{
-					ClientID:              "client-123",
-					ClientSecret:          "secret-456",
-					AuthServerMetadataURL: "https://auth.example.com/.well-known/openid",
-					RedirectURL:           "http://localhost:8080/callback",
-					Scopes:                []string{"read", "write"},
-					PKCEEnabled:           true,
+			skill: entity.AgentSkillUnion{
+				Type: "mcp",
+				OfMCP: &entity.MCPAgentSkill{
+					Name:      "oauth-tools",
+					URL:       "https://api.example.com/mcp",
+					Transport: "oauth-sse",
+					OAuth: &entity.AgentSkillOAuthConfig{
+						ClientID:              "client-123",
+						ClientSecret:          "secret-456",
+						AuthServerMetadataURL: "https://auth.example.com/.well-known/openid",
+						RedirectURL:           "http://localhost:8080/callback",
+						Scopes:                []string{"read", "write"},
+						PKCEEnabled:           true,
+					},
 				},
 			},
 			expectedConfig: tool.MCPServerConfig{
@@ -204,29 +210,10 @@ func (s *TestSuite) TestAgentSkillToMCPServerConfig() {
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			// This tests the logic that would be in the manager
-			var config tool.MCPServerConfig
-
-			if tt.skill.URL != "" {
-				config.URL = tt.skill.URL
-				config.Transport = tool.MCPTransportType(tt.skill.Transport)
-				config.Headers = tt.skill.Headers
-
-				if tt.skill.OAuth != nil {
-					config.OAuthConfig = &tool.OAuthConfig{
-						ClientID:              tt.skill.OAuth.ClientID,
-						ClientSecret:          tt.skill.OAuth.ClientSecret,
-						AuthServerMetadataURL: tt.skill.OAuth.AuthServerMetadataURL,
-						RedirectURL:           tt.skill.OAuth.RedirectURL,
-						Scopes:                tt.skill.OAuth.Scopes,
-						PKCEEnabled:           tt.skill.OAuth.PKCEEnabled,
-					}
-				}
-			} else {
-				config.Command = tt.skill.Command
-				config.Args = tt.skill.Args
-				config.Env = tt.skill.Env
-			}
+			// Test the actual conversion function
+			config, err := tool.ConvertAgentSkillToMCPServerConfig(tt.skill)
+			s.NoError(err)
+			s.NotNil(config)
 
 			// Compare the resulting config
 			s.Equal(tt.expectedConfig.Command, config.Command)
@@ -244,6 +231,69 @@ func (s *TestSuite) TestAgentSkillToMCPServerConfig() {
 				s.Equal(tt.expectedConfig.OAuthConfig.RedirectURL, config.OAuthConfig.RedirectURL)
 				s.Equal(tt.expectedConfig.OAuthConfig.Scopes, config.OAuthConfig.Scopes)
 				s.Equal(tt.expectedConfig.OAuthConfig.PKCEEnabled, config.OAuthConfig.PKCEEnabled)
+			} else {
+				s.Nil(config.OAuthConfig)
+			}
+		})
+	}
+}
+
+// TestConvertAgentSkillToMCPServerConfigErrors tests error cases for the conversion function
+func (s *TestSuite) TestConvertAgentSkillToMCPServerConfigErrors() {
+	tests := []struct {
+		name      string
+		skill     entity.AgentSkillUnion
+		wantError bool
+		errorMsg  string
+	}{
+		{
+			name: "non-MCP skill type",
+			skill: entity.AgentSkillUnion{
+				Type: "llm",
+				OfLLM: &entity.LLMAgentSkill{
+					ID:   "test-llm",
+					Name: "test-llm-tool",
+				},
+			},
+			wantError: true,
+			errorMsg:  "skill type must be 'mcp', got 'llm'",
+		},
+		{
+			name: "MCP skill with nil data",
+			skill: entity.AgentSkillUnion{
+				Type:  "mcp",
+				OfMCP: nil,
+			},
+			wantError: true,
+			errorMsg:  "MCP skill data is nil",
+		},
+		{
+			name: "valid MCP skill without OAuth",
+			skill: entity.AgentSkillUnion{
+				Type: "mcp",
+				OfMCP: &entity.MCPAgentSkill{
+					ID:      "test-mcp",
+					Name:    "test-mcp-server",
+					Command: "/usr/bin/test",
+				},
+			},
+			wantError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			config, err := tool.ConvertAgentSkillToMCPServerConfig(tt.skill)
+
+			if tt.wantError {
+				s.Error(err)
+				s.Nil(config)
+				if tt.errorMsg != "" {
+					s.Contains(err.Error(), tt.errorMsg)
+				}
+			} else {
+				s.NoError(err)
+				s.NotNil(config)
 			}
 		})
 	}

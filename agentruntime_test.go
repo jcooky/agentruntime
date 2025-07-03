@@ -80,14 +80,14 @@ func TestAgentRuntime(t *testing.T) {
 	require.Len(t, agent.Skills, 1, "Should have 1 skill")
 	skill := agent.Skills[0]
 	require.Equal(t, "mcp", skill.Type, "Skill type should be 'mcp'")
-	require.Equal(t, "filesystem", skill.Name, "Skill name should be 'filesystem'")
-	require.Equal(t, "npx", skill.Command, "Skill command should be 'npx'")
-	require.Len(t, skill.Args, 3, "Skill should have 3 arguments")
-	require.Equal(t, "-y", skill.Args[0], "First arg should be '-y'")
-	require.Equal(t, "@modelcontextprotocol/server-filesystem", skill.Args[1], "Second arg should be MCP filesystem server")
-	require.Equal(t, "./", skill.Args[2], "Third arg should be './'")
+	require.NotNil(t, skill.OfMCP)
+	require.Equal(t, "filesystem", skill.OfMCP.Name, "Skill name should be 'filesystem'")
+	require.Equal(t, "npx", skill.OfMCP.Command, "Skill command should be 'npx'")
+	require.Len(t, skill.OfMCP.Args, 3, "Skill should have 3 arguments")
+	require.Equal(t, "-y", skill.OfMCP.Args[0], "First arg should be '-y'")
+	require.Equal(t, "@modelcontextprotocol/server-filesystem", skill.OfMCP.Args[1], "Second arg should be MCP filesystem server")
+	require.Equal(t, "./", skill.OfMCP.Args[2], "Third arg should be './'")
 
-	agent.Skills = []entity.AgentSkill{}
 	agent.ModelName = "anthropic/claude-4-sonnet"
 
 	runtime, err := agentruntime.NewAgentRuntime(
@@ -163,18 +163,18 @@ func TestAgentRuntimeWithLLMSkill(t *testing.T) {
 	// Test first LLM skill (creative_writing_helper)
 	firstSkill := agent.Skills[0]
 	require.Equal(t, "llm", firstSkill.Type, "First skill type should be 'llm'")
-	require.Equal(t, "creative_writing_helper", firstSkill.Name, "First skill name should be 'creative_writing_helper'")
-	require.Contains(t, firstSkill.Description, "creative writing assistance", "First skill description should mention creative writing assistance")
-	require.Contains(t, firstSkill.Instruction, "narrative structure", "First skill instruction should mention narrative structure")
-	require.Contains(t, firstSkill.Instruction, "character development", "First skill instruction should mention character development")
+	require.Equal(t, "creative_writing_helper", firstSkill.OfLLM.Name, "First skill name should be 'creative_writing_helper'")
+	require.Contains(t, firstSkill.OfLLM.Description, "creative writing assistance", "First skill description should mention creative writing assistance")
+	require.Contains(t, firstSkill.OfLLM.Instruction, "narrative structure", "First skill instruction should mention narrative structure")
+	require.Contains(t, firstSkill.OfLLM.Instruction, "character development", "First skill instruction should mention character development")
 
 	// Test second LLM skill (poetry_generator)
 	secondSkill := agent.Skills[1]
 	require.Equal(t, "llm", secondSkill.Type, "Second skill type should be 'llm'")
-	require.Equal(t, "poetry_generator", secondSkill.Name, "Second skill name should be 'poetry_generator'")
-	require.Contains(t, secondSkill.Description, "poetry", "Second skill description should mention poetry")
-	require.Contains(t, secondSkill.Instruction, "haiku, sonnet", "Second skill instruction should mention poetry forms")
-	require.Contains(t, secondSkill.Instruction, "rhythm", "Second skill instruction should mention rhythm")
+	require.Equal(t, "poetry_generator", secondSkill.OfLLM.Name, "Second skill name should be 'poetry_generator'")
+	require.Contains(t, secondSkill.OfLLM.Description, "poetry", "Second skill description should mention poetry")
+	require.Contains(t, secondSkill.OfLLM.Instruction, "haiku, sonnet", "Second skill instruction should mention poetry forms")
+	require.Contains(t, secondSkill.OfLLM.Instruction, "rhythm", "Second skill instruction should mention rhythm")
 
 	// Test runtime creation and execution
 	runtime, err := agentruntime.NewAgentRuntime(
@@ -270,9 +270,9 @@ func TestAgentRuntimeWithEx1(t *testing.T) {
 	require.Len(t, agent.Skills, 1, "Should have 1 skill")
 	skill := agent.Skills[0]
 	require.Equal(t, "llm", skill.Type, "Skill type should be 'llm'")
-	require.Equal(t, "startup-summary", skill.Name, "Skill name should be 'startup-summary'")
-	require.Contains(t, skill.Description, "Summarizes startup deal info", "Skill description should mention startup summary")
-	require.Contains(t, skill.Instruction, "team, traction, market analysis", "Skill instruction should mention key analysis areas")
+	require.Equal(t, "startup-summary", skill.OfLLM.Name, "Skill name should be 'startup-summary'")
+	require.Contains(t, skill.OfLLM.Description, "Summarizes startup deal info", "Skill description should mention startup summary")
+	require.Contains(t, skill.OfLLM.Instruction, "team, traction, market analysis", "Skill instruction should mention key analysis areas")
 
 	// Test runtime creation and execution
 	// Debug: Print API key availability

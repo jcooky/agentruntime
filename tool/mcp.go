@@ -9,6 +9,7 @@ import (
 
 	"github.com/firebase/genkit/go/ai"
 	"github.com/firebase/genkit/go/genkit"
+	"github.com/habiliai/agentruntime/entity"
 	internalmcp "github.com/habiliai/agentruntime/internal/genkit/plugins/mcp"
 	mcpclient "github.com/mark3labs/mcp-go/client"
 	mcp "github.com/mark3labs/mcp-go/mcp"
@@ -140,4 +141,31 @@ func (m *manager) GetMCPTools(ctx context.Context, mcpServerName string) []ai.To
 	}
 
 	return tools
+}
+
+func (m *manager) registerMCPSkill(ctx context.Context, skill *entity.MCPAgentSkill) error {
+	if skill.Name == "" {
+		return errors.New("mcp server name is required")
+	}
+
+	// Create AgentSkillUnion to use the conversion function
+	skillUnion := entity.AgentSkillUnion{
+		Type:  entity.AgentSkillTypeMCP,
+		OfMCP: skill,
+	}
+
+	// Use the tested conversion function
+	serverConfig, err := ConvertAgentSkillToMCPServerConfig(skillUnion)
+	if err != nil {
+		return errors.Wrapf(err, "failed to convert skill to MCP server config")
+	}
+
+	if err := m.registerMCPTool(ctx, RegisterMCPToolRequest{
+		ServerID:     skill.Name,
+		ServerConfig: serverConfig,
+	}); err != nil {
+		return errors.Wrapf(err, "failed to register mcp tool")
+	}
+
+	return nil
 }

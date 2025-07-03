@@ -26,35 +26,16 @@ func (s *Engine) BuildPromptValues(ctx context.Context, agent entity.Agent, hist
 	// build available actions
 	promptValues.Tools = make([]ai.ToolRef, 0, len(agent.Skills))
 	for _, skill := range agent.Skills {
-		switch skill.Type {
-		case "llm", "nativeTool":
-			tool := s.toolManager.GetTool(skill.Name)
-			if tool == nil {
-				return nil, errors.Errorf("invalid tool name %s", skill.Name)
-			}
+		tools, err := s.toolManager.GetToolsBySkill(ctx, skill)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to get tools by skill")
+		}
+		for _, tool := range tools {
 			promptValues.AvailableActions = append(promptValues.AvailableActions, AvailableAction{
-				Action:      skill.Name,
+				Action:      tool.Name(),
 				Description: tool.Definition().Description,
 			})
 			promptValues.Tools = append(promptValues.Tools, tool)
-		case "mcp":
-			skillToolNames := skill.Tools
-			if len(skillToolNames) == 0 {
-				for _, tool := range s.toolManager.GetMCPTools(ctx, skill.Name) {
-					skillToolNames = append(skillToolNames, tool.Name())
-				}
-			}
-			for _, skillToolName := range skillToolNames {
-				tool := s.toolManager.GetMCPTool(skill.Name, skillToolName)
-				if tool == nil {
-					return nil, errors.Errorf("invalid tool name %s", skill.Name)
-				}
-				promptValues.AvailableActions = append(promptValues.AvailableActions, AvailableAction{
-					Action:      skillToolName,
-					Description: tool.Definition().Description,
-				})
-				promptValues.Tools = append(promptValues.Tools, tool)
-			}
 		}
 	}
 

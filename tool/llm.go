@@ -2,6 +2,9 @@ package tool
 
 import (
 	"context"
+
+	"github.com/habiliai/agentruntime/entity"
+	"github.com/pkg/errors"
 )
 
 type (
@@ -28,4 +31,19 @@ func (m *manager) registerLLMTool(ctx context.Context, name, description, instru
 			return
 		},
 	)
+}
+
+func (m *manager) registerLLMSkill(ctx context.Context, skill *entity.LLMAgentSkill) error {
+	if skill.Name == "" {
+		return errors.New("llm name is required")
+	}
+	if skill.Description == "" {
+		return errors.New("llm description is required")
+	}
+	if skill.Instruction == "" {
+		return errors.New("llm instruction is required")
+	}
+	m.registerLLMTool(ctx, skill.Name, skill.Description, skill.Instruction)
+
+	return nil
 }

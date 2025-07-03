@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/habiliai/agentruntime/entity"
 	mcpclient "github.com/mark3labs/mcp-go/client"
 	"github.com/mark3labs/mcp-go/client/transport"
 	"github.com/pkg/errors"
@@ -116,4 +117,43 @@ func (f *MCPClientFactory) createStreamableClient(config MCPServerConfig) (*mcpc
 	}
 
 	return mcpclient.NewStreamableHttpClient(config.URL, transport.WithHTTPHeaders(config.Headers))
+}
+
+// ConvertAgentSkillToMCPServerConfig converts an AgentSkillUnion to MCPServerConfig
+func ConvertAgentSkillToMCPServerConfig(skill entity.AgentSkillUnion) (*MCPServerConfig, error) {
+	if skill.Type != entity.AgentSkillTypeMCP {
+		return nil, errors.Errorf("skill type must be 'mcp', got '%s'", skill.Type)
+	}
+
+	if skill.OfMCP == nil {
+		return nil, errors.New("MCP skill data is nil")
+	}
+
+	mcpSkill := skill.OfMCP
+	config := &MCPServerConfig{
+		Command: mcpSkill.Command,
+		Args:    mcpSkill.Args,
+		Env:     mcpSkill.Env,
+		URL:     mcpSkill.URL,
+		Headers: mcpSkill.Headers,
+	}
+
+	// Set transport type
+	if mcpSkill.Transport != "" {
+		config.Transport = MCPTransportType(mcpSkill.Transport)
+	}
+
+	// Convert OAuth config if present
+	if mcpSkill.OAuth != nil {
+		config.OAuthConfig = &OAuthConfig{
+			ClientID:              mcpSkill.OAuth.ClientID,
+			ClientSecret:          mcpSkill.OAuth.ClientSecret,
+			AuthServerMetadataURL: mcpSkill.OAuth.AuthServerMetadataURL,
+			RedirectURL:           mcpSkill.OAuth.RedirectURL,
+			Scopes:                mcpSkill.OAuth.Scopes,
+			PKCEEnabled:           mcpSkill.OAuth.PKCEEnabled,
+		}
+	}
+
+	return config, nil
 }

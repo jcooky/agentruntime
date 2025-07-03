@@ -67,7 +67,6 @@ messageExamples:
 skills:
   - type: nativeTool
     name: knowledge_search
-    description: Search through the Solana whitepaper for technical information
   - type: llm
     name: solana_technical_advisor
     description: Provides in-depth technical analysis of Solana blockchain concepts
@@ -78,7 +77,6 @@ skills:
       Compare with other blockchain architectures when helpful.
   - type: nativeTool
     name: web_search
-    description: Search for current Solana ecosystem updates and comparisons
 metadata:
   version: '1.0'
   lastUpdated: '2024-01-15'

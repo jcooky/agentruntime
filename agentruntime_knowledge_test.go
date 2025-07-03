@@ -76,29 +76,31 @@ func TestAgentWithKnowledgeService(t *testing.T) {
 	require.GreaterOrEqual(t, len(agent.Skills), 3, "Should have at least 3 skills")
 
 	// Find and test the skills
-	var webSearchSkill *entity.AgentSkill
-	var adoptionAdvisorSkill *entity.AgentSkill
-	var knowledgeSearchSkill *entity.AgentSkill
+	var webSearchSkill *entity.NativeAgentSkill
+	var adoptionAdvisorSkill *entity.LLMAgentSkill
+	var knowledgeSearchSkill *entity.NativeAgentSkill
 	for i, skill := range agent.Skills {
-		switch skill.Name {
-		case "web_search":
-			webSearchSkill = &agent.Skills[i]
-		case "adoption_advisor":
-			adoptionAdvisorSkill = &agent.Skills[i]
-		case "knowledge_search":
-			knowledgeSearchSkill = &agent.Skills[i]
+		switch skill.Type {
+		case "nativeTool":
+			switch skill.OfNative.Name {
+			case "web_search":
+				webSearchSkill = agent.Skills[i].OfNative
+			case "knowledge_search":
+				knowledgeSearchSkill = agent.Skills[i].OfNative
+			}
+		case "llm":
+			switch skill.OfLLM.Name {
+			case "adoption_advisor":
+				adoptionAdvisorSkill = agent.Skills[i].OfLLM
+			}
 		}
 	}
 	require.NotNil(t, webSearchSkill, "Should have web_search skill")
-	require.Equal(t, "nativeTool", webSearchSkill.Type, "web_search should be nativeTool type")
-	require.Contains(t, webSearchSkill.Description, "current information", "web_search description should mention current information")
 
 	require.NotNil(t, adoptionAdvisorSkill, "Should have adoption_advisor skill")
-	require.Equal(t, "llm", adoptionAdvisorSkill.Type, "adoption_advisor should be llm type")
 	require.Contains(t, adoptionAdvisorSkill.Description, "adoption and care", "adoption_advisor description should mention adoption and care")
 
 	require.NotNil(t, knowledgeSearchSkill, "Should have knowledge_search skill")
-	require.Equal(t, "nativeTool", knowledgeSearchSkill.Type, "knowledge_search should be nativeTool type")
 
 	// Test metadata
 	require.NotNil(t, agent.Metadata, "Metadata should not be nil")
@@ -226,11 +228,13 @@ func TestAgentWithRAGAndCustomKnowledge(t *testing.T) {
 			},
 		},
 		// Add knowledge_search skill for tool-based knowledge retrieval
-		Skills: []entity.AgentSkill{
+		Skills: []entity.AgentSkillUnion{
 			{
-				Name:        "knowledge_search",
-				Type:        "nativeTool",
-				Description: "Search through the knowledge base for relevant information",
+				Type: "nativeTool",
+				OfNative: &entity.NativeAgentSkill{
+					Name:    "knowledge_search",
+					Details: "Search through the knowledge base for relevant information",
+				},
 			},
 		},
 	}

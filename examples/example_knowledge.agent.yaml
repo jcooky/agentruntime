@@ -40,7 +40,6 @@ messageExamples:
 skills:
   - type: nativeTool
     name: knowledge_search
-    description: Search through the knowledge base for information about rescue dogs and shelters
   - type: llm
     name: adoption_advisor
     description: Provides comprehensive advice about dog adoption and care
@@ -50,7 +49,6 @@ skills:
       Always emphasize the importance of patience and commitment.
   - type: nativeTool
     name: web_search
-    description: Search for current information about dog care and adoption resources
 knowledge:
   - dogName: Hosu
     aliases: Mandu, Hoshu, Hodol

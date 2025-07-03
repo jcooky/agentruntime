@@ -142,15 +142,11 @@ func (m *manager) GetWeather(ctx context.Context, req *GetWeatherRequest, apiKey
 	return weatherSummary, nil
 }
 
-func (m *manager) registerGetWeatherTool(skill *entity.AgentSkill) {
-	description := skill.Description
-	if description == "" {
-		description = "Get weather information when you need it"
-	}
-	registerLocalTool(
+func (m *manager) registerGetWeatherTool(skill *entity.NativeAgentSkill) {
+	registerNativeTool(
 		m,
-		skill.Name,
-		description,
+		"get_weather",
+		"Get weather information when you need it",
 		skill,
 		func(ctx *Context, req struct {
 			*GetWeatherRequest

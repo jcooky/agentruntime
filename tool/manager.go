@@ -3,7 +3,6 @@ package tool
 import (
 	"context"
 	"log/slog"
-	"strings"
 	"sync"
 
 	"github.com/firebase/genkit/go/ai"
@@ -20,98 +19,51 @@ type (
 		GetTool(toolName string) ai.Tool
 		GetMCPTool(serverName, toolName string) ai.Tool
 		GetMCPTools(ctx context.Context, serverName string) []ai.Tool
+		GetToolsBySkill(ctx context.Context, skill entity.AgentSkillUnion) ([]ai.Tool, error)
 		Close()
 	}
 	manager struct {
 		logger *mylog.Logger
 
-		mcpClients map[string]*mcpclient.Client
-		mtx        sync.Mutex
-		genkit     *genkit.Genkit
+		mcpClients           map[string]*mcpclient.Client
+		mtx                  sync.Mutex
+		genkit               *genkit.Genkit
+		nativeSkillToolNames map[string][]string // skill.Name -> tool names
+
+		knowledgeService knowledge.Service
 	}
 )
+
+func (m *manager) GetTool(toolName string) ai.Tool {
+	return genkit.LookupTool(m.genkit, toolName)
+}
 
 var (
 	_ Manager = (*manager)(nil)
 )
 
-func NewToolManager(ctx context.Context, skills []entity.AgentSkill, logger *slog.Logger, genkit *genkit.Genkit, knowledgeService knowledge.Service) (Manager, error) {
+func NewToolManager(ctx context.Context, skills []entity.AgentSkillUnion, logger *slog.Logger, genkit *genkit.Genkit, knowledgeService knowledge.Service) (Manager, error) {
 	s := &manager{
-		logger:     logger,
-		mcpClients: make(map[string]*mcpclient.Client),
-		genkit:     genkit,
+		logger:               logger,
+		mcpClients:           make(map[string]*mcpclient.Client),
+		genkit:               genkit,
+		knowledgeService:     knowledgeService,
+		nativeSkillToolNames: make(map[string][]string),
 	}
 
 	for _, skill := range skills {
 		switch skill.Type {
 		case "mcp":
-			if skill.Name == "" {
-				return nil, errors.New("mcp server name is required")
-			}
-
-			// Create server config based on skill configuration
-			var serverConfig *MCPServerConfig
-
-			// Check if remote configuration is provided
-			if skill.URL != "" {
-				serverConfig = &MCPServerConfig{
-					URL:       skill.URL,
-					Transport: MCPTransportType(skill.Transport),
-					Headers:   skill.Headers,
-					Env:       skill.Env,
-				}
-
-				// Convert OAuth config if provided
-				if skill.OAuth != nil {
-					serverConfig.OAuthConfig = &OAuthConfig{
-						ClientID:              skill.OAuth.ClientID,
-						ClientSecret:          skill.OAuth.ClientSecret,
-						AuthServerMetadataURL: skill.OAuth.AuthServerMetadataURL,
-						RedirectURL:           skill.OAuth.RedirectURL,
-						Scopes:                skill.OAuth.Scopes,
-						PKCEEnabled:           skill.OAuth.PKCEEnabled,
-					}
-				}
-			} else {
-				// Legacy stdio configuration
-				if skill.Command == "" {
-					return nil, errors.New("mcp command is required for local MCP server")
-				}
-				serverConfig = &MCPServerConfig{
-					Command: skill.Command,
-					Args:    skill.Args,
-					Env:     skill.Env,
-				}
-			}
-
-			if err := s.registerMCPTool(ctx, RegisterMCPToolRequest{
-				ServerID:     skill.Name,
-				ServerConfig: serverConfig,
-			}); err != nil {
-				return nil, errors.Wrap(err, "failed to register mcp tool")
+			if err := s.registerMCPSkill(ctx, skill.OfMCP); err != nil {
+				return nil, errors.Wrapf(err, "failed to register mcp skill")
 			}
 		case "llm":
-			if skill.Name == "" {
-				return nil, errors.New("llm name is required")
+			if err := s.registerLLMSkill(ctx, skill.OfLLM); err != nil {
+				return nil, errors.Wrapf(err, "failed to register llm skill")
 			}
-			if skill.Description == "" {
-				return nil, errors.New("llm description is required")
-			}
-			if skill.Instruction == "" {
-				return nil, errors.New("llm instruction is required")
-			}
-			s.registerLLMTool(ctx, skill.Name, skill.Description, skill.Instruction)
 		case "nativeTool":
-			if skill.Name == "" {
-				return nil, errors.New("native tool name is required")
-			}
-			switch strings.ToLower(skill.Name) {
-			case "get_weather":
-				s.registerGetWeatherTool(&skill)
-			case "web_search":
-				s.registerWebSearchTool()
-			case "knowledge_search":
-				s.registerKnowledgeSearchTool(knowledgeService, &skill)
+			if err := s.registerNativeSkill(skill.OfNative); err != nil {
+				return nil, errors.Wrapf(err, "failed to register native skill")
 			}
 		default:
 			return nil, errors.Errorf("invalid skill type: %s", skill.Type)
@@ -119,10 +71,6 @@ func NewToolManager(ctx context.Context, skills []entity.AgentSkill, logger *slo
 	}
 
 	return s, nil
-}
-
-func (m *manager) GetTool(toolName string) ai.Tool {
-	return genkit.LookupTool(m.genkit, toolName)
 }
 
 func (m *manager) GetMCPTool(serverName, toolName string) ai.Tool {
@@ -141,38 +89,39 @@ func (m *manager) Close() {
 	}
 }
 
-func registerLocalTool[In any, Out any](m *manager, name, description string, skill *entity.AgentSkill, fn func(ctx *Context, input In) (Out, error)) ai.Tool {
-	tool := m.GetTool(name)
-	if tool != nil {
-		return tool
-	}
-
-	return genkit.DefineTool(
-		m.genkit,
-		name,
-		description,
-		func(ctx *ai.ToolContext, input In) (Out, error) {
-			out, err := fn(&Context{
-				Context: ctx,
-				skill:   skill,
-			}, input)
-			if err == nil {
-				appendCallData(ctx, CallData{
-					Name:      name,
-					Arguments: input,
-					Result:    out,
-				})
+func (m *manager) GetToolsBySkill(ctx context.Context, skill entity.AgentSkillUnion) ([]ai.Tool, error) {
+	switch skill.Type {
+	case "llm":
+		tool := m.GetTool(skill.OfLLM.Name)
+		if tool == nil {
+			return nil, errors.Errorf("invalid tool name %s", skill.OfLLM.Name)
+		}
+		return []ai.Tool{tool}, nil
+	case "nativeTool":
+		toolNames, ok := m.nativeSkillToolNames[skill.OfNative.Name]
+		if !ok || len(toolNames) == 0 {
+			return nil, errors.Errorf("no tools found for skill %s", skill.OfNative.Name)
+		}
+		tools := make([]ai.Tool, 0, len(toolNames))
+		for _, toolName := range toolNames {
+			tools = append(tools, m.GetTool(toolName))
+		}
+		return tools, nil
+	case "mcp":
+		skillToolNames := skill.OfMCP.Tools
+		if len(skillToolNames) == 0 {
+			return m.GetMCPTools(ctx, skill.OfMCP.Name), nil
+		}
+		tools := make([]ai.Tool, 0, len(skillToolNames))
+		for _, skillToolName := range skillToolNames {
+			tool := m.GetMCPTool(skill.OfMCP.Name, skillToolName)
+			if tool == nil {
+				return nil, errors.Errorf("invalid tool name %s", skill.OfMCP.Name)
 			}
-			return out, err
-		},
-	)
-}
-
-func RegisterLocalTool[In any, Out any](m Manager, skill *entity.AgentSkill, fn func(ctx *Context, input In) (Out, error)) ai.Tool {
-	realManager, ok := m.(*manager)
-	if !ok {
-		slog.Error("RegisterLocalTool requires the default manager implementation")
-		return nil
+			tools = append(tools, tool)
+		}
+		return tools, nil
 	}
-	return registerLocalTool(realManager, skill.Name, skill.Description, skill, fn)
+
+	return nil, errors.Errorf("invalid skill type: %s", skill.Type)
 }

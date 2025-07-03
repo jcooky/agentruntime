@@ -14,10 +14,16 @@ type Knowledge struct {
 	Context  string  `json:"context,omitempty" jsonschema:"description=Text of the search result"`
 }
 
-func (m *manager) registerKnowledgeSearchTool(knowledgeService knowledge.Service, skill *entity.AgentSkill) {
-	description := skill.Description
-	if description == "" {
-		description = `Search through the external knowledge base to find relevant information, documents, and context.
+func (m *manager) registerKnowledgeSearchTool(skill *entity.NativeAgentSkill) {
+	allowedKnowledgeIds, ok := skill.Env["knowledge_ids"].([]string)
+	if !ok {
+		allowedKnowledgeIds = nil
+	}
+
+	registerNativeTool(
+		m,
+		"knowledge_search",
+		`Search through the external knowledge base to find relevant information, documents, and context.
 
 This tool provides semantic search capabilities across stored knowledge including:
 - Previously saved documents, notes, and information
@@ -49,18 +55,7 @@ Error handling:
 - When an error occurs, try rephrasing the query or waiting before retry
 - The tool will still return a response (not throw an error) to allow graceful handling
 
-The search uses semantic similarity, so exact keyword matches are not required. Results are ranked by relevance and include context about when and where the information was stored.`
-	}
-
-	allowedKnowledgeIds, ok := skill.Env["knowledge_ids"].([]string)
-	if !ok {
-		allowedKnowledgeIds = nil
-	}
-
-	registerLocalTool(
-		m,
-		skill.Name,
-		description,
+The search uses semantic similarity, so exact keyword matches are not required. Results are ranked by relevance and include context about when and where the information was stored.`,
 		skill,
 		func(ctx *Context, input struct {
 			Query string `json:"query" jsonschema:"description=The search query to find relevant information"`
@@ -76,7 +71,7 @@ The search uses semantic similarity, so exact keyword matches are not required. 
 			}
 
 			// Retrieve relevant knowledge
-			results, err := knowledgeService.RetrieveRelevantKnowledge(ctx, input.Query, limit, allowedKnowledgeIds)
+			results, err := m.knowledgeService.RetrieveRelevantKnowledge(ctx, input.Query, limit, allowedKnowledgeIds)
 			if err != nil {
 				reply.Error = err.Error()
 				return reply, nil

@@ -30,21 +30,25 @@ func (s *TestSuite) SetupTest() {
 	s.Require().NoError(err)
 	s.toolManager, err = tool.NewToolManager(
 		s,
-		[]entity.AgentSkill{
+		[]entity.AgentSkillUnion{
 			{
-				Type:    "mcp",
-				Name:    "filesystem",
-				Command: "npx",
-				Args: []string{
-					"-y", "@modelcontextprotocol/server-filesystem", ".",
+				Type: "mcp",
+				OfMCP: &entity.MCPAgentSkill{
+					Name:    "filesystem",
+					Command: "npx",
+					Args: []string{
+						"-y", "@modelcontextprotocol/server-filesystem", ".",
+					},
 				},
 			},
 			{
-				Type:        "nativeTool",
-				Name:        "get_weather",
-				Description: "Get weather information when you need it",
-				Env: map[string]any{
-					"OPENWEATHER_API_KEY": os.Getenv("OPENWEATHER_API_KEY"),
+				Type: "nativeTool",
+				OfNative: &entity.NativeAgentSkill{
+					Name:    "get_weather",
+					Details: "Get weather information when you need it",
+					Env: map[string]any{
+						"OPENWEATHER_API_KEY": os.Getenv("OPENWEATHER_API_KEY"),
+					},
 				},
 			},
 		},

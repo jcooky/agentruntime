@@ -9,9 +9,9 @@ import (
 type Context struct {
 	context.Context
 
-	skill *entity.AgentSkill
+	skill *entity.NativeAgentSkill
 }
 
-func (c *Context) GetSkill() *entity.AgentSkill {
+func (c *Context) GetSkill() *entity.NativeAgentSkill {
 	return c.skill
 }

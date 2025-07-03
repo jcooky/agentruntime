@@ -1,6 +1,8 @@
 package tool
 
-import "time"
+import (
+	"time"
+)
 
 // MCPTransportType represents the transport type for MCP servers
 type MCPTransportType string
