@@ -28,6 +28,8 @@ func (m *manager) registerNativeSkill(skill *entity.NativeAgentSkill) error {
 		m.registerWebSearchTool()
 	case "knowledge_search":
 		m.registerKnowledgeSearchTool(skill)
+	case "rss":
+		m.registerRSSSkill(skill)
 	}
 
 	return nil
