@@ -43,8 +43,8 @@ func (r *AgentRuntime) Embed(ctx context.Context, texts ...string) ([][]float32,
 	return r.engine.Embed(ctx, texts...)
 }
 
-func (r *AgentRuntime) Run(ctx context.Context, req engine.RunRequest, out any) (*engine.RunResponse, error) {
-	return r.engine.Run(ctx, *r.agent, req, out)
+func (r *AgentRuntime) Run(ctx context.Context, req engine.RunRequest, out any, streamCallback ai.ModelStreamCallback) (*engine.RunResponse, error) {
+	return r.engine.Run(ctx, *r.agent, req, out, streamCallback)
 }
 
 func (r *AgentRuntime) Close() {

@@ -107,7 +107,7 @@ func TestRSSAgent(t *testing.T) {
 						Text: tc.message,
 					},
 				},
-			}, &output)
+			}, &output, nil)
 
 			require.NoError(t, err, "Failed to run agent")
 			require.NotNil(t, response)
@@ -157,7 +157,7 @@ func TestRSSAgentToolCalls(t *testing.T) {
 					Text: "Search for 'Series A' funding news from Crunchbase and TechCrunch feeds",
 				},
 			},
-		}, &output)
+		}, &output, nil)
 
 		require.NoError(t, err)
 		require.NotNil(t, response)
@@ -222,7 +222,7 @@ func TestRSSAgentErrorHandling(t *testing.T) {
 				Text: "Find news about 'zyxwvutsrqponmlkjihgfedcba' startups",
 			},
 		},
-	}, &output)
+	}, &output, nil)
 
 	require.NoError(t, err)
 	require.NotNil(t, response)

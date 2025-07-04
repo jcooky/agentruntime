@@ -17,9 +17,7 @@ type (
 		Suggestion []string `json:"suggestion" jsonschema_description:"Suggestion to improve the response. It should be a short sentence."`
 	}
 	GenerateRequest struct {
-		Model               string
-		EvaluatorPromptTmpl string
-		NumRetries          int
+		Model string
 	}
 )
 
@@ -63,39 +61,6 @@ func (e *Engine) Generate(
 	resp, err := genkit.Generate(ctx, e.genkit, opts...)
 	if err != nil {
 		return nil, err
-	}
-
-	for i := 0; i < req.NumRetries; i++ {
-		options := []ai.GenerateOption{
-			ai.WithModelName(modelName),
-			ai.WithPrompt("Please evaluate it."),
-			ai.WithMessages(withoutPurposeOutput(resp.History())...),
-			ai.WithMaxTurns(100),
-		}
-		if i == 0 {
-			options = append(options, ai.WithSystem(req.EvaluatorPromptTmpl))
-		}
-		answer, evalRes, err := genkit.GenerateData[EvaluatorResponse](ctx, e.genkit, options...)
-		if err != nil {
-			return nil, err
-		}
-		if answer.Score >= 0.95 {
-			break
-		}
-		e.logger.Info("retrying", "score", answer.Score, "reason", answer.Reason, "suggestion", answer.Suggestion)
-
-		resp, err = genkit.Generate(
-			ctx,
-			e.genkit,
-			ai.WithModelName(modelName),
-			ai.WithPrompt("Please fix it."),
-			ai.WithMessages(withoutPurposeOutput(evalRes.History())...),
-			ai.WithOutputType(out),
-			ai.WithMaxTurns(100),
-		)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	switch v := out.(type) {

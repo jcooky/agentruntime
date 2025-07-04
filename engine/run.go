@@ -78,6 +78,7 @@ func (s *Engine) Run(
 	agent entity.Agent,
 	req RunRequest,
 	output any,
+	streamCallback ai.ModelStreamCallback,
 ) (*RunResponse, error) {
 	if output == nil {
 		return nil, errors.Errorf("output is nil")
@@ -98,15 +99,14 @@ func (s *Engine) Run(
 		_, err = s.Generate(
 			ctx,
 			&GenerateRequest{
-				Model:               agent.ModelName,
-				EvaluatorPromptTmpl: agent.Evaluator.Prompt,
-				NumRetries:          agent.Evaluator.NumRetries,
+				Model: agent.ModelName,
 			},
 			output,
 			ai.WithSystem(agent.System),
 			ai.WithPromptFn(GetPromptFn(promptValues)),
 			ai.WithConfig(agent.ModelConfig),
 			ai.WithTools(promptValues.Tools...),
+			ai.WithStreaming(streamCallback),
 		)
 		if err != nil {
 			s.logger.Warn("failed to generate", "err", err)

@@ -135,7 +135,7 @@ func TestAgentWithKnowledgeService(t *testing.T) {
 				Text: "Can you tell me about Hosu? I heard he's also called Mandu sometimes.",
 			},
 		},
-	}, &out)
+	}, &out, nil)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 
@@ -274,7 +274,7 @@ func TestAgentWithRAGAndCustomKnowledge(t *testing.T) {
 				Text: "How many vacation days do I get?",
 			},
 		},
-	}, &out1)
+	}, &out1, nil)
 	require.NoError(t, err)
 	require.NotNil(t, resp1)
 
@@ -303,7 +303,7 @@ func TestAgentWithRAGAndCustomKnowledge(t *testing.T) {
 				Text: "Can I work from home?",
 			},
 		},
-	}, &out2)
+	}, &out2, nil)
 	require.NoError(t, err)
 	require.NotNil(t, resp2)
 
@@ -333,7 +333,7 @@ func TestAgentWithRAGAndCustomKnowledge(t *testing.T) {
 				Text: "What health benefits are included?",
 			},
 		},
-	}, &out3)
+	}, &out3, nil)
 	require.NoError(t, err)
 	require.NotNil(t, resp3)
 
@@ -413,7 +413,7 @@ func TestAgentWithRAGAndPDFKnowledge(t *testing.T) {
 				Text: "What is Solana? Can you explain the details to me?",
 			},
 		},
-	}, &out)
+	}, &out, nil)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 

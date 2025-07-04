@@ -76,7 +76,7 @@ func loopMentionedBy(
 							Name: p,
 						}
 					}),
-				}, &out)
+				}, &out, nil)
 				if err != nil {
 					logger.Error("failed to run agent", "mention", mention, "error", err)
 					continue

@@ -67,23 +67,55 @@ func generateStream(ctx context.Context, client *anthropic.Client, genRequest *a
 			return nil, fmt.Errorf("error accumulating message: %w", err)
 		}
 
-		// Send chunks to callback
 		switch event := event.AsAny().(type) {
+		case anthropic.ContentBlockStartEvent:
+			chunk := &ai.ModelResponseChunk{
+				Index:      int(event.Index),
+				Role:       ai.RoleModel,
+				Aggregated: false,
+			}
+			if err := cb(ctx, chunk); err != nil {
+				return nil, err
+			}
 		case anthropic.ContentBlockDeltaEvent:
+			chunk := &ai.ModelResponseChunk{
+				Index:      int(event.Index),
+				Role:       ai.RoleModel,
+				Aggregated: false,
+			}
+
 			switch delta := event.Delta.AsAny().(type) {
 			case anthropic.TextDelta:
-				chunk := &ai.ModelResponseChunk{
-					Content: []*ai.Part{ai.NewTextPart(delta.Text)},
+				chunk.Content = []*ai.Part{ai.NewTextPart(delta.Text)}
+			case anthropic.InputJSONDelta:
+				chunk.Content = []*ai.Part{ai.NewDataPart(delta.PartialJSON)}
+			case anthropic.ThinkingDelta:
+				chunk.Content = []*ai.Part{ai.NewReasoningPart(delta.Thinking, []byte{})}
+			case anthropic.SignatureDelta:
+				chunk.Content = []*ai.Part{ai.NewReasoningPart("", []byte(delta.Signature))}
+			case anthropic.CitationsDelta:
+				var citation map[string]any
+				if err := json.Unmarshal([]byte(delta.Citation.RawJSON()), &citation); err != nil {
+					return nil, fmt.Errorf("could not unmarshal citation delta into citation type: %w", err)
 				}
-				if err := cb(ctx, chunk); err != nil {
-					return nil, err
-				}
+				chunk.Content = []*ai.Part{ai.NewCustomPart(map[string]any{
+					"type": "citation",
+					"body": citation,
+				})}
 			}
-		case anthropic.ContentBlockStartEvent:
-			// Handle the start of a new content block (e.g., thinking block)
-			// This is where we might detect the beginning of a reasoning block
-			// For now, we'll just continue as the accumulated message will handle it
-			// TODO: Implement proper handling of reasoning blocks
+			if err := cb(ctx, chunk); err != nil {
+				return nil, err
+			}
+		case anthropic.ContentBlockStopEvent:
+			chunk := &ai.ModelResponseChunk{
+				Index:      int(event.Index),
+				Role:       ai.RoleModel,
+				Aggregated: true,
+				Content:    []*ai.Part{translateContent(message.Content[len(message.Content)-1])},
+			}
+			if err := cb(ctx, chunk); err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -470,6 +502,48 @@ func convertTool(tool *ai.ToolDefinition) anthropic.ToolUnionParam {
 	}
 }
 
+func translateContent(content anthropic.ContentBlockUnion) *ai.Part {
+	switch block := content.AsAny().(type) {
+	case anthropic.TextBlock:
+		return ai.NewTextPart(block.Text)
+	case anthropic.ToolUseBlock:
+		return ai.NewToolRequestPart(&ai.ToolRequest{
+			Ref:   block.ID,
+			Name:  block.Name,
+			Input: json.RawMessage(block.Input),
+		})
+	case anthropic.WebSearchToolResultBlock:
+		return ai.NewCustomPart(map[string]any{
+			"type": "web_search_tool_result",
+			"body": block.RawJSON(),
+		})
+	case anthropic.RedactedThinkingBlock:
+		return ai.NewCustomPart(map[string]any{
+			"type": "redacted_thinking",
+			"body": block.RawJSON(),
+		})
+	case anthropic.ThinkingBlock:
+		return ai.NewReasoningPart(block.Thinking, []byte(block.Signature))
+	case anthropic.ServerToolUseBlock:
+		return ai.NewCustomPart(map[string]any{
+			"type": "server_tool_use",
+			"body": block.RawJSON(),
+		})
+	}
+
+	return nil
+}
+
+func translateContents(contents []anthropic.ContentBlockUnion) []*ai.Part {
+	var parts []*ai.Part
+
+	for _, content := range contents {
+		parts = append(parts, translateContent(content))
+	}
+
+	return parts
+}
+
 func translateResponse(resp anthropic.Message) (*ai.ModelResponse, error) {
 	r := &ai.ModelResponse{}
 
@@ -477,34 +551,7 @@ func translateResponse(resp anthropic.Message) (*ai.ModelResponse, error) {
 		Role: ai.RoleModel,
 	}
 
-	var parts []*ai.Part
-
-	for _, content := range resp.Content {
-		switch block := content.AsAny().(type) {
-		case anthropic.TextBlock:
-			parts = append(parts, ai.NewTextPart(block.Text))
-		case anthropic.ToolUseBlock:
-			parts = append(parts, ai.NewToolRequestPart(&ai.ToolRequest{
-				Ref:   block.ID,
-				Name:  block.Name,
-				Input: json.RawMessage(block.Input),
-			}))
-		case anthropic.WebSearchToolResultBlock:
-			parts = append(parts, ai.NewCustomPart(map[string]any{
-				"type": "web_search_tool_result",
-				"body": block.RawJSON(),
-			}))
-		case anthropic.RedactedThinkingBlock:
-			parts = append(parts, ai.NewCustomPart(map[string]any{
-				"type": "redacted_thinking",
-				"body": block.RawJSON(),
-			}))
-		case anthropic.ThinkingBlock:
-			parts = append(parts, ai.NewReasoningPart(block.Thinking, []byte(block.Signature)))
-		}
-	}
-
-	m.Content = parts
+	m.Content = translateContents(resp.Content)
 	r.Message = m
 
 	// Map stop reason
