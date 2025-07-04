@@ -250,7 +250,7 @@ func TestAgentRuntimeWithEx1(t *testing.T) {
 	// Test basic agent information
 	require.Equal(t, "Edan", agent.Name, "Agent name should be 'Edan'")
 	require.Contains(t, agent.Description, "summarizes startup deal info", "Agent description should contain startup summary info")
-	require.Equal(t, "anthropic/claude-4-sonnet", agent.ModelName, "Model name should be 'anthropic/claude-4-sonnet'")
+	require.Equal(t, "anthropic/claude-3.5-haiku", agent.ModelName, "Model name should be 'anthropic/claude-3.5-haiku'")
 	require.Equal(t, "Moderator", agent.Role, "Role should be 'Moderator'")
 
 	// Test prompt contains key instructions

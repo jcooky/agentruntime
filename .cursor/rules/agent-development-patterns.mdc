@@ -3,3 +3,147 @@ description:
 globs:
 alwaysApply: false
 ---
+
+# Agent Development Patterns
+
+This rule provides patterns and best practices for developing agents in the AgentRuntime framework.
+
+## Agent Configuration Format
+
+Always prefer YAML format over JSON for agent configurations. See [docs/agent.md](mdc:docs/agent.md) for complete reference.
+
+## Agent Structure
+
+Agent configurations follow this structure:
+
+```yaml
+name: Agent Name
+description: Clear description of agent purpose
+url: https://api.example.com/agent
+version: '1.0.0'
+defaultInputModes: [text]
+defaultOutputModes: [text]
+model: anthropic/claude-3.5-haiku
+system: |
+  System instructions for the agent's behavior
+skills:
+  - type: nativeTool
+    name: skill_name
+    description: Skill description
+    env:
+      # Skill-specific configuration
+```
+
+## Skills Types
+
+AgentRuntime supports three types of skills:
+
+### 1. Native Tools
+
+Built-in system tools like RSS, knowledge search, web search:
+
+```yaml
+skills:
+  - type: nativeTool
+    name: rss_reader
+    description: Search and read RSS feeds
+    env:
+      allowed_feed_urls: [...]
+```
+
+### 2. MCP (Model Context Protocol) Skills
+
+External tools accessed via MCP:
+
+```yaml
+skills:
+  - type: mcp
+    name: external_tool
+    command: tool-server
+    args: [--port, '3001']
+    tools: [tool_name]
+    env:
+      API_KEY: your-key
+```
+
+### 3. LLM Skills
+
+Native language model capabilities:
+
+```yaml
+skills:
+  - type: llm
+    name: task_name
+    description: Task description
+    instruction: Detailed instructions for the task
+```
+
+## Development Best Practices
+
+### System Prompts
+
+- Write clear, specific system instructions
+- Include behavior guidelines for tool usage
+- Specify how to handle edge cases and errors
+- Use the pipe (`|`) syntax for multi-line prompts
+
+### Message Examples
+
+Provide training examples for agent behavior:
+
+```yaml
+messageExamples:
+  - - user: User input example
+      text: Expected agent response
+      actions: [tool_name]
+```
+
+### Documentation
+
+- Document agent purpose and capabilities clearly
+- Include usage examples in the description
+- Reference relevant configuration examples in [examples/](mdc:examples/)
+
+## Testing Patterns
+
+- Create test agents for new features
+- Test with various question types
+- Verify tool usage behavior
+- Check error handling and edge cases
+
+## File Organization
+
+- Store agent configurations in [examples/](mdc:examples/)
+- Use descriptive filenames with .yaml extension
+- Follow naming convention: `purpose_agent.yaml`
+- Group related agents by domain (news, research, etc.)
+
+## Common Agent Types
+
+### News Monitoring
+
+- Use RSS tools with multiple news sources
+- Configure search and read capabilities
+- Include citation requirements in system prompt
+- See [examples/news_monitor.agent.yaml](mdc:examples/news_monitor.agent.yaml)
+
+### Industry Research
+
+- Focus on specific domain RSS feeds
+- Configure knowledge tools for deeper research
+- Include analysis capabilities in system prompt
+- See [examples/startup_news_agent.yaml](mdc:examples/startup_news_agent.yaml)
+
+### Knowledge Assistants
+
+- Configure knowledge search capabilities
+- Include document processing tools
+- Enable multi-modal input/output as needed
+- See [examples/example_knowledge.agent.yaml](mdc:examples/example_knowledge.agent.yaml)
+
+## Configuration Validation
+
+- Verify all required fields are present
+- Test RSS feed URLs for accessibility
+- Validate YAML syntax before deployment
+- Check that model names are supported

@@ -3,3 +3,168 @@ description:
 globs:
 alwaysApply: false
 ---
+
+# Documentation Standards
+
+This rule defines documentation standards and practices for the AgentRuntime project.
+
+## Documentation Structure
+
+The project follows a structured documentation approach in the [docs/](mdc:docs/) directory:
+
+### Core Documentation Files
+
+- [docs/agent.md](mdc:docs/agent.md) - Complete agent configuration reference
+- [docs/rss-tools.md](mdc:docs/rss-tools.md) - RSS tools configuration guide
+- [docs/quickstart.md](mdc:docs/quickstart.md) - Beginner-friendly setup guide
+- [docs/playground.md](mdc:docs/playground.md) - Advanced developer testing guide
+
+### Documentation Style Guidelines
+
+#### Formatting
+
+- Use clear, descriptive headings with proper hierarchy
+- Use YAML format for all configuration examples
+- Include complete, runnable examples
+- Use code blocks with proper syntax highlighting
+- Use tables for property references
+
+#### Content Structure
+
+1. **Overview** - Brief explanation of purpose and capabilities
+2. **Configuration** - Step-by-step setup instructions
+3. **Examples** - Complete working examples
+4. **Best Practices** - Recommended approaches
+5. **Troubleshooting** - Common issues and solutions
+6. **Next Steps** - References to related documentation
+
+#### Writing Style
+
+- Write for the intended audience (beginners vs developers)
+- Use clear, concise language
+- Focus on practical implementation
+- Include context and explanations, not just instructions
+- Use active voice and present tense
+
+## Configuration Examples
+
+### YAML Preference
+
+Always use YAML format for configuration examples, not JSON:
+
+```yaml
+# Good: YAML format
+skills:
+  - type: nativeTool
+    name: rss_reader
+    description: Search and read RSS feeds
+# Avoid: JSON format
+```
+
+### Complete Examples
+
+Provide complete, runnable examples rather than fragments:
+
+```yaml
+# Include all required fields
+name: Agent Name
+description: Clear description
+url: https://api.example.com/agent
+version: '1.0.0'
+defaultInputModes: [text]
+defaultOutputModes: [text]
+model: anthropic/claude-3.5-haiku
+system: |
+  Complete system instructions
+skills:
+  - type: nativeTool
+    name: skill_name
+    # Complete skill configuration
+```
+
+## Tool Documentation
+
+### RSS Tools Documentation
+
+The RSS tools guide in [docs/rss-tools.md](mdc:docs/rss-tools.md) follows this pattern:
+
+- Focus on AI agent configuration, not developer API usage
+- Explain how agents use tools automatically
+- Include conversation examples showing user-agent interactions
+- Provide system prompt examples for proper tool usage
+
+### Tool Description Format
+
+For each tool, include:
+
+- Purpose and capabilities
+- When AI agents use the tool automatically
+- Configuration requirements
+- Working examples
+- Common use cases
+
+## Example Documentation
+
+### Agent Examples
+
+Store agent examples in [examples/](mdc:examples/) with:
+
+- Descriptive filenames ending in `.agent.yaml`
+- Complete configuration including all required fields
+- Clear descriptions of agent purpose
+- Proper skill configurations
+
+### Example Documentation Format
+
+For each example, include:
+
+- Purpose and use case
+- Key configuration highlights
+- Usage scenarios
+- Related tools or patterns
+
+## Best Practices
+
+### User Focus
+
+- Write documentation from the user's perspective
+- Explain the "why" behind configurations
+- Include context and background information
+- Provide troubleshooting for common issues
+
+### Code Examples
+
+- Test all code examples before including them
+- Use realistic, practical examples
+- Include error handling where appropriate
+- Show both simple and complex configurations
+
+### Cross-References
+
+- Link to related documentation using relative paths
+- Reference specific files using proper paths
+- Include "Next Steps" sections with relevant links
+- Keep references up-to-date with file changes
+
+### Maintenance
+
+- Update documentation when code changes
+- Verify examples still work with current codebase
+- Review and update troubleshooting sections
+- Keep version numbers current in examples
+
+## Documentation Review Process
+
+### Before Publishing
+
+- Test all configuration examples
+- Verify all file references are correct
+- Check for consistent formatting and style
+- Ensure complete coverage of the topic
+
+### Regular Maintenance
+
+- Review documentation when making code changes
+- Update examples to reflect current best practices
+- Add new troubleshooting items as issues arise
+- Keep external links and references current
