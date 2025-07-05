@@ -17,6 +17,7 @@ import (
 	"github.com/firebase/genkit/go/genkit"
 	"github.com/gen2brain/go-fitz"
 	"github.com/habiliai/agentruntime/config"
+	"github.com/habiliai/agentruntime/internal/stringutils"
 	"github.com/mokiat/gog"
 	"github.com/pkg/errors"
 )
@@ -88,15 +89,15 @@ func ProcessKnowledgeFromPDF(ctx context.Context, g *genkit.Genkit, id string, i
 	knowledge := &Knowledge{
 		ID: id,
 		Source: Source{
-			Title: pdfMetadata["title"],
+			Title: stringutils.SanitizeUnicodeString(pdfMetadata["title"]),
 			Type:  SourceTypePDF,
 		},
 		Metadata: map[string]any{
-			"author":   pdfMetadata["author"],
-			"subject":  pdfMetadata["subject"],
-			"keywords": pdfMetadata["keywords"],
-			"creator":  pdfMetadata["creator"],
-			"producer": pdfMetadata["producer"],
+			"author":   stringutils.SanitizeUnicodeString(pdfMetadata["author"]),
+			"subject":  stringutils.SanitizeUnicodeString(pdfMetadata["subject"]),
+			"keywords": stringutils.SanitizeUnicodeString(pdfMetadata["keywords"]),
+			"creator":  stringutils.SanitizeUnicodeString(pdfMetadata["creator"]),
+			"producer": stringutils.SanitizeUnicodeString(pdfMetadata["producer"]),
 		},
 		Documents: make([]*Document, 0),
 	}
@@ -165,6 +166,7 @@ func ProcessKnowledgeFromPDF(ctx context.Context, g *genkit.Genkit, id string, i
 			if err != nil {
 				return nil, errors.Wrapf(err, "failed to extract text from page %d", pageNum+1)
 			}
+			extractedText = stringutils.SanitizeUnicodeString(extractedText)
 		default:
 			return nil, errors.Errorf("invalid PDF extraction method: %s", config.PDFExtractionMethod)
 		}
