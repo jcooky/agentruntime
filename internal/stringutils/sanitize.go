@@ -8,6 +8,10 @@ import (
 
 // sanitizeUnicodeString removes problematic Unicode characters
 func SanitizeUnicodeString(s string) string {
+	if s == "" {
+		return ""
+	}
+
 	// Quick check: if string is valid UTF-8 and has no null bytes, return as-is
 	if utf8.ValidString(s) && !strings.Contains(s, "\u0000") && !hasControlChars(s) {
 		return s

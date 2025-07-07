@@ -5,6 +5,7 @@ import (
 
 	"github.com/firebase/genkit/go/ai"
 	"github.com/firebase/genkit/go/genkit"
+	"github.com/pkg/errors"
 )
 
 type (
@@ -28,6 +29,9 @@ func NewGenkitEmbedder(genkit *genkit.Genkit) Embedder {
 // Embed generates embeddings for the given texts
 func (e *GenkitEmbedder) Embed(ctx context.Context, texts ...string) ([][]float32, error) {
 	embedder := genkit.LookupEmbedder(e.genkit, "openai", "text-embedding-3-small")
+	if embedder == nil {
+		return nil, errors.Errorf("embedder not found")
+	}
 
 	resp, err := ai.Embed(ctx, embedder, ai.WithTextDocs(texts...))
 	if err != nil {
