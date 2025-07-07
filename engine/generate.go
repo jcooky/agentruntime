@@ -2,7 +2,6 @@ package engine
 
 import (
 	"context"
-	"slices"
 	"strings"
 
 	"github.com/firebase/genkit/go/ai"
@@ -20,20 +19,6 @@ type (
 		Model string
 	}
 )
-
-func withoutPurposeOutput(history []*ai.Message) []*ai.Message {
-	newHistory := slices.Clone(history)
-	for _, hist := range newHistory {
-		for i, c := range hist.Content {
-			if c.Metadata != nil && c.Metadata["purpose"] == "output" {
-				hist.Content = slices.Delete(hist.Content, i, i+1)
-				break
-			}
-		}
-	}
-
-	return newHistory
-}
 
 func (e *Engine) Generate(
 	ctx context.Context,

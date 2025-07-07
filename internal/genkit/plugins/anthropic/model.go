@@ -68,15 +68,6 @@ func generateStream(ctx context.Context, client *anthropic.Client, genRequest *a
 		}
 
 		switch event := event.AsAny().(type) {
-		case anthropic.ContentBlockStartEvent:
-			chunk := &ai.ModelResponseChunk{
-				Index:      int(event.Index),
-				Role:       ai.RoleModel,
-				Aggregated: false,
-			}
-			if err := cb(ctx, chunk); err != nil {
-				return nil, err
-			}
 		case anthropic.ContentBlockDeltaEvent:
 			chunk := &ai.ModelResponseChunk{
 				Index:      int(event.Index),
@@ -102,16 +93,6 @@ func generateStream(ctx context.Context, client *anthropic.Client, genRequest *a
 					"type": "citation",
 					"body": citation,
 				})}
-			}
-			if err := cb(ctx, chunk); err != nil {
-				return nil, err
-			}
-		case anthropic.ContentBlockStopEvent:
-			chunk := &ai.ModelResponseChunk{
-				Index:      int(event.Index),
-				Role:       ai.RoleModel,
-				Aggregated: true,
-				Content:    []*ai.Part{translateContent(message.Content[len(message.Content)-1])},
 			}
 			if err := cb(ctx, chunk); err != nil {
 				return nil, err

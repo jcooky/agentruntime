@@ -13,6 +13,7 @@ import (
 	"github.com/firebase/genkit/go/ai"
 	"github.com/firebase/genkit/go/genkit"
 	"github.com/habiliai/agentruntime/internal/genkit/plugins/anthropic"
+	"github.com/mokiat/gog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -623,7 +624,7 @@ func TestLive_Claude4ExplicitReasoningControl(t *testing.T) {
 			name:             "Claude 4 - Explicitly disable reasoning",
 			modelName:        "claude-4-sonnet",
 			prompt:           "A complex math problem: If x + 2y = 10 and 3x - y = 5, what are x and y?",
-			extendedThinking: ptr(false),
+			extendedThinking: gog.PtrOf(false),
 			budgetRatio:      0,
 			expectReasoning:  false, // Should not have reasoning when explicitly disabled
 		},
@@ -631,7 +632,7 @@ func TestLive_Claude4ExplicitReasoningControl(t *testing.T) {
 			name:             "Claude 3.5 - Explicitly enable reasoning (silently ignored)",
 			modelName:        "claude-3.5-haiku",
 			prompt:           "What is 10 * 5? Think step by step.",
-			extendedThinking: ptr(true),
+			extendedThinking: gog.PtrOf(true),
 			budgetRatio:      0.25,
 			expectReasoning:  false, // Claude 3.5 doesn't support reasoning, API silently ignores it
 		},
@@ -639,7 +640,7 @@ func TestLive_Claude4ExplicitReasoningControl(t *testing.T) {
 			name:             "Claude 3.7 - Override default with disable",
 			modelName:        "claude-3.7-sonnet",
 			prompt:           "Solve: 2x + 3 = 7",
-			extendedThinking: ptr(false),
+			extendedThinking: gog.PtrOf(false),
 			budgetRatio:      0,
 			expectReasoning:  false, // Should not have reasoning when explicitly disabled
 		},
@@ -728,7 +729,42 @@ func TestLive_Claude4ExplicitReasoningControl(t *testing.T) {
 	}
 }
 
-// Helper function to create a pointer to a bool
-func ptr(b bool) *bool {
-	return &b
+func TestLive_Claud4ThinkingStreamingCompareGenerate(t *testing.T) {
+	if os.Getenv("ANTHROPIC_API_KEY") == "" {
+		t.Skip("ANTHROPIC_API_KEY not set")
+	}
+
+	ctx := context.Background()
+	g, err := genkit.Init(ctx, genkit.WithPlugins(&anthropic.Plugin{
+		APIKey: os.Getenv("ANTHROPIC_API_KEY"),
+	}))
+	require.NoError(t, err)
+
+	model := anthropic.Model(g, "claude-4-sonnet")
+	require.NotNil(t, model)
+
+	streamingMessage := ""
+	genResp, err := genkit.Generate(
+		ctx,
+		g,
+		ai.WithModelName("anthropic/claude-4-sonnet"),
+		ai.WithPrompt("I want to order and identify my entities by Random Unique ID. But, UUID has not been ordered. So can we recommend a way to order and identify them at a time?"),
+		ai.WithStreaming(func(ctx context.Context, chunk *ai.ModelResponseChunk) error {
+			for _, content := range chunk.Content {
+				if content.IsText() {
+					streamingMessage += content.Text
+				}
+			}
+			return nil
+		}),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, genResp)
+	require.NotNil(t, genResp.Message)
+	require.NotEmpty(t, genResp.Message.Content)
+
+	t.Logf("streamingMessage: %s", streamingMessage)
+	t.Logf("genResp: %s", genResp.Text())
+
+	assert.Equal(t, streamingMessage, genResp.Text())
 }
