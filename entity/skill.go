@@ -86,3 +86,64 @@ func (u *AgentSkillUnion) UnmarshalJSON(data []byte) error {
 		return errors.Errorf("unknown skill type: %s", tpe.Type)
 	}
 }
+
+func (u *AgentSkillUnion) MarshalJSON() ([]byte, error) {
+	switch u.Type {
+	case AgentSkillTypeMCP:
+		if u.OfMCP == nil {
+			return nil, errors.New("OfMCP is nil for MCP skill type")
+		}
+		// Create a map to merge type with MCP fields
+		mcpData, err := json.Marshal(u.OfMCP)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+
+		var mcpMap map[string]interface{}
+		if err := json.Unmarshal(mcpData, &mcpMap); err != nil {
+			return nil, errors.WithStack(err)
+		}
+
+		mcpMap["type"] = u.Type
+		return json.Marshal(mcpMap)
+
+	case AgentSkillTypeLLM:
+		if u.OfLLM == nil {
+			return nil, errors.New("OfLLM is nil for LLM skill type")
+		}
+		// Create a map to merge type with LLM fields
+		llmData, err := json.Marshal(u.OfLLM)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+
+		var llmMap map[string]interface{}
+		if err := json.Unmarshal(llmData, &llmMap); err != nil {
+			return nil, errors.WithStack(err)
+		}
+
+		llmMap["type"] = u.Type
+		return json.Marshal(llmMap)
+
+	case AgentSkillTypeNative:
+		if u.OfNative == nil {
+			return nil, errors.New("OfNative is nil for Native skill type")
+		}
+		// Create a map to merge type with Native fields
+		nativeData, err := json.Marshal(u.OfNative)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+
+		var nativeMap map[string]interface{}
+		if err := json.Unmarshal(nativeData, &nativeMap); err != nil {
+			return nil, errors.WithStack(err)
+		}
+
+		nativeMap["type"] = u.Type
+		return json.Marshal(nativeMap)
+
+	default:
+		return nil, errors.Errorf("unknown skill type: %s", u.Type)
+	}
+}
