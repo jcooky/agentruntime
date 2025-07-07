@@ -63,6 +63,7 @@ type (
 	}
 
 	RunResponse struct {
+		*ai.ModelResponse
 		ToolCalls []ToolCall `json:"tool_calls"`
 	}
 
@@ -95,8 +96,9 @@ func (s *Engine) Run(
 	}
 
 	ctx = tool.WithEmptyCallDataStore(ctx)
+	res := &RunResponse{}
 	for i := 0; i < 3; i++ {
-		_, err = s.Generate(
+		res.ModelResponse, err = s.Generate(
 			ctx,
 			&GenerateRequest{
 				Model: agent.ModelName,
@@ -118,7 +120,6 @@ func (s *Engine) Run(
 		return nil, errors.Wrapf(err, "failed to generate")
 	}
 
-	var res RunResponse
 	toolCallData := tool.GetCallData(ctx)
 	for _, data := range toolCallData {
 		tc := ToolCall{
@@ -140,5 +141,5 @@ func (s *Engine) Run(
 		res.ToolCalls = append(res.ToolCalls, tc)
 	}
 
-	return &res, nil
+	return res, nil
 }
