@@ -40,6 +40,11 @@ messageExamples:
 skills:
   - type: nativeTool
     name: knowledge_search
+    # knowledge ids is optional, if not provided, all knowledge will be used else allow to use only provided knowledge ids to search
+    # env:
+    #   knowledge_ids:
+    #     - 1
+    #     - 2
   - type: llm
     name: adoption_advisor
     description: Provides comprehensive advice about dog adoption and care
