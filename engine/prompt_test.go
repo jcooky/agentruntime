@@ -5,22 +5,11 @@ import (
 
 	"github.com/habiliai/agentruntime/engine"
 	"github.com/habiliai/agentruntime/entity"
-	"github.com/mokiat/gog"
 )
 
 func (s *EngineTestSuite) TestBuildPromptValues() {
 	agent := entity.Agent{
-		AgentCard: entity.AgentCard{
-			Name:        "Alice",
-			Description: "Alice is a weather forecaster. You can ask her about the weather in any city.",
-			URL:         "https://alice.com",
-			IconURL:     gog.PtrOf("https://alice.com/image.png"),
-			Provider: &entity.AgentProvider{
-				Organization: "HabiliAI",
-				URL:          "https://habili.ai",
-			},
-			Version: "1.0.0",
-		},
+		Name:      "Alice",
 		Role:      "weather forecaster",
 		Prompt:    "You are a weather forecaster. You can ask her about the weather in any city.",
 		ModelName: "openai/gpt-4o",

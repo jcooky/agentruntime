@@ -1,7 +1,8 @@
 package entity
 
 type Agent struct {
-	AgentCard       `json:",inline"`
+	Name            string             `json:"name"`
+	Description     string             `json:"description,omitempty"`
 	ModelName       string             `json:"model,omitempty"`
 	ModelConfig     map[string]any     `json:"modelConfig,omitempty"`
 	System          string             `json:"system,omitempty"`

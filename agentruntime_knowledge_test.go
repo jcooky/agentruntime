@@ -203,13 +203,11 @@ func TestAgentWithRAGAndCustomKnowledge(t *testing.T) {
 
 	// Create a simple agent with knowledge
 	agent := entity.Agent{
-		AgentCard: entity.AgentCard{
-			Name:        "TestRAGAgent",
-			Description: "A test agent for RAG functionality",
-		},
-		ModelName: "anthropic/claude-3.5-haiku",
-		System:    "You are a helpful assistant with access to a knowledge base.",
-		Role:      "Knowledge Assistant",
+		Name:        "TestRAGAgent",
+		Description: "A test agent for RAG functionality",
+		ModelName:   "anthropic/claude-3.5-haiku",
+		System:      "You are a helpful assistant with access to a knowledge base.",
+		Role:        "Knowledge Assistant",
 		Knowledge: []map[string]any{
 			{
 				"topic":   "Company Policy",
