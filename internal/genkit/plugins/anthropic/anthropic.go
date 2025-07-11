@@ -14,9 +14,10 @@ import (
 )
 
 const (
-	provider    = "anthropic"
-	labelPrefix = "Anthropic"
-	apiKeyEnv   = "ANTHROPIC_API_KEY"
+	provider          = "anthropic"
+	labelPrefix       = "Anthropic"
+	apiKeyEnv         = "ANTHROPIC_API_KEY"
+	defaultMaxRetries = 4
 )
 
 var (
@@ -78,6 +79,10 @@ type Plugin struct {
 	// The timeout for requests to the Anthropic API.
 	// If empty, the default timeout of 10 minutes will be used.
 	RequestTimeout time.Duration
+
+	// The maximum number of retries for the request.
+	// If empty, the default value of 3 will be used.
+	MaxRetries int
 }
 
 var (
@@ -109,10 +114,15 @@ func (o *Plugin) Init(_ context.Context, g *genkit.Genkit) (err error) {
 	if o.RequestTimeout == 0 {
 		o.RequestTimeout = defaultRequestTimeout
 	}
+	if o.MaxRetries == 0 {
+		o.MaxRetries = defaultMaxRetries
+	}
 
 	client := anthropic.NewClient(
 		option.WithAPIKey(apiKey),
 		option.WithRequestTimeout(o.RequestTimeout),
+		option.WithMaxRetries(o.MaxRetries),
+		option.WithEnvironmentProduction(),
 	)
 
 	// Define models with simplified names as requested

@@ -58,6 +58,14 @@ func generateStream(ctx context.Context, client *anthropic.Client, genRequest *a
 
 	// Use standard streaming API
 	stream := client.Messages.NewStreaming(ctx, params)
+	defer stream.Close()
+
+	var toolUsePart struct {
+		Index int64
+		Ref   string
+		Name  string
+		Input string
+	}
 
 	message := anthropic.Message{}
 	for stream.Next() {
@@ -66,8 +74,16 @@ func generateStream(ctx context.Context, client *anthropic.Client, genRequest *a
 		if err != nil {
 			return nil, fmt.Errorf("error accumulating message: %w", err)
 		}
-
 		switch event := event.AsAny().(type) {
+		case anthropic.ContentBlockStartEvent:
+			switch block := event.ContentBlock.AsAny().(type) {
+			case anthropic.ToolUseBlock:
+				toolUsePart.Index = event.Index
+				toolUsePart.Ref = block.ID
+				toolUsePart.Name = block.Name
+			default:
+				toolUsePart.Index = -1
+			}
 		case anthropic.ContentBlockDeltaEvent:
 			chunk := &ai.ModelResponseChunk{
 				Index:      int(event.Index),
@@ -79,7 +95,14 @@ func generateStream(ctx context.Context, client *anthropic.Client, genRequest *a
 			case anthropic.TextDelta:
 				chunk.Content = []*ai.Part{ai.NewTextPart(delta.Text)}
 			case anthropic.InputJSONDelta:
-				chunk.Content = []*ai.Part{ai.NewDataPart(delta.PartialJSON)}
+				if toolUsePart.Index != event.Index {
+					continue
+				}
+				chunk.Content = []*ai.Part{ai.NewToolRequestPart(&ai.ToolRequest{
+					Ref:   toolUsePart.Ref,
+					Name:  toolUsePart.Name,
+					Input: delta.PartialJSON,
+				})}
 			case anthropic.ThinkingDelta:
 				chunk.Content = []*ai.Part{ai.NewReasoningPart(delta.Thinking, []byte{})}
 			case anthropic.SignatureDelta:

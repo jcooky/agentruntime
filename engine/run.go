@@ -4,6 +4,7 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
+	"math"
 	"reflect"
 	"text/template"
 
@@ -11,6 +12,10 @@ import (
 	"github.com/habiliai/agentruntime/entity"
 	"github.com/habiliai/agentruntime/tool"
 	"github.com/pkg/errors"
+)
+
+const (
+	defaultMaxTurns = math.MaxInt
 )
 
 var (
@@ -109,6 +114,7 @@ func (s *Engine) Run(
 			ai.WithConfig(agent.ModelConfig),
 			ai.WithTools(promptValues.Tools...),
 			ai.WithStreaming(streamCallback),
+			ai.WithMaxTurns(defaultMaxTurns),
 		)
 		if err != nil {
 			s.logger.Warn("failed to generate", "err", err)

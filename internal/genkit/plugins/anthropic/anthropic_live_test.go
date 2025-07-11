@@ -4,6 +4,7 @@ import (
 	"context"
 	_ "embed"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -767,4 +768,346 @@ func TestLive_Claud4ThinkingStreamingCompareGenerate(t *testing.T) {
 	t.Logf("genResp: %s", genResp.Text())
 
 	assert.Equal(t, streamingMessage, genResp.Text())
+}
+
+// TestLive_GenerateWithToolCallStreaming tests tool calling with streaming to verify
+// InputJSONDelta handling in the streaming response processing
+func TestLive_GenerateWithToolCallStreaming(t *testing.T) {
+	if os.Getenv("ANTHROPIC_API_KEY") == "" {
+		t.Skip("ANTHROPIC_API_KEY not set")
+	}
+
+	ctx := context.Background()
+	g, err := genkit.Init(ctx, genkit.WithPlugins(&anthropic.Plugin{
+		APIKey: os.Getenv("ANTHROPIC_API_KEY"),
+	}))
+	require.NoError(t, err)
+
+	model := anthropic.Model(g, "claude-3.5-haiku")
+	require.NotNil(t, model)
+
+	// Create context with timeout
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Minute)
+	defer cancel()
+
+	// Define a simple tool for testing
+	tool := &ai.ToolDefinition{
+		Name:        "get_weather",
+		Description: "Get the current weather for a location",
+		InputSchema: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"location": map[string]any{
+					"type":        "string",
+					"description": "The city and state, e.g. San Francisco, CA",
+				},
+				"unit": map[string]any{
+					"type":        "string",
+					"enum":        []string{"celsius", "fahrenheit"},
+					"description": "The unit of temperature",
+				},
+			},
+			"required": []string{"location"},
+		},
+	}
+
+	req := &ai.ModelRequest{
+		Messages: []*ai.Message{
+			{
+				Role: ai.RoleUser,
+				Content: []*ai.Part{
+					ai.NewTextPart("What's the weather like in Tokyo, Japan? Use celsius for temperature."),
+				},
+			},
+		},
+		Config: &ai.GenerationCommonConfig{
+			MaxOutputTokens: 1000,
+			Temperature:     0.0,
+		},
+		Tools: []*ai.ToolDefinition{tool},
+	}
+
+	var streamedChunks []*ai.ModelResponseChunk
+	var toolRequestChunks []*ai.Part
+
+	resp, err := model.Generate(ctx, req, func(ctx context.Context, chunk *ai.ModelResponseChunk) error {
+		streamedChunks = append(streamedChunks, chunk)
+
+		// Collect tool request parts specifically to test InputJSONDelta handling
+		for _, part := range chunk.Content {
+			if part.IsToolRequest() {
+				toolRequestChunks = append(toolRequestChunks, part)
+				inputBytes, _ := json.Marshal(part.ToolRequest.Input)
+				fmt.Printf("Tool request chunk: Name=%s, Input=%s\n",
+					part.ToolRequest.Name, string(inputBytes))
+			}
+		}
+
+		return nil
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.NotEmpty(t, streamedChunks)
+
+	// Check that we received tool request chunks during streaming
+	assert.NotEmpty(t, toolRequestChunks, "Expected to receive tool request chunks during streaming")
+
+	// Verify the final response contains tool calls
+	hasToolCall := false
+	for _, part := range resp.Message.Content {
+		if part.IsToolRequest() {
+			hasToolCall = true
+			assert.Equal(t, "get_weather", part.ToolRequest.Name)
+			assert.NotEmpty(t, part.ToolRequest.Input)
+
+			// Verify the tool input contains expected fields
+			var input map[string]any
+			inputBytes, err := json.Marshal(part.ToolRequest.Input)
+			require.NoError(t, err)
+			err = json.Unmarshal(inputBytes, &input)
+			require.NoError(t, err)
+			assert.Contains(t, input, "location")
+
+			t.Logf("Final tool call: %+v", part.ToolRequest)
+		}
+	}
+
+	assert.True(t, hasToolCall, "Expected response to contain tool calls")
+	t.Logf("Total streamed chunks: %d", len(streamedChunks))
+	t.Logf("Tool request chunks: %d", len(toolRequestChunks))
+}
+
+// TestLive_GenerateWithComplexToolCallStreaming tests more complex tool calling scenarios
+// to ensure InputJSONDelta handling works with larger JSON inputs
+func TestLive_GenerateWithComplexToolCallStreaming(t *testing.T) {
+	if os.Getenv("ANTHROPIC_API_KEY") == "" {
+		t.Skip("ANTHROPIC_API_KEY not set")
+	}
+
+	ctx := context.Background()
+	g, err := genkit.Init(ctx, genkit.WithPlugins(&anthropic.Plugin{
+		APIKey: os.Getenv("ANTHROPIC_API_KEY"),
+	}))
+	require.NoError(t, err)
+
+	model := anthropic.Model(g, "claude-3.5-haiku")
+	require.NotNil(t, model)
+
+	// Create context with timeout
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Minute)
+	defer cancel()
+
+	// Define a tool with complex input schema
+	tool := &ai.ToolDefinition{
+		Name:        "create_calendar_event",
+		Description: "Create a calendar event with detailed information",
+		InputSchema: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"title": map[string]any{
+					"type":        "string",
+					"description": "Event title",
+				},
+				"description": map[string]any{
+					"type":        "string",
+					"description": "Event description",
+				},
+				"start_time": map[string]any{
+					"type":        "string",
+					"description": "Start time in ISO format",
+				},
+				"end_time": map[string]any{
+					"type":        "string",
+					"description": "End time in ISO format",
+				},
+				"attendees": map[string]any{
+					"type": "array",
+					"items": map[string]any{
+						"type": "object",
+						"properties": map[string]any{
+							"name": map[string]any{
+								"type": "string",
+							},
+							"email": map[string]any{
+								"type": "string",
+							},
+						},
+					},
+				},
+				"location": map[string]any{
+					"type":        "string",
+					"description": "Meeting location",
+				},
+			},
+			"required": []string{"title", "start_time", "end_time"},
+		},
+	}
+
+	req := &ai.ModelRequest{
+		Messages: []*ai.Message{
+			{
+				Role: ai.RoleUser,
+				Content: []*ai.Part{
+					ai.NewTextPart("Create a calendar event for a team meeting tomorrow at 2 PM for 1 hour. Title should be 'Weekly Team Sync'. Include attendees Alice (alice@example.com) and Bob (bob@example.com). Location should be 'Conference Room A'."),
+				},
+			},
+		},
+		Config: &ai.GenerationCommonConfig{
+			MaxOutputTokens: 1500,
+			Temperature:     0.0,
+		},
+		Tools: []*ai.ToolDefinition{tool},
+	}
+
+	var jsonDeltaChunks []string
+	var finalToolInput map[string]any
+
+	resp, err := model.Generate(ctx, req, func(ctx context.Context, chunk *ai.ModelResponseChunk) error {
+		// Track partial JSON inputs to test InputJSONDelta handling
+		for _, part := range chunk.Content {
+			if part.IsToolRequest() {
+				inputBytes, _ := json.Marshal(part.ToolRequest.Input)
+				jsonDeltaChunks = append(jsonDeltaChunks, string(inputBytes))
+			}
+		}
+
+		return nil
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	// Verify the final response contains the expected tool call
+	hasToolCall := false
+	for _, part := range resp.Message.Content {
+		if part.IsToolRequest() {
+			hasToolCall = true
+			assert.Equal(t, "create_calendar_event", part.ToolRequest.Name)
+
+			// Parse and verify the final JSON input
+			inputBytes, err := json.Marshal(part.ToolRequest.Input)
+			require.NoError(t, err)
+			err = json.Unmarshal(inputBytes, &finalToolInput)
+			require.NoError(t, err)
+
+			// Verify required fields are present
+			assert.Contains(t, finalToolInput, "title")
+			assert.Contains(t, finalToolInput, "start_time")
+			assert.Contains(t, finalToolInput, "end_time")
+
+			t.Logf("Final tool input: %+v", finalToolInput)
+		}
+	}
+
+	assert.True(t, hasToolCall, "Expected response to contain tool calls")
+
+	// Log streaming behavior for debugging
+	t.Logf("Total JSON delta chunks received: %d", len(jsonDeltaChunks))
+	if len(jsonDeltaChunks) > 0 {
+		t.Logf("First chunk: %s", jsonDeltaChunks[0])
+		t.Logf("Last chunk: %s", jsonDeltaChunks[len(jsonDeltaChunks)-1])
+	}
+}
+
+// TestLive_GenerateWithMultipleToolCallsStreaming tests scenarios with multiple tool calls
+// to ensure InputJSONDelta handling works correctly with tool index matching
+func TestLive_GenerateWithMultipleToolCallsStreaming(t *testing.T) {
+	if os.Getenv("ANTHROPIC_API_KEY") == "" {
+		t.Skip("ANTHROPIC_API_KEY not set")
+	}
+
+	ctx := context.Background()
+	g, err := genkit.Init(ctx, genkit.WithPlugins(&anthropic.Plugin{
+		APIKey: os.Getenv("ANTHROPIC_API_KEY"),
+	}))
+	require.NoError(t, err)
+
+	model := anthropic.Model(g, "claude-3.5-haiku")
+	require.NotNil(t, model)
+
+	// Create context with timeout
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Minute)
+	defer cancel()
+
+	// Define multiple tools
+	weatherTool := &ai.ToolDefinition{
+		Name:        "get_weather",
+		Description: "Get current weather",
+		InputSchema: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"location": map[string]any{
+					"type": "string",
+				},
+			},
+			"required": []string{"location"},
+		},
+	}
+
+	timeTool := &ai.ToolDefinition{
+		Name:        "get_time",
+		Description: "Get current time",
+		InputSchema: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"timezone": map[string]any{
+					"type": "string",
+				},
+			},
+			"required": []string{"timezone"},
+		},
+	}
+
+	req := &ai.ModelRequest{
+		Messages: []*ai.Message{
+			{
+				Role: ai.RoleUser,
+				Content: []*ai.Part{
+					ai.NewTextPart("What's the weather in Tokyo and what time is it there?"),
+				},
+			},
+		},
+		Config: &ai.GenerationCommonConfig{
+			MaxOutputTokens: 1500,
+			Temperature:     0.0,
+		},
+		Tools: []*ai.ToolDefinition{weatherTool, timeTool},
+	}
+
+	var toolCallsByIndex = make(map[int][]*ai.Part)
+
+	resp, err := model.Generate(ctx, req, func(ctx context.Context, chunk *ai.ModelResponseChunk) error {
+		// Track tool calls by index to verify InputJSONDelta index matching
+		for _, part := range chunk.Content {
+			if part.IsToolRequest() {
+				// For this test, we'll track tool calls but can't easily get the index
+				// from the chunk directly, so we'll just verify they exist
+				toolCallsByIndex[0] = append(toolCallsByIndex[0], part)
+			}
+		}
+
+		return nil
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	// Count tool calls in final response
+	toolCallCount := 0
+	for _, part := range resp.Message.Content {
+		if part.IsToolRequest() {
+			toolCallCount++
+			inputBytes, _ := json.Marshal(part.ToolRequest.Input)
+			t.Logf("Tool call: %s with input: %s",
+				part.ToolRequest.Name, string(inputBytes))
+		}
+	}
+
+	// We expect at least one tool call, possibly two depending on the model's response
+	assert.GreaterOrEqual(t, toolCallCount, 1, "Expected at least one tool call")
+	assert.NotEmpty(t, toolCallsByIndex[0], "Expected to receive tool request chunks during streaming")
+
+	t.Logf("Total tool calls in final response: %d", toolCallCount)
+	t.Logf("Tool request chunks during streaming: %d", len(toolCallsByIndex[0]))
 }
