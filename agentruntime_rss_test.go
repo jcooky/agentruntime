@@ -107,11 +107,12 @@ func TestRSSAgent(t *testing.T) {
 						Text: tc.message,
 					},
 				},
-			}, &output, nil)
+			}, nil)
 
 			require.NoError(t, err, "Failed to run agent")
 			require.NotNil(t, response)
 
+			output = response.Text()
 			// Validate response
 			tc.validate(t, response, output)
 
@@ -157,11 +158,13 @@ func TestRSSAgentToolCalls(t *testing.T) {
 					Text: "Search for 'Series A' funding news from Crunchbase and TechCrunch feeds",
 				},
 			},
-		}, &output, nil)
+		}, nil)
 
 		require.NoError(t, err)
 		require.NotNil(t, response)
 		require.NotEmpty(t, response.ToolCalls)
+
+		output = response.Text()
 
 		// Check if search_rss was called
 		searchRSSCalled := false
@@ -222,11 +225,12 @@ func TestRSSAgentErrorHandling(t *testing.T) {
 				Text: "Find news about 'zyxwvutsrqponmlkjihgfedcba' startups",
 			},
 		},
-	}, &output, nil)
+	}, nil)
 
 	require.NoError(t, err)
 	require.NotNil(t, response)
 
+	output = response.Text()
 	// Even with no results, the agent should respond appropriately
 	assert.NotEmpty(t, output)
 }

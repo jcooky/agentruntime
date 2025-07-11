@@ -76,12 +76,13 @@ func loopMentionedBy(
 							Name: p,
 						}
 					}),
-				}, &out, nil)
+				}, nil)
 				if err != nil {
 					logger.Error("failed to run agent", "mention", mention, "error", err)
 					continue
 				}
 
+				out = resp.Text()
 				actions := gog.Map(resp.ToolCalls, func(t engine.ToolCall) Action {
 					return Action{
 						Name:   t.Name,

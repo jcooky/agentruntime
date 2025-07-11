@@ -135,10 +135,11 @@ func TestAgentWithKnowledgeService(t *testing.T) {
 				Text: "Can you tell me about Hosu? I heard he's also called Mandu sometimes.",
 			},
 		},
-	}, &out, nil)
+	}, nil)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 
+	out = resp.Text()
 	t.Logf("Response: %+v", resp)
 	t.Logf("Output: %s", out)
 
@@ -272,10 +273,11 @@ func TestAgentWithRAGAndCustomKnowledge(t *testing.T) {
 				Text: "How many vacation days do I get?",
 			},
 		},
-	}, &out1, nil)
+	}, nil)
 	require.NoError(t, err)
 	require.NotNil(t, resp1)
 
+	out1 = resp1.Text()
 	t.Logf("Test 1 - Vacation Query Response: %s", out1)
 	outputLower1 := strings.ToLower(out1)
 	has15Days := strings.Contains(outputLower1, "15 days") ||
@@ -301,10 +303,11 @@ func TestAgentWithRAGAndCustomKnowledge(t *testing.T) {
 				Text: "Can I work from home?",
 			},
 		},
-	}, &out2, nil)
+	}, nil)
 	require.NoError(t, err)
 	require.NotNil(t, resp2)
 
+	out2 = resp2.Text()
 	t.Logf("Test 2 - Remote Work Query Response: %s", out2)
 	outputLower := strings.ToLower(out2)
 	hasRemoteInfo := strings.Contains(outputLower, "wednesday") ||
@@ -331,10 +334,11 @@ func TestAgentWithRAGAndCustomKnowledge(t *testing.T) {
 				Text: "What health benefits are included?",
 			},
 		},
-	}, &out3, nil)
+	}, nil)
 	require.NoError(t, err)
 	require.NotNil(t, resp3)
 
+	out3 = resp3.Text()
 	t.Logf("Test 3 - Health Benefits Query Response: %s", out3)
 	outputLower3 := strings.ToLower(out3)
 	hasHealthInfo := strings.Contains(outputLower3, "health insurance") ||
@@ -411,10 +415,11 @@ func TestAgentWithRAGAndPDFKnowledge(t *testing.T) {
 				Text: "What is Solana? Can you explain the details to me?",
 			},
 		},
-	}, &out, nil)
+	}, nil)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 
+	out = resp.Text()
 	t.Logf("Response: %+v", resp)
 	t.Logf("Output: %s", out)
 

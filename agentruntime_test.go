@@ -107,11 +107,13 @@ func TestAgentRuntime(t *testing.T) {
 				Text: "Find and read the content of README.md file.",
 			},
 		},
-	}, &out, nil)
+	}, nil)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 
+	out = resp.Text()
 	t.Logf("Response: %+v", resp)
+	t.Logf("Output: %s", out)
 }
 
 func TestAgentRuntimeWithLLMSkill(t *testing.T) {
@@ -193,10 +195,11 @@ func TestAgentRuntimeWithLLMSkill(t *testing.T) {
 				Text: "Help me create a haiku about coding. Make it funny and relatable for programmers.",
 			},
 		},
-	}, &out, nil)
+	}, nil)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 
+	out = resp.Text()
 	t.Logf("Response: %+v", resp)
 	t.Logf("Output: %s", out)
 
@@ -306,10 +309,11 @@ func TestAgentRuntimeWithEx1(t *testing.T) {
 				Can you summarize this for investment review?`,
 			},
 		},
-	}, &out, nil)
+	}, nil)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 
+	out = resp.Text()
 	t.Logf("Response: %+v", resp)
 	t.Logf("Output: %s", out)
 
@@ -377,11 +381,12 @@ func TestAgentRuntimeWithDennis(t *testing.T) {
 				Text: "Help me create a haiku about coding. Make it funny and relatable for programmers.",
 			},
 		},
-	}, &out, nil)
+	}, nil)
 
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 
+	out = resp.Text()
 	t.Logf("Response: %+v", resp)
 	t.Logf("Output: %s", out)
 }

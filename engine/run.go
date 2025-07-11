@@ -5,7 +5,6 @@ import (
 	_ "embed"
 	"encoding/json"
 	"math"
-	"reflect"
 	"text/template"
 
 	"github.com/firebase/genkit/go/ai"
@@ -83,14 +82,8 @@ func (s *Engine) Run(
 	ctx context.Context,
 	agent entity.Agent,
 	req RunRequest,
-	output any,
 	streamCallback ai.ModelStreamCallback,
 ) (*RunResponse, error) {
-	if output == nil {
-		return nil, errors.Errorf("output is nil")
-	} else if reflect.TypeOf(output).Kind() != reflect.Ptr {
-		return nil, errors.Errorf("output is not a pointer")
-	}
 
 	promptValues, err := s.BuildPromptValues(ctx, agent, req.History, Thread{
 		Instruction:  req.ThreadInstruction,
@@ -108,7 +101,6 @@ func (s *Engine) Run(
 			&GenerateRequest{
 				Model: agent.ModelName,
 			},
-			output,
 			ai.WithSystem(agent.System),
 			ai.WithPromptFn(GetPromptFn(promptValues)),
 			ai.WithConfig(agent.ModelConfig),

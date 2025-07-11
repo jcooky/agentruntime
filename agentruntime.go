@@ -35,16 +35,16 @@ func (r *AgentRuntime) Agent() *entity.Agent {
 	return r.agent
 }
 
-func (r *AgentRuntime) Generate(ctx context.Context, req engine.GenerateRequest, out any, opts ...ai.GenerateOption) (*ai.ModelResponse, error) {
-	return r.engine.Generate(ctx, &req, out, opts...)
+func (r *AgentRuntime) Generate(ctx context.Context, req engine.GenerateRequest, opts ...ai.GenerateOption) (*ai.ModelResponse, error) {
+	return r.engine.Generate(ctx, &req, opts...)
 }
 
 func (r *AgentRuntime) Embed(ctx context.Context, texts ...string) ([][]float32, error) {
 	return r.engine.Embed(ctx, texts...)
 }
 
-func (r *AgentRuntime) Run(ctx context.Context, req engine.RunRequest, out any, streamCallback ai.ModelStreamCallback) (*engine.RunResponse, error) {
-	return r.engine.Run(ctx, *r.agent, req, out, streamCallback)
+func (r *AgentRuntime) Run(ctx context.Context, req engine.RunRequest, streamCallback ai.ModelStreamCallback) (*engine.RunResponse, error) {
+	return r.engine.Run(ctx, *r.agent, req, streamCallback)
 }
 
 func (r *AgentRuntime) Close() {
