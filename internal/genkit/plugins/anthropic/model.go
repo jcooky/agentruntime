@@ -79,6 +79,9 @@ func generateStream(ctx context.Context, client *anthropic.Client, genRequest *a
 		case anthropic.ContentBlockStartEvent:
 			switch block := event.ContentBlock.AsAny().(type) {
 			case anthropic.ToolUseBlock:
+				if toolUsePart != nil {
+					return nil, fmt.Errorf("received tool use block but no tool use part found")
+				}
 				toolUsePart = &ToolUsePart{
 					Index: event.Index,
 					Ref:   block.ID,
