@@ -1,0 +1,101 @@
+---
+globs: "*_test.go,**/test/**"
+description: "Test execution patterns and methods for agentruntime project"
+---
+
+# Test Execution Guide for AgentRuntime
+
+## Suite Test Execution Pattern
+
+For test suites using testify/suite (like EngineTestSuite), you must include the root test name:
+
+```bash
+# Correct: Include root test name (TestRunner)
+go test ./engine -v -run TestRunner/TestMissmatchStreamingAndOutput
+
+# Incorrect: Missing root test name
+go test ./engine -v -run TestMissmatchStreamingAndOutput
+```
+
+## Test Structure Examples
+
+The test hierarchy in [engine_test.go](mdc:engine/engine_test.go):
+```
+TestRunner
+├── TestBuildPromptValues
+└── TestMissmatchStreamingAndOutput
+```
+
+## API Key Requirements
+
+Many tests require API keys for external services:
+
+```bash
+# Set environment variables for tests
+export OPENAI_API_KEY="your-openai-key"
+export ANTHROPIC_API_KEY="your-anthropic-key" 
+export OPENWEATHER_API_KEY="your-weather-key"
+
+# Run test with API key
+ANTHROPIC_API_KEY=your-key go test ./engine -v -run TestRunner/TestMissmatchStreamingAndOutput
+```
+
+## Using godotenv
+
+If you have API keys in a `.env` file:
+
+```bash
+# Run single suite test
+godotenv go test ./engine -v -run TestRunner/TestMissmatchStreamingAndOutput
+
+# Run entire test suite
+godotenv go test ./engine -v -run TestRunner
+
+# Run all tests in package
+godotenv go test ./engine -v
+```
+
+## Common Test Patterns
+
+```bash
+# Run all tests in a package
+go test ./engine -v
+
+# Run specific test function (suite)
+go test ./engine -v -run TestRunner/TestSpecificTest
+
+# Run tests with race detection
+go test ./engine -v -race
+
+# Run tests with coverage
+go test ./engine -v -cover
+
+# Run tests multiple times
+go test ./engine -v -count=3
+
+# Run tests with timeout
+go test ./engine -v -timeout=30s
+```
+
+## Test Categories
+
+- **Engine Tests**: [engine/](mdc:engine/) - Core engine functionality including streaming vs output mismatch tests
+- **Tool Tests**: [tool/](mdc:tool/) - Tool manager and individual tool implementations  
+- **Knowledge Tests**: [knowledge/](mdc:knowledge/) - Knowledge service and search functionality
+
+## Debugging Test Issues
+
+1. **No tests to run**: Check test function naming and suite structure
+2. **API key errors**: Ensure environment variables are set correctly
+3. **Test panics**: Check function signatures match suite expectations (no `*testing.T` parameter for suite methods)
+
+## Specific Test Examples
+
+### Engine Streaming vs Output Mismatch Test
+
+```bash
+# Test streaming vs final output differences with tool calls
+godotenv go test ./engine -v -run TestRunner/TestMissmatchStreamingAndOutput
+```
+
+This test in [run_test.go](mdc:engine/run_test.go) demonstrates potential mismatches between streaming responses and final structured output when tool calls are involved.

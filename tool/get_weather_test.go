@@ -20,7 +20,6 @@ func (s *TestSuite) TestGetWeather() {
 	res, err := getWeatherTool.RunRaw(s, map[string]any{
 		"location": "Seoul",
 		"date":     "2023-10-01",
-		"unit":     "c",
 	})
 	s.Require().NoError(err)
 

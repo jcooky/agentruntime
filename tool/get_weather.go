@@ -16,7 +16,6 @@ type (
 	GetWeatherRequest struct {
 		Location string `json:"location" jsonschema:"required,description=Location to get the weather for"`
 		Date     string `json:"date" jsonschema:"required,description=Date to get the weather for in YYYY-MM-DD format"`
-		Unit     string `json:"unit" jsonschema:"description=Unit of measurement for temperature, e.g. Celsius, Fahrenheit"`
 	}
 
 	// GeoResponse는 OpenWeatherMap Geocoding API 응답 구조체
@@ -95,7 +94,7 @@ func getWeatherSummary(apiKey string, date string, latitude, longitude float64, 
 	params.Set("lon", fmt.Sprintf("%f", longitude))
 	params.Set("date", date)
 	params.Set("appid", apiKey)
-	params.Set("units", unit)
+	params.Set("unit", unit)
 	params.Set("lang", lang)
 
 	reqURL := fmt.Sprintf("%s?%s", baseURL, params.Encode())

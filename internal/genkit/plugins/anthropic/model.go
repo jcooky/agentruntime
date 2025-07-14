@@ -47,7 +47,7 @@ func generate(ctx context.Context, client *anthropic.Client, genRequest *ai.Mode
 		return nil, fmt.Errorf("anthropic message generation failed: %w", err)
 	}
 
-	return translateResponse(*resp)
+	return translateResponse(*resp, genRequest)
 }
 
 func generateStream(ctx context.Context, client *anthropic.Client, genRequest *ai.ModelRequest, apiModelName string, cb core.StreamCallback[*ai.ModelResponseChunk]) (*ai.ModelResponse, error) {
@@ -94,19 +94,24 @@ func generateStream(ctx context.Context, client *anthropic.Client, genRequest *a
 			switch delta := event.Delta.AsAny().(type) {
 			case anthropic.TextDelta:
 				chunk.Content = []*ai.Part{ai.NewTextPart(delta.Text)}
+				if err := cb(ctx, chunk); err != nil {
+					return nil, err
+				}
 			case anthropic.InputJSONDelta:
 				if toolUsePart.Index != event.Index {
 					continue
 				}
-				chunk.Content = []*ai.Part{ai.NewToolRequestPart(&ai.ToolRequest{
-					Ref:   toolUsePart.Ref,
-					Name:  toolUsePart.Name,
-					Input: delta.PartialJSON,
-				})}
+				toolUsePart.Input += delta.PartialJSON
 			case anthropic.ThinkingDelta:
 				chunk.Content = []*ai.Part{ai.NewReasoningPart(delta.Thinking, []byte{})}
+				if err := cb(ctx, chunk); err != nil {
+					return nil, err
+				}
 			case anthropic.SignatureDelta:
 				chunk.Content = []*ai.Part{ai.NewReasoningPart("", []byte(delta.Signature))}
+				if err := cb(ctx, chunk); err != nil {
+					return nil, err
+				}
 			case anthropic.CitationsDelta:
 				var citation map[string]any
 				if err := json.Unmarshal([]byte(delta.Citation.RawJSON()), &citation); err != nil {
@@ -116,9 +121,25 @@ func generateStream(ctx context.Context, client *anthropic.Client, genRequest *a
 					"type": "citation",
 					"body": citation,
 				})}
+				if err := cb(ctx, chunk); err != nil {
+					return nil, err
+				}
 			}
-			if err := cb(ctx, chunk); err != nil {
-				return nil, err
+		case anthropic.ContentBlockStopEvent:
+			if event.Index == toolUsePart.Index {
+				chunk := &ai.ModelResponseChunk{
+					Index:      int(event.Index),
+					Role:       ai.RoleModel,
+					Aggregated: false,
+					Content: []*ai.Part{ai.NewToolRequestPart(&ai.ToolRequest{
+						Ref:   toolUsePart.Ref,
+						Name:  toolUsePart.Name,
+						Input: json.RawMessage(toolUsePart.Input),
+					})},
+				}
+				if err := cb(ctx, chunk); err != nil {
+					return nil, err
+				}
 			}
 		}
 	}
@@ -127,7 +148,7 @@ func generateStream(ctx context.Context, client *anthropic.Client, genRequest *a
 		return nil, fmt.Errorf("anthropic streaming error: %w", err)
 	}
 
-	return translateResponse(message)
+	return translateResponse(message, genRequest)
 }
 
 func buildMessageParams(genRequest *ai.ModelRequest, apiModelName string) (anthropic.MessageNewParams, error) {
@@ -548,7 +569,7 @@ func translateContents(contents []anthropic.ContentBlockUnion) []*ai.Part {
 	return parts
 }
 
-func translateResponse(resp anthropic.Message) (*ai.ModelResponse, error) {
+func translateResponse(resp anthropic.Message, genRequest *ai.ModelRequest) (*ai.ModelResponse, error) {
 	r := &ai.ModelResponse{}
 
 	m := &ai.Message{
@@ -585,6 +606,7 @@ func translateResponse(resp anthropic.Message) (*ai.ModelResponse, error) {
 
 	// Set custom data
 	r.Custom = resp
+	r.Request = genRequest
 
 	return r, nil
 }
