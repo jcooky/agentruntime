@@ -60,12 +60,13 @@ func generateStream(ctx context.Context, client *anthropic.Client, genRequest *a
 	stream := client.Messages.NewStreaming(ctx, params)
 	defer stream.Close()
 
-	var toolUsePart struct {
+	type ToolUsePart struct {
 		Index int64
 		Ref   string
 		Name  string
 		Input string
 	}
+	var toolUsePart *ToolUsePart
 
 	message := anthropic.Message{}
 	for stream.Next() {
@@ -78,11 +79,11 @@ func generateStream(ctx context.Context, client *anthropic.Client, genRequest *a
 		case anthropic.ContentBlockStartEvent:
 			switch block := event.ContentBlock.AsAny().(type) {
 			case anthropic.ToolUseBlock:
-				toolUsePart.Index = event.Index
-				toolUsePart.Ref = block.ID
-				toolUsePart.Name = block.Name
-			default:
-				toolUsePart.Index = -1
+				toolUsePart = &ToolUsePart{
+					Index: event.Index,
+					Ref:   block.ID,
+					Name:  block.Name,
+				}
 			}
 		case anthropic.ContentBlockDeltaEvent:
 			chunk := &ai.ModelResponseChunk{
@@ -98,8 +99,8 @@ func generateStream(ctx context.Context, client *anthropic.Client, genRequest *a
 					return nil, err
 				}
 			case anthropic.InputJSONDelta:
-				if toolUsePart.Index != event.Index {
-					continue
+				if toolUsePart == nil {
+					return nil, fmt.Errorf("received input JSON delta but no tool use part found")
 				}
 				toolUsePart.Input += delta.PartialJSON
 			case anthropic.ThinkingDelta:
@@ -126,7 +127,7 @@ func generateStream(ctx context.Context, client *anthropic.Client, genRequest *a
 				}
 			}
 		case anthropic.ContentBlockStopEvent:
-			if event.Index == toolUsePart.Index {
+			if toolUsePart != nil {
 				chunk := &ai.ModelResponseChunk{
 					Index:      int(event.Index),
 					Role:       ai.RoleModel,
@@ -137,6 +138,7 @@ func generateStream(ctx context.Context, client *anthropic.Client, genRequest *a
 						Input: json.RawMessage(toolUsePart.Input),
 					})},
 				}
+				toolUsePart = nil
 				if err := cb(ctx, chunk); err != nil {
 					return nil, err
 				}
