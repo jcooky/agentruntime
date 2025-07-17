@@ -66,7 +66,14 @@ func generateStream(ctx context.Context, client *anthropic.Client, genRequest *a
 		Name  string
 		Input string
 	}
+	type WebSearchToolResultPart struct {
+		Index  int64
+		Ref    string
+		Name   string
+		Result string
+	}
 	var toolUsePart *ToolUsePart
+	var webSearchToolResultPart *WebSearchToolResultPart
 
 	message := anthropic.Message{}
 	for stream.Next() {
@@ -79,10 +86,32 @@ func generateStream(ctx context.Context, client *anthropic.Client, genRequest *a
 		case anthropic.ContentBlockStartEvent:
 			switch block := event.ContentBlock.AsAny().(type) {
 			case anthropic.ToolUseBlock:
+				if toolUsePart != nil {
+					return nil, fmt.Errorf("received tool use block but no tool use part found")
+				}
 				toolUsePart = &ToolUsePart{
 					Index: event.Index,
 					Ref:   block.ID,
 					Name:  block.Name,
+				}
+			case anthropic.ServerToolUseBlock:
+				if toolUsePart != nil {
+					return nil, fmt.Errorf("received server tool use block but no tool use part found")
+				}
+				toolUsePart = &ToolUsePart{
+					Index: event.Index,
+					Ref:   block.ID,
+					Name:  string(block.Name),
+				}
+			case anthropic.WebSearchToolResultBlock:
+				if webSearchToolResultPart != nil {
+					return nil, fmt.Errorf("received web search tool result block but no web search tool result part found")
+				}
+				webSearchToolResultPart = &WebSearchToolResultPart{
+					Index:  event.Index,
+					Ref:    block.ToolUseID,
+					Name:   "web_search",
+					Result: block.Content.RawJSON(),
 				}
 			}
 		case anthropic.ContentBlockDeltaEvent:
@@ -139,6 +168,22 @@ func generateStream(ctx context.Context, client *anthropic.Client, genRequest *a
 					})},
 				}
 				toolUsePart = nil
+				if err := cb(ctx, chunk); err != nil {
+					return nil, err
+				}
+			}
+			if webSearchToolResultPart != nil {
+				chunk := &ai.ModelResponseChunk{
+					Index:      int(event.Index),
+					Role:       ai.RoleModel,
+					Aggregated: false,
+					Content: []*ai.Part{ai.NewToolResponsePart(&ai.ToolResponse{
+						Ref:    webSearchToolResultPart.Ref,
+						Name:   webSearchToolResultPart.Name,
+						Output: json.RawMessage(webSearchToolResultPart.Result),
+					})},
+				}
+				webSearchToolResultPart = nil
 				if err := cb(ctx, chunk); err != nil {
 					return nil, err
 				}

@@ -1111,3 +1111,175 @@ func TestLive_GenerateWithMultipleToolCallsStreaming(t *testing.T) {
 	t.Logf("Total tool calls in final response: %d", toolCallCount)
 	t.Logf("Tool request chunks during streaming: %d", len(toolCallsByIndex[0]))
 }
+
+func TestLive_GenerateWithWebSearchStreaming(t *testing.T) {
+	if os.Getenv("ANTHROPIC_API_KEY") == "" {
+		t.Skip("ANTHROPIC_API_KEY not set")
+	}
+
+	ctx := context.Background()
+	g, err := genkit.Init(ctx, genkit.WithPlugins(&anthropic.Plugin{
+		APIKey: os.Getenv("ANTHROPIC_API_KEY"),
+	}))
+	require.NoError(t, err)
+
+	model := anthropic.Model(g, "claude-3.5-haiku")
+	require.NotNil(t, model)
+
+	// Create context with timeout
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Minute)
+	defer cancel()
+
+	// Define web search tool
+	webSearchTool := &ai.ToolDefinition{
+		Name:        "web_search",
+		Description: "Search the web for current information",
+		InputSchema: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"query": map[string]any{
+					"type":        "string",
+					"description": "The search query",
+				},
+			},
+			"required": []string{"query"},
+		},
+	}
+
+	req := &ai.ModelRequest{
+		Messages: []*ai.Message{
+			{
+				Role: ai.RoleUser,
+				Content: []*ai.Part{
+					ai.NewTextPart("What's the latest news about AI in 2025? Please search for recent information."),
+				},
+			},
+		},
+		Config: &ai.GenerationCommonConfig{
+			MaxOutputTokens: 2000,
+			Temperature:     0.0,
+		},
+		Tools: []*ai.ToolDefinition{webSearchTool},
+	}
+
+	var streamedChunks []*ai.ModelResponseChunk
+	var toolRequests []*ai.ToolRequest
+	var toolResponses []*ai.ToolResponse
+	var citationBlocks []map[string]any
+
+	resp, err := model.Generate(ctx, req, func(ctx context.Context, chunk *ai.ModelResponseChunk) error {
+		streamedChunks = append(streamedChunks, chunk)
+
+		if len(chunk.Content) > 0 {
+			for _, part := range chunk.Content {
+				// Collect ToolRequest data (web search initiation)
+				if part.IsToolRequest() {
+					toolRequests = append(toolRequests, part.ToolRequest)
+				}
+				// Collect ToolResponse data (web search completion)
+				if part.IsToolResponse() {
+					toolResponses = append(toolResponses, part.ToolResponse)
+				}
+				// Collect Citation data (actual web search results)
+				if part.IsCustom() {
+					if customType, ok := part.Custom["type"].(string); ok && customType == "citation" {
+						citationBlocks = append(citationBlocks, part.Custom)
+					}
+				}
+			}
+		}
+		return nil
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.NotEmpty(t, streamedChunks)
+
+	// Assert web search functionality - these MUST work
+	assert.NotEmpty(t, toolRequests, "Web search ToolRequest must be detected")
+	assert.NotEmpty(t, toolResponses, "Web search ToolResponse must be received")
+	assert.NotEmpty(t, citationBlocks, "Citation blocks with search results must be received")
+
+	// Verify ToolRequest is for web_search
+	webSearchRequestFound := false
+	for _, toolReq := range toolRequests {
+		if toolReq.Name == "web_search" {
+			webSearchRequestFound = true
+			assert.NotEmpty(t, toolReq.Ref, "Web search ToolRequest must have a reference ID")
+			break
+		}
+	}
+	assert.True(t, webSearchRequestFound, "Web search ToolRequest must be found")
+
+	// Verify ToolResponse is from web_search
+	webSearchResponseFound := false
+	var webSearchOutput string
+	for _, toolResp := range toolResponses {
+		if toolResp.Name == "web_search" {
+			webSearchResponseFound = true
+			assert.NotEmpty(t, toolResp.Ref, "Web search ToolResponse must have a reference ID")
+			assert.NotNil(t, toolResp.Output, "Web search ToolResponse must have output data")
+
+			// Extract and verify the actual search results from ToolResponse
+			if toolResp.Output != nil {
+				webSearchOutput = string(toolResp.Output.(json.RawMessage))
+				assert.NotEmpty(t, webSearchOutput, "Web search ToolResponse output must not be empty")
+
+				// Log the actual web search results from ToolResponse
+				outputPreview := webSearchOutput
+				if len(outputPreview) > 500 {
+					outputPreview = outputPreview[:500] + "..."
+				}
+				t.Logf("DEBUG: ToolResponse web search output: %s", outputPreview)
+
+				// Verify it contains search result structure
+				assert.True(t,
+					strings.Contains(webSearchOutput, "results") ||
+						strings.Contains(webSearchOutput, "content") ||
+						strings.Contains(webSearchOutput, "title"),
+					"ToolResponse output should contain search result data")
+			}
+			break
+		}
+	}
+	assert.True(t, webSearchResponseFound, "Web search ToolResponse must be found")
+
+	// Verify citation blocks contain web search results
+	validCitationsFound := 0
+	for _, citation := range citationBlocks {
+		if body, ok := citation["body"].(map[string]any); ok {
+			// Check for web search result structure
+			if searchType, hasType := body["type"].(string); hasType && searchType == "web_search_result_location" {
+				validCitationsFound++
+
+				// Verify citation has required fields
+				assert.NotEmpty(t, body["title"], "Citation must have title")
+				assert.NotEmpty(t, body["url"], "Citation must have URL")
+				assert.NotEmpty(t, body["cited_text"], "Citation must have cited text")
+			}
+		}
+	}
+	assert.Greater(t, validCitationsFound, 0, "Must have at least one valid web search citation")
+
+	// Verify final response contains AI-generated content based on search results
+	hasTextContent := false
+	totalTextLength := 0
+	for _, part := range resp.Message.Content {
+		if part.IsText() && part.Text != "" {
+			hasTextContent = true
+			totalTextLength += len(part.Text)
+		}
+	}
+	assert.True(t, hasTextContent, "Response must contain text content")
+	assert.Greater(t, totalTextLength, 100, "Response must contain substantial content (>100 chars)")
+
+	// Log summary for debugging
+	t.Logf("✅ Web search test passed:")
+	t.Logf("  - Streamed chunks: %d", len(streamedChunks))
+	t.Logf("  - ToolRequest chunks: %d", len(toolRequests))
+	t.Logf("  - ToolResponse chunks: %d", len(toolResponses))
+	t.Logf("  - Citation blocks: %d", len(citationBlocks))
+	t.Logf("  - Valid search citations: %d", validCitationsFound)
+	t.Logf("  - Web search output length: %d chars", len(webSearchOutput))
+	t.Logf("  - Final response length: %d chars", totalTextLength)
+}
