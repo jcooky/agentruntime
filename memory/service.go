@@ -24,11 +24,14 @@ type (
 		GetMemory(ctx context.Context, key string) (*Memory, error)
 		DeleteMemory(ctx context.Context, key string) error
 		ListMemories(ctx context.Context) ([]*Memory, error)
+		GenerateKey(ctx context.Context, input string, tags []string, prompt string, existingKeys []string) (string, error)
+		GenerateTags(ctx context.Context, input string, prompt string, existingTags []string) ([]string, error)
 	}
 
 	service struct {
 		store    Store
 		embedder ai.Embedder
+		genkit   *genkit.Genkit
 	}
 )
 
@@ -44,7 +47,7 @@ func NewServiceWithStore(ctx context.Context, store Store, modelConfig *config.M
 
 	embedder := genkit.LookupEmbedder(g, "openai", "text-embedding-3-small")
 
-	return &service{store: store, embedder: embedder}, nil
+	return &service{store: store, embedder: embedder, genkit: g}, nil
 }
 
 func NewService(ctx context.Context, modelConfig *config.ModelConfig, logger *slog.Logger) (Service, error) {
