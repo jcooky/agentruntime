@@ -55,6 +55,7 @@ func (s *TestSuite) SetupTest() {
 		slog.Default(),
 		g,
 		nil,
+		nil,
 	)
 	s.Require().NoError(err)
 

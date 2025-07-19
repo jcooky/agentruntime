@@ -10,6 +10,7 @@ import (
 	"github.com/habiliai/agentruntime/entity"
 	"github.com/habiliai/agentruntime/internal/mylog"
 	"github.com/habiliai/agentruntime/knowledge"
+	"github.com/habiliai/agentruntime/memory"
 	mcpclient "github.com/mark3labs/mcp-go/client"
 	"github.com/pkg/errors"
 )
@@ -20,6 +21,7 @@ type (
 		GetMCPTool(serverName, toolName string) ai.Tool
 		GetMCPTools(ctx context.Context, serverName string) []ai.Tool
 		GetToolsBySkill(ctx context.Context, skill entity.AgentSkillUnion) ([]ai.Tool, error)
+		GetUsagePrompt(skill entity.AgentSkillUnion) string
 		Close()
 	}
 	manager struct {
@@ -29,8 +31,10 @@ type (
 		mtx                  sync.Mutex
 		genkit               *genkit.Genkit
 		nativeSkillToolNames map[string][]string // skill.Name -> tool names
+		usagePrompts         map[string]string
 
 		knowledgeService knowledge.Service
+		memoryService    memory.Service
 	}
 )
 
@@ -42,13 +46,15 @@ var (
 	_ Manager = (*manager)(nil)
 )
 
-func NewToolManager(ctx context.Context, skills []entity.AgentSkillUnion, logger *slog.Logger, genkit *genkit.Genkit, knowledgeService knowledge.Service) (Manager, error) {
+func NewToolManager(ctx context.Context, skills []entity.AgentSkillUnion, logger *slog.Logger, genkit *genkit.Genkit, knowledgeService knowledge.Service, memoryService memory.Service) (Manager, error) {
 	s := &manager{
 		logger:               logger,
 		mcpClients:           make(map[string]*mcpclient.Client),
 		genkit:               genkit,
 		knowledgeService:     knowledgeService,
+		memoryService:        memoryService,
 		nativeSkillToolNames: make(map[string][]string),
+		usagePrompts:         make(map[string]string),
 	}
 
 	for _, skill := range skills {
@@ -79,6 +85,24 @@ func (m *manager) GetMCPTool(serverName, toolName string) ai.Tool {
 	}
 
 	return genkit.LookupTool(m.genkit, toolName)
+}
+
+func (m *manager) GetUsagePrompt(skill entity.AgentSkillUnion) string {
+	skillName := ""
+	switch skill.Type {
+	case "nativeTool":
+		skillName = skill.OfNative.Name
+	case "llm":
+		skillName = skill.OfLLM.Name
+	case "mcp":
+		skillName = skill.OfMCP.Name
+	}
+
+	if _, ok := m.usagePrompts[skillName]; !ok {
+		return ""
+	}
+
+	return m.usagePrompts[skillName]
 }
 
 func (m *manager) Close() {

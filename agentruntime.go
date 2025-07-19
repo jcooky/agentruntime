@@ -13,6 +13,7 @@ import (
 	"github.com/habiliai/agentruntime/internal/genkit"
 	"github.com/habiliai/agentruntime/internal/mylog"
 	"github.com/habiliai/agentruntime/knowledge"
+	"github.com/habiliai/agentruntime/memory"
 	"github.com/habiliai/agentruntime/tool"
 )
 
@@ -23,6 +24,7 @@ type (
 		logger           *slog.Logger
 		agent            *entity.Agent
 		knowledgeService knowledge.Service
+		memoryService    memory.Service
 
 		modelConfig     *config.ModelConfig
 		knowledgeConfig *config.KnowledgeConfig
@@ -85,7 +87,14 @@ func NewAgentRuntime(ctx context.Context, optionFuncs ...Option) (*AgentRuntime,
 		}
 	}
 
-	e.toolManager, err = tool.NewToolManager(ctx, e.agent.Skills, e.logger, g, e.knowledgeService)
+	if e.memoryService == nil {
+		e.memoryService, err = memory.NewService(ctx, e.modelConfig, e.logger)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	e.toolManager, err = tool.NewToolManager(ctx, e.agent.Skills, e.logger, g, e.knowledgeService, e.memoryService)
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +114,6 @@ func NewAgentRuntime(ctx context.Context, optionFuncs ...Option) (*AgentRuntime,
 		e.logger,
 		e.toolManager,
 		g,
-		e.knowledgeService,
 	)
 
 	return e, nil
@@ -113,6 +121,10 @@ func NewAgentRuntime(ctx context.Context, optionFuncs ...Option) (*AgentRuntime,
 
 func (r *AgentRuntime) GetToolManager() tool.Manager {
 	return r.toolManager
+}
+
+func (r *AgentRuntime) GetMemoryService() memory.Service {
+	return r.memoryService
 }
 
 func WithOpenAIAPIKey(apiKey string) func(e *AgentRuntime) {
@@ -160,5 +172,11 @@ func WithAgent(agent entity.Agent) func(e *AgentRuntime) {
 func WithKnowledgeService(knowledgeService knowledge.Service) func(e *AgentRuntime) {
 	return func(e *AgentRuntime) {
 		e.knowledgeService = knowledgeService
+	}
+}
+
+func WithMemoryService(memoryService memory.Service) func(e *AgentRuntime) {
+	return func(e *AgentRuntime) {
+		e.memoryService = memoryService
 	}
 }

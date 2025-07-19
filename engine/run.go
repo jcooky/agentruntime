@@ -58,6 +58,7 @@ type (
 		MessageExamples     [][]entity.MessageExample
 		Thread              Thread
 		Tools               []ai.ToolRef
+		System              string
 	}
 
 	RunRequest struct {
@@ -101,7 +102,7 @@ func (s *Engine) Run(
 			&GenerateRequest{
 				Model: agent.ModelName,
 			},
-			ai.WithSystem(agent.System),
+			ai.WithSystem(promptValues.System),
 			ai.WithPromptFn(GetPromptFn(promptValues)),
 			ai.WithConfig(agent.ModelConfig),
 			ai.WithTools(promptValues.Tools...),

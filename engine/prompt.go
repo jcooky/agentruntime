@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/firebase/genkit/go/ai"
@@ -21,6 +22,7 @@ func (s *Engine) BuildPromptValues(ctx context.Context, agent entity.Agent, hist
 			Instruction:  thread.Instruction,
 			Participants: thread.Participants,
 		},
+		System: agent.System,
 	}
 
 	// build available actions
@@ -36,8 +38,16 @@ func (s *Engine) BuildPromptValues(ctx context.Context, agent entity.Agent, hist
 				Description: tool.Definition().Description,
 			})
 			promptValues.Tools = append(promptValues.Tools, tool)
+
+		}
+
+		usagePrompt := s.toolManager.GetUsagePrompt(skill)
+		if usagePrompt != "" {
+			promptValues.System += fmt.Sprintf("\n\n%s", usagePrompt)
 		}
 	}
+
+	promptValues.System = strings.TrimSpace(promptValues.System)
 
 	return promptValues, nil
 }

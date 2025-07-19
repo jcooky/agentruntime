@@ -14,6 +14,7 @@ import (
 	"github.com/habiliai/agentruntime/entity"
 	genkitinternal "github.com/habiliai/agentruntime/internal/genkit"
 	"github.com/habiliai/agentruntime/knowledge"
+	"github.com/habiliai/agentruntime/memory"
 	"github.com/habiliai/agentruntime/tool"
 )
 
@@ -58,6 +59,12 @@ func (s *EngineTestSuite) TestMissmatchStreamingAndOutput() {
 	}, slog.Default(), true)
 	s.Require().NoError(err)
 
+	memoryService, err := memory.NewService(s, &config.ModelConfig{
+		OpenAIAPIKey:    os.Getenv("OPENAI_API_KEY"),
+		AnthropicAPIKey: os.Getenv("ANTHROPIC_API_KEY"),
+	}, slog.Default())
+	s.Require().NoError(err)
+
 	knowledgeService, err := knowledge.NewService(s, &config.ModelConfig{
 		OpenAIAPIKey:    os.Getenv("OPENAI_API_KEY"),
 		AnthropicAPIKey: os.Getenv("ANTHROPIC_API_KEY"),
@@ -68,7 +75,7 @@ func (s *EngineTestSuite) TestMissmatchStreamingAndOutput() {
 	}, slog.Default())
 	s.Require().NoError(err)
 
-	toolManager, err := tool.NewToolManager(context.Background(), skills, slog.Default(), g, knowledgeService)
+	toolManager, err := tool.NewToolManager(context.Background(), skills, slog.Default(), g, knowledgeService, memoryService)
 	s.Require().NoError(err)
 	defer toolManager.Close()
 
@@ -77,7 +84,6 @@ func (s *EngineTestSuite) TestMissmatchStreamingAndOutput() {
 		slog.Default(),
 		toolManager,
 		g,
-		knowledgeService,
 	)
 
 	// Create an agent that will use tools

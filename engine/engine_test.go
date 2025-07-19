@@ -10,7 +10,6 @@ import (
 	"github.com/habiliai/agentruntime/engine"
 	genkitinternal "github.com/habiliai/agentruntime/internal/genkit"
 	"github.com/habiliai/agentruntime/internal/mytesting"
-	"github.com/habiliai/agentruntime/knowledge"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -30,22 +29,10 @@ func (s *EngineTestSuite) SetupTest() {
 	}, slog.Default(), true)
 	s.Require().NoError(err)
 
-	knowledgeService, err := knowledge.NewService(s, &config.ModelConfig{
-		OpenAIAPIKey:    os.Getenv("OPENAI_API_KEY"),
-		XAIAPIKey:       os.Getenv("XAI_API_KEY"),
-		AnthropicAPIKey: os.Getenv("ANTHROPIC_API_KEY"),
-	}, &config.KnowledgeConfig{
-		SqliteEnabled: true,
-		SqlitePath:    ":memory:",
-		VectorEnabled: true,
-	}, slog.Default())
-	s.Require().NoError(err)
-
 	s.engine = engine.NewEngine(
 		slog.Default(),
 		nil,
 		g,
-		knowledgeService,
 	)
 }
 
