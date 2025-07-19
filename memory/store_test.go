@@ -74,7 +74,7 @@ func TestInMemoryStore_Search(t *testing.T) {
 	ctx := t.Context()
 
 	// Test search with empty store
-	results, err := store.Search(ctx, "test query", []float32{0.1, 0.2, 0.3}, 10)
+	_, err := store.Search(ctx, "test query", []float32{0.1, 0.2, 0.3}, 10)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "no memories found")
 
@@ -119,7 +119,7 @@ func TestInMemoryStore_Search(t *testing.T) {
 
 	// Test search with matching dimensions
 	queryEmbedding := []float32{0.9, 0.1, 0.1}
-	results, err = store.Search(ctx, "test query", queryEmbedding, 10)
+	results, err := store.Search(ctx, "test query", queryEmbedding, 10)
 	require.NoError(t, err, "Search should not return error")
 
 	// Should only return memories with matching embedding dimensions (3)
