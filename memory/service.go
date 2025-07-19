@@ -18,9 +18,16 @@ type (
 		Source string   `json:"source"`
 		Tags   []string `json:"tags,omitempty"`
 	}
+
+	UpdateMemoryInput struct {
+		Value string   `json:"value"`
+		Tags  []string `json:"tags,omitempty"`
+	}
+
 	Service interface {
 		RememberMemory(ctx context.Context, input RememberInput) (*Memory, error)
 		SearchMemory(ctx context.Context, query string, limit int) ([]ScoredMemory, error)
+		UpdateMemory(ctx context.Context, key string, input UpdateMemoryInput) (*Memory, error)
 		GetMemory(ctx context.Context, key string) (*Memory, error)
 		DeleteMemory(ctx context.Context, key string) error
 		ListMemories(ctx context.Context) ([]*Memory, error)
@@ -147,4 +154,20 @@ func (s *service) ListMemories(ctx context.Context) ([]*Memory, error) {
 	}
 
 	return memories, nil
+}
+
+func (s *service) UpdateMemory(ctx context.Context, key string, input UpdateMemoryInput) (*Memory, error) {
+	memory, err := s.GetMemory(ctx, key)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to get memory")
+	}
+
+	memory.Value = input.Value
+	memory.Tags = input.Tags
+
+	if err := s.store.Replace(ctx, memory); err != nil {
+		return nil, errors.Wrapf(err, "failed to update memory")
+	}
+
+	return memory, nil
 }

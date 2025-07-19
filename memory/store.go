@@ -13,6 +13,7 @@ type (
 	// Store interface for memory storage
 	Store interface {
 		Set(ctx context.Context, memory *Memory) error
+		Replace(ctx context.Context, memory *Memory) error
 		Get(ctx context.Context, key string) (*Memory, error)
 		Search(ctx context.Context, query string, queryEmbedding []float32, limit uint) ([]ScoredMemory, error)
 		List(ctx context.Context) ([]*Memory, error)
@@ -45,6 +46,13 @@ func (s *InMemoryStore) Set(ctx context.Context, memory *Memory) error {
 		return errors.Errorf("memory with key '%s' already exists", memory.Key)
 	}
 
+	s.memories[memory.Key] = memory
+	return nil
+}
+
+func (s *InMemoryStore) Replace(ctx context.Context, memory *Memory) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.memories[memory.Key] = memory
 	return nil
 }

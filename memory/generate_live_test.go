@@ -1,7 +1,6 @@
 package memory_test
 
 import (
-	"context"
 	"fmt"
 	"log/slog"
 	"os"
@@ -26,7 +25,7 @@ func TestGenerateKey_Live(t *testing.T) {
 		t.Skip("Skipping live test: OPENAI_API_KEY or ANTHROPIC_API_KEY required. Run with: godotenv go test ./memory -v")
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	store := memory.NewInMemoryStore()
 
 	service, err := memory.NewServiceWithStore(ctx, store, &config.ModelConfig{
@@ -105,7 +104,7 @@ func TestGenerateTags_Live(t *testing.T) {
 		t.Skip("Skipping live test: OPENAI_API_KEY or ANTHROPIC_API_KEY required. Run with: godotenv go test ./memory -v")
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	store := memory.NewInMemoryStore()
 
 	service, err := memory.NewServiceWithStore(ctx, store, &config.ModelConfig{
@@ -192,7 +191,7 @@ func TestGenerateKeyAndTags_Integration_Live(t *testing.T) {
 		t.Skip("Skipping live test: OPENAI_API_KEY or ANTHROPIC_API_KEY required. Run with: godotenv go test ./memory -v")
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	store := memory.NewInMemoryStore()
 
 	service, err := memory.NewServiceWithStore(ctx, store, &config.ModelConfig{
