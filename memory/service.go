@@ -20,7 +20,7 @@ type (
 	}
 
 	UpdateMemoryInput struct {
-		Value string   `json:"value"`
+		Value *string  `json:"value"`
 		Tags  []string `json:"tags,omitempty"`
 	}
 
@@ -162,8 +162,21 @@ func (s *service) UpdateMemory(ctx context.Context, key string, input UpdateMemo
 		return nil, errors.Wrapf(err, "failed to get memory")
 	}
 
-	memory.Value = input.Value
-	memory.Tags = input.Tags
+	if input.Value != nil {
+		memory.Value = *input.Value
+		// Generate embedding for the input
+		embedding, err := s.embedder.Embed(ctx, &ai.EmbedRequest{
+			Input: []*ai.Document{{Content: []*ai.Part{ai.NewTextPart(memory.Value)}}},
+		})
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to generate embedding for input '%s'", memory.Value)
+		}
+		memory.Embedding = embedding.Embeddings[0].Embedding
+	}
+
+	if len(input.Tags) > 0 {
+		memory.Tags = input.Tags
+	}
 
 	if err := s.store.Replace(ctx, memory); err != nil {
 		return nil, errors.Wrapf(err, "failed to update memory")
