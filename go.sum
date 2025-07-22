@@ -63,8 +63,8 @@ github.com/gorilla/handlers v1.5.2 h1:cLTUSsNkgcwhgRqvCNmdbRWG0A3N4F+M2nWKdScwyE
 github.com/gorilla/handlers v1.5.2/go.mod h1:dX+xVpaxdSw+q0Qek8SSsl3dfMk3jNddUkMzo0GtH0w=
 github.com/gorilla/mux v1.8.1 h1:TuBL49tXwgrFYWhqrNgrUNEY92u81SPhu7sTdzQEiWY=
 github.com/gorilla/mux v1.8.1/go.mod h1:AKf9I4AEqPTmMytcMc0KkNouC66V3BtZ4qD5fmWSiMQ=
-github.com/habiliai/genkit/go v0.2.2-0.20250707082518-3a23dc31f0df h1:GmEmQoOMq0yIUciaG1Pmzx6AHzeL4byPiGVXPKDj0jA=
-github.com/habiliai/genkit/go v0.2.2-0.20250707082518-3a23dc31f0df/go.mod h1:blRYK6oNgwBDX6F+gInACru6q527itviv+xruiMSUuU=
+github.com/habiliai/genkit/go v0.2.2-0.20250722051020-ce20d1cad790 h1:7nobYuKWAvLcArQT2oTbwI0VddR+eLYSOto+efzCry4=
+github.com/habiliai/genkit/go v0.2.2-0.20250722051020-ce20d1cad790/go.mod h1:blRYK6oNgwBDX6F+gInACru6q527itviv+xruiMSUuU=
 github.com/huandu/xstrings v1.5.0 h1:2ag3IFq9ZDANvthTwTiqSSZLjDc+BedvHPAp5tJy2TI=
 github.com/huandu/xstrings v1.5.0/go.mod h1:y5/lhBue+AyNmUVz9RLU9xbLR0o4KIIExikq4ovT0aE=
 github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=

@@ -25,6 +25,11 @@ lint: $(GOLANG_CI_LINT)
 .PHONY: test
 test:
 	go install github.com/joho/godotenv/cmd/godotenv@latest
+	CI=true godotenv -f .env go test -short -timeout 15m -p 1 ./...
+
+.PHONY: test-live
+test-live:
+	go install github.com/joho/godotenv/cmd/godotenv@latest
 	CI=true godotenv -f .env go test -timeout 15m -p 1 ./...
 
 .PHONY: clean

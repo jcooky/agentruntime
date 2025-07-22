@@ -29,6 +29,7 @@ type (
 		modelConfig     *config.ModelConfig
 		knowledgeConfig *config.KnowledgeConfig
 		logConfig       *config.LogConfig
+		memoryConfig    *config.MemoryConfig
 	}
 	Option func(*AgentRuntime)
 )
@@ -58,6 +59,7 @@ func NewAgentRuntime(ctx context.Context, optionFuncs ...Option) (*AgentRuntime,
 		modelConfig:     &config.ModelConfig{},
 		knowledgeConfig: config.NewKnowledgeConfig(),
 		logConfig:       config.NewLogConfig(),
+		memoryConfig:    config.NewMemoryConfig(),
 	}
 	for _, f := range optionFuncs {
 		f(e)
@@ -88,7 +90,7 @@ func NewAgentRuntime(ctx context.Context, optionFuncs ...Option) (*AgentRuntime,
 	}
 
 	if e.memoryService == nil {
-		e.memoryService, err = memory.NewService(ctx, e.modelConfig, e.logger)
+		e.memoryService, err = memory.NewService(ctx, e.modelConfig, e.memoryConfig, e.logger)
 		if err != nil {
 			return nil, err
 		}

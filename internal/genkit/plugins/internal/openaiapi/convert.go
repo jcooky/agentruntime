@@ -64,15 +64,29 @@ func convertRequest(model string, input *ai.ModelRequest) (goopenai.ChatCompleti
 		input.Output.Format != "" {
 		switch input.Output.Format {
 		case ai.OutputFormatJSON:
-			chatCompletionRequest.ResponseFormat = goopenai.F[goopenai.ChatCompletionNewParamsResponseFormatUnion](
-				goopenai.ChatCompletionNewParamsResponseFormat{
-					Type: goopenai.F(goopenai.ChatCompletionNewParamsResponseFormatTypeJSONObject),
-				},
-			)
+			if !input.Output.Constrained {
+				chatCompletionRequest.ResponseFormat = goopenai.F[goopenai.ChatCompletionNewParamsResponseFormatUnion](
+					goopenai.ResponseFormatJSONObjectParam{
+						Type: goopenai.F(goopenai.ResponseFormatJSONObjectTypeJSONObject),
+					},
+				)
+			} else {
+				chatCompletionRequest.ResponseFormat = goopenai.F[goopenai.ChatCompletionNewParamsResponseFormatUnion](
+					goopenai.ResponseFormatJSONSchemaParam{
+						Type: goopenai.F(goopenai.ResponseFormatJSONSchemaTypeJSONSchema),
+						JSONSchema: goopenai.F(goopenai.ResponseFormatJSONSchemaJSONSchemaParam{
+							Name:        goopenai.F("output"),
+							Description: goopenai.F("The output of the model"),
+							Schema:      goopenai.F[any](input.Output.Schema),
+							Strict:      goopenai.F(true),
+						}),
+					},
+				)
+			}
 		case ai.OutputFormatText:
 			chatCompletionRequest.ResponseFormat = goopenai.F[goopenai.ChatCompletionNewParamsResponseFormatUnion](
-				goopenai.ChatCompletionNewParamsResponseFormat{
-					Type: goopenai.F(goopenai.ChatCompletionNewParamsResponseFormatTypeText),
+				goopenai.ResponseFormatTextParam{
+					Type: goopenai.F(goopenai.ResponseFormatTextTypeText),
 				},
 			)
 		default:

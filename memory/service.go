@@ -36,9 +36,11 @@ type (
 	}
 
 	service struct {
-		store    Store
-		embedder ai.Embedder
-		genkit   *genkit.Genkit
+		store        Store
+		embedder     ai.Embedder
+		genkit       *genkit.Genkit
+		memoryConfig *config.MemoryConfig
+		logger       *slog.Logger
 	}
 )
 
@@ -46,7 +48,7 @@ var (
 	_ Service = (*service)(nil)
 )
 
-func NewServiceWithStore(ctx context.Context, store Store, modelConfig *config.ModelConfig, logger *slog.Logger) (Service, error) {
+func NewServiceWithStore(ctx context.Context, store Store, modelConfig *config.ModelConfig, memoryConfig *config.MemoryConfig, logger *slog.Logger) (Service, error) {
 	g, err := internalgenkit.NewGenkit(ctx, modelConfig, logger, modelConfig.TraceVerbose)
 	if err != nil {
 		return nil, err
@@ -54,11 +56,11 @@ func NewServiceWithStore(ctx context.Context, store Store, modelConfig *config.M
 
 	embedder := genkit.LookupEmbedder(g, "openai", "text-embedding-3-small")
 
-	return &service{store: store, embedder: embedder, genkit: g}, nil
+	return &service{store: store, embedder: embedder, genkit: g, memoryConfig: memoryConfig, logger: logger}, nil
 }
 
-func NewService(ctx context.Context, modelConfig *config.ModelConfig, logger *slog.Logger) (Service, error) {
-	return NewServiceWithStore(ctx, NewInMemoryStore(), modelConfig, logger)
+func NewService(ctx context.Context, modelConfig *config.ModelConfig, memoryConfig *config.MemoryConfig, logger *slog.Logger) (Service, error) {
+	return NewServiceWithStore(ctx, NewInMemoryStore(), modelConfig, memoryConfig, logger)
 }
 
 // RememberMemories creates and stores memories from the given inputs

@@ -62,6 +62,8 @@ func (s *EngineTestSuite) TestMissmatchStreamingAndOutput() {
 	memoryService, err := memory.NewService(s, &config.ModelConfig{
 		OpenAIAPIKey:    os.Getenv("OPENAI_API_KEY"),
 		AnthropicAPIKey: os.Getenv("ANTHROPIC_API_KEY"),
+	}, &config.MemoryConfig{
+		GenerationModel: "openai/gpt-4.1-mini",
 	}, slog.Default())
 	s.Require().NoError(err)
 

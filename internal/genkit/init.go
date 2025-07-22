@@ -33,6 +33,7 @@ func NewGenkit(
 				APIKey: modelConfig.OpenAIAPIKey,
 			})
 			defaultModel = "openai/gpt-4o"
+			logger.Info("Loaded OpenAI plugin", "model", defaultModel)
 		}
 	}
 	{
@@ -41,6 +42,7 @@ func NewGenkit(
 				APIKey: modelConfig.XAIAPIKey,
 			})
 			defaultModel = "xai/grok-3"
+			logger.Info("Loaded XAI plugin", "model", defaultModel)
 		}
 	}
 	{
@@ -49,6 +51,7 @@ func NewGenkit(
 				APIKey: modelConfig.AnthropicAPIKey,
 			})
 			defaultModel = "anthropic/claude-4-sonnet"
+			logger.Info("Loaded Anthropic plugin", "model", defaultModel)
 		}
 	}
 	g, err := genkit.Init(

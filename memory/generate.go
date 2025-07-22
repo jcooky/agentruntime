@@ -9,7 +9,6 @@ import (
 
 	"github.com/firebase/genkit/go/ai"
 	"github.com/firebase/genkit/go/genkit"
-	"github.com/pkg/errors"
 )
 
 const keyPromptTemplate = `Generate memory key: category_subcategory_detail format
@@ -92,11 +91,6 @@ func init() {
 }
 
 func (s *service) GenerateKey(ctx context.Context, input string, tags []string, prompt string, existingKeys []string) (string, error) {
-	model, err := getModelForMini(s.genkit)
-	if err != nil {
-		return "", err
-	}
-
 	var output struct {
 		Key string `json:"key" jsonschema:"required,description=Unique identifier using format: category_subcategory_detail (e.g. user_name_full, user_preference_coffee, project_requirements_2024)"`
 	}
@@ -115,7 +109,7 @@ func (s *service) GenerateKey(ctx context.Context, input string, tags []string, 
 	}
 	finalPrompt := strings.TrimSpace(promptBuffer.String())
 
-	response, err := genkit.Generate(ctx, s.genkit, ai.WithModel(model), ai.WithPrompt(finalPrompt), ai.WithOutputType(&output))
+	response, err := genkit.Generate(ctx, s.genkit, ai.WithModelName(s.memoryConfig.GenerationModel), ai.WithPrompt(finalPrompt), ai.WithOutputType(&output))
 	if err != nil {
 		return "", err
 	}
@@ -128,11 +122,6 @@ func (s *service) GenerateKey(ctx context.Context, input string, tags []string, 
 }
 
 func (s *service) GenerateTags(ctx context.Context, input string, prompt string, existingTags []string) ([]string, error) {
-
-	model, err := getModelForMini(s.genkit)
-	if err != nil {
-		return nil, err
-	}
 
 	var output struct {
 		Tags []string `json:"tags,omitempty" jsonschema:"description=Optional categorization tags (e.g. ['personal', 'preferences'], ['work', 'decisions'], ['goals'])"`
@@ -150,7 +139,13 @@ func (s *service) GenerateTags(ctx context.Context, input string, prompt string,
 	}
 	finalPrompt := strings.TrimSpace(promptBuffer.String())
 
-	response, err := genkit.Generate(ctx, s.genkit, ai.WithModel(model), ai.WithPrompt(finalPrompt), ai.WithOutputType(&output))
+	response, err := genkit.Generate(
+		ctx, s.genkit,
+		ai.WithModelName(s.memoryConfig.GenerationModel),
+		ai.WithPrompt(finalPrompt),
+		ai.WithOutputType(&output),
+		ai.WithCustomConstrainedOutput(),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -160,18 +155,4 @@ func (s *service) GenerateTags(ctx context.Context, input string, prompt string,
 	}
 
 	return output.Tags, nil
-}
-
-func getModelForMini(g *genkit.Genkit) (ai.Model, error) {
-	model := genkit.LookupModel(g, "openai", "gpt-4o-mini")
-	if model != nil {
-		return model, nil
-	}
-
-	model = genkit.LookupModel(g, "anthropic", "claude-3.5-haiku")
-	if model != nil {
-		return model, nil
-	}
-
-	return nil, errors.New("no model found. Please OPENAI_API_KEY and ANTHROPIC_API_KEY are set")
 }

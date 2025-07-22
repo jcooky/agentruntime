@@ -4,7 +4,7 @@ go 1.24.1
 
 toolchain go1.24.3
 
-replace github.com/firebase/genkit/go => github.com/habiliai/genkit/go v0.2.2-0.20250707082518-3a23dc31f0df
+replace github.com/firebase/genkit/go => github.com/habiliai/genkit/go v0.2.2-0.20250722051020-ce20d1cad790
 
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
