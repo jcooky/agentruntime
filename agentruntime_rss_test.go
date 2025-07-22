@@ -16,6 +16,10 @@ import (
 )
 
 func TestRSSAgent(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping test in short mode")
+	}
+
 	// Skip this test if ANTHROPIC_API_KEY is not set
 	if os.Getenv("ANTHROPIC_API_KEY") == "" {
 		t.Skip("ANTHROPIC_API_KEY is not set")
@@ -124,6 +128,10 @@ func TestRSSAgent(t *testing.T) {
 
 // TestRSSAgentToolCalls specifically tests the RSS tool calls
 func TestRSSAgentToolCalls(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping test in short mode")
+	}
+
 	if os.Getenv("ANTHROPIC_API_KEY") == "" {
 		t.Skip("ANTHROPIC_API_KEY is not set")
 	}
@@ -192,6 +200,10 @@ func TestRSSAgentToolCalls(t *testing.T) {
 
 // TestRSSAgentErrorHandling tests error handling scenarios
 func TestRSSAgentErrorHandling(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping test in short mode")
+	}
+
 	if os.Getenv("ANTHROPIC_API_KEY") == "" {
 		t.Skip("ANTHROPIC_API_KEY is not set")
 	}

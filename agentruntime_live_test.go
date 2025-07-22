@@ -15,6 +15,10 @@ import (
 )
 
 func TestAgentRuntimeForAgentWithMemorySkills(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping test in short mode")
+	}
+
 	// Check required environment variables [[memory:3743077]]
 	if os.Getenv("OPENAI_API_KEY") == "" {
 		t.Skip("Skipping test because OPENAI_API_KEY is not set")

@@ -11,7 +11,7 @@ import (
 
 func TestNoOpQueryRewriter(t *testing.T) {
 	rewriter := NewNoOpQueryRewriter()
-	ctx := context.Background()
+	ctx := t.Context()
 
 	tests := []struct {
 		name  string
@@ -42,6 +42,10 @@ func TestNoOpQueryRewriter(t *testing.T) {
 }
 
 func TestMultiStrategyRewriter(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping test in short mode")
+	}
+
 	// Create multiple mock rewriters
 	rewriter1 := &mockRewriter{
 		responses: map[string][]string{
@@ -69,6 +73,10 @@ func TestMultiStrategyRewriter(t *testing.T) {
 }
 
 func TestMultiStrategyRewriterDeduplication(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping test in short mode")
+	}
+
 	// Create rewriters that return duplicate results
 	rewriter1 := &mockRewriter{
 		responses: map[string][]string{
@@ -104,6 +112,10 @@ func TestMultiStrategyRewriterDeduplication(t *testing.T) {
 }
 
 func TestCreateQueryRewriter(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping test in short mode")
+	}
+
 	tests := []struct {
 		strategy string
 		wantType string

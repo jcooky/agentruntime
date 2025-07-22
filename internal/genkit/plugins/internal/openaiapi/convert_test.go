@@ -77,7 +77,7 @@ func TestConvertMessages(t *testing.T) {
 					Role: goopenai.F(goopenai.ChatCompletionAssistantMessageParamRoleAssistant),
 					ToolCalls: goopenai.F([]goopenai.ChatCompletionMessageToolCallParam{
 						{
-							ID:   goopenai.String("call_1234",),
+							ID:   goopenai.String("call_1234"),
 							Type: goopenai.F(goopenai.ChatCompletionMessageToolCallTypeFunction),
 							Function: goopenai.F(goopenai.ChatCompletionMessageToolCallFunctionParam{
 								Name:      goopenai.F("tellAFunnyJoke"),
@@ -113,7 +113,7 @@ func TestConvertMessages(t *testing.T) {
 							Type: goopenai.F(goopenai.ChatCompletionContentPartTextTypeText),
 						},
 					}),
-					ToolCallID: goopenai.String("call_1234",),
+					ToolCallID: goopenai.String("call_1234"),
 				},
 			},
 		},
@@ -245,7 +245,7 @@ func TestConvertToolCall(t *testing.T) {
 				},
 			),
 			want: goopenai.ChatCompletionMessageToolCallParam{
-				ID:   goopenai.String("call_1234",),
+				ID:   goopenai.String("call_1234"),
 				Type: goopenai.F(goopenai.ChatCompletionMessageToolCallTypeFunction),
 				Function: goopenai.F(goopenai.ChatCompletionMessageToolCallFunctionParam{
 					Name:      goopenai.F("tellAFunnyJoke"),
@@ -263,7 +263,7 @@ func TestConvertToolCall(t *testing.T) {
 				},
 			),
 			want: goopenai.ChatCompletionMessageToolCallParam{
-				ID:   goopenai.String("call_1234",),
+				ID:   goopenai.String("call_1234"),
 				Type: goopenai.F(goopenai.ChatCompletionMessageToolCallTypeFunction),
 				Function: goopenai.F(goopenai.ChatCompletionMessageToolCallFunctionParam{
 					Name:      goopenai.F("tellAFunnyJoke"),
@@ -281,7 +281,7 @@ func TestConvertToolCall(t *testing.T) {
 				},
 			),
 			want: goopenai.ChatCompletionMessageToolCallParam{
-				ID:   goopenai.String("call_1234",),
+				ID:   goopenai.String("call_1234"),
 				Type: goopenai.F(goopenai.ChatCompletionMessageToolCallTypeFunction),
 				Function: goopenai.F(goopenai.ChatCompletionMessageToolCallFunctionParam{
 					Name:      goopenai.F("tellAFunnyJoke"),
@@ -414,8 +414,8 @@ func TestConvertRequest(t *testing.T) {
 					},
 				}),
 				ResponseFormat: goopenai.F[goopenai.ChatCompletionNewParamsResponseFormatUnion](
-					goopenai.ChatCompletionNewParamsResponseFormat{
-						Type: goopenai.F(goopenai.ChatCompletionNewParamsResponseFormatTypeText),
+					goopenai.ResponseFormatTextParam{
+						Type: goopenai.F(goopenai.ResponseFormatTextTypeText),
 					},
 				),
 				MaxTokens:   goopenai.F[int64](10),
@@ -504,7 +504,7 @@ func TestConvertRequest(t *testing.T) {
 						Role: goopenai.F(goopenai.ChatCompletionAssistantMessageParamRoleAssistant),
 						ToolCalls: goopenai.F([]goopenai.ChatCompletionMessageToolCallParam{
 							{
-								ID:   goopenai.String("call_1234",),
+								ID:   goopenai.String("call_1234"),
 								Type: goopenai.F(goopenai.ChatCompletionMessageToolCallTypeFunction),
 								Function: goopenai.F(goopenai.ChatCompletionMessageToolCallFunctionParam{
 									Name:      goopenai.F("tellAFunnyJoke"),
@@ -521,7 +521,7 @@ func TestConvertRequest(t *testing.T) {
 								Type: goopenai.F(goopenai.ChatCompletionContentPartTextTypeText),
 							},
 						}),
-						ToolCallID: goopenai.String("call_1234",),
+						ToolCallID: goopenai.String("call_1234"),
 					},
 				}),
 				Tools: goopenai.F([]goopenai.ChatCompletionToolParam{
@@ -546,8 +546,8 @@ func TestConvertRequest(t *testing.T) {
 					},
 				}),
 				ResponseFormat: goopenai.F[goopenai.ChatCompletionNewParamsResponseFormatUnion](
-					goopenai.ChatCompletionNewParamsResponseFormat{
-						Type: goopenai.F(goopenai.ChatCompletionNewParamsResponseFormatTypeText),
+					goopenai.ResponseFormatTextParam{
+						Type: goopenai.F(goopenai.ResponseFormatTextTypeText),
 					},
 				),
 			},
@@ -632,7 +632,7 @@ func TestConvertRequest(t *testing.T) {
 						Role: goopenai.F(goopenai.ChatCompletionAssistantMessageParamRoleAssistant),
 						ToolCalls: goopenai.F([]goopenai.ChatCompletionMessageToolCallParam{
 							{
-								ID:   goopenai.String("call_1234",),
+								ID:   goopenai.String("call_1234"),
 								Type: goopenai.F(goopenai.ChatCompletionMessageToolCallTypeFunction),
 								Function: goopenai.F(goopenai.ChatCompletionMessageToolCallFunctionParam{
 									Name:      goopenai.F("tellAFunnyJoke"),
@@ -649,7 +649,7 @@ func TestConvertRequest(t *testing.T) {
 								Type: goopenai.F(goopenai.ChatCompletionContentPartTextTypeText),
 							},
 						}),
-						ToolCallID: goopenai.String("call_1234",),
+						ToolCallID: goopenai.String("call_1234"),
 					},
 				}),
 				Tools: goopenai.F([]goopenai.ChatCompletionToolParam{
@@ -674,8 +674,8 @@ func TestConvertRequest(t *testing.T) {
 					},
 				}),
 				ResponseFormat: goopenai.F[goopenai.ChatCompletionNewParamsResponseFormatUnion](
-					goopenai.ChatCompletionNewParamsResponseFormat{
-						Type: goopenai.F(goopenai.ChatCompletionNewParamsResponseFormatTypeJSONObject),
+					goopenai.ResponseFormatJSONObjectParam{
+						Type: goopenai.F(goopenai.ResponseFormatJSONObjectTypeJSONObject),
 					},
 				),
 			},

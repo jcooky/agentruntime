@@ -22,6 +22,10 @@ var apiKey = flag.String("key", "", "XAI API key")
 var testAll = flag.Bool("all", false, "test DefineAllXXX functions")
 
 func TestLive(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping test in short mode")
+	}
+
 	if *apiKey == "" {
 		t.Skipf("no -key provided")
 	}
@@ -66,9 +70,9 @@ func TestLive(t *testing.T) {
 			func(
 				ctx *ai.ToolContext,
 				input struct {
-				Value float64
-				Over  float64
-			},
+					Value float64
+					Over  float64
+				},
 			) (float64, error) {
 				output := math.Pow(input.Value, input.Over)
 				return output, nil
@@ -77,9 +81,9 @@ func TestLive(t *testing.T) {
 		resp, err := genkit.Generate(
 			ctx,
 			g,
-			ai.WithModel(model),                                 //
+			ai.WithModel(model), //
 			ai.WithPrompt("What is a gablorken of 2 over 3.5? Use the gablorken tool to calculate this."), //
-			ai.WithTools(gablorkenTool),                         //
+			ai.WithTools(gablorkenTool), //
 		)
 		if err != nil {
 			t.Fatal(err)
@@ -99,9 +103,9 @@ func TestLive(t *testing.T) {
 		resp, err := genkit.Generate(
 			ctx, //
 			g,
-			ai.WithModel(model),                                                    //
+			ai.WithModel(model), //
 			ai.WithPrompt("Create dummy user data with the name John and age 32."), //
-			ai.WithOutputType(User{}),                                              //
+			ai.WithOutputType(User{}), //
 		)
 		if err != nil {
 			t.Fatal(err)

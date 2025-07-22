@@ -17,6 +17,10 @@ import (
 )
 
 func TestAgentRuntime(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping test in short mode")
+	}
+
 	if os.Getenv("OPENAI_API_KEY") == "" {
 		t.Skip("Skipping test because OPENAI_API_KEY is not set")
 	}
@@ -118,6 +122,10 @@ func TestAgentRuntime(t *testing.T) {
 }
 
 func TestAgentRuntimeWithLLMSkill(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping test in short mode")
+	}
+
 	if os.Getenv("OPENAI_API_KEY") == "" {
 		t.Skip("Skipping test because OPENAI_API_KEY is not set")
 	}
@@ -236,6 +244,10 @@ func TestAgentRuntimeWithLLMSkill(t *testing.T) {
 }
 
 func TestAgentRuntimeWithEx1(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping test in short mode")
+	}
+
 	if os.Getenv("OPENAI_API_KEY") == "" {
 		t.Skip("Skipping test because OPENAI_API_KEY is not set")
 	}

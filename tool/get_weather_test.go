@@ -3,12 +3,17 @@ package tool_test
 import (
 	"fmt"
 	"os"
+	"testing"
 
 	"github.com/habiliai/agentruntime/tool"
 	"github.com/mitchellh/mapstructure"
 )
 
 func (s *TestSuite) TestGetWeather() {
+	if testing.Short() {
+		s.T().Skip("Skipping test in short mode")
+	}
+
 	apiKey := os.Getenv("OPENWEATHER_API_KEY")
 	if apiKey == "" {
 		s.T().Skip("OPENWEATHER_API_KEY is not set")

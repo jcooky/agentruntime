@@ -19,6 +19,10 @@ import (
 )
 
 func TestAgentWithKnowledgeService(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping test in short mode")
+	}
+
 	if os.Getenv("OPENAI_API_KEY") == "" {
 		t.Skip("Skipping test because OPENAI_API_KEY is not set")
 	}
@@ -195,6 +199,10 @@ func TestAgentWithKnowledgeService(t *testing.T) {
 
 // TestAgentWithRAGAndCustomKnowledge tests RAG with more complex queries
 func TestAgentWithRAGAndCustomKnowledge(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping test in short mode")
+	}
+
 	if os.Getenv("OPENAI_API_KEY") == "" {
 		t.Skip("Skipping test because OPENAI_API_KEY is not set")
 	}
@@ -360,6 +368,10 @@ func TestAgentWithRAGAndCustomKnowledge(t *testing.T) {
 }
 
 func TestAgentWithRAGAndPDFKnowledge(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping test in short mode")
+	}
+
 	if os.Getenv("OPENAI_API_KEY") == "" {
 		t.Skip("Skipping test because OPENAI_API_KEY is not set")
 	}

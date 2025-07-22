@@ -16,7 +16,6 @@ import (
 	"github.com/firebase/genkit/go/ai"
 	"github.com/firebase/genkit/go/genkit"
 	"github.com/habiliai/agentruntime/internal/genkit/plugins/anthropic"
-	"github.com/joho/godotenv"
 	"github.com/mokiat/gog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,6 +25,10 @@ import (
 var redImageFile []byte
 
 func TestLive_GenerateText(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping test in short mode")
+	}
+
 	if os.Getenv("ANTHROPIC_API_KEY") == "" {
 		t.Skip("ANTHROPIC_API_KEY not set")
 	}
@@ -112,6 +115,10 @@ func TestLive_GenerateText(t *testing.T) {
 }
 
 func TestLive_GenerateWithStreaming(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping test in short mode")
+	}
+
 	if os.Getenv("ANTHROPIC_API_KEY") == "" {
 		t.Skip("ANTHROPIC_API_KEY not set")
 	}
@@ -160,6 +167,10 @@ func TestLive_GenerateWithStreaming(t *testing.T) {
 }
 
 func TestLive_GenerateWithImage(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping test in short mode")
+	}
+
 	if os.Getenv("ANTHROPIC_API_KEY") == "" {
 		t.Skip("ANTHROPIC_API_KEY not set")
 	}
@@ -203,6 +214,10 @@ func TestLive_GenerateWithImage(t *testing.T) {
 }
 
 func TestLive_GenerateWithSystemMessage(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping test in short mode")
+	}
+
 	if os.Getenv("ANTHROPIC_API_KEY") == "" {
 		t.Skip("ANTHROPIC_API_KEY not set")
 	}
@@ -390,6 +405,10 @@ func TestLive_GenerateWithReasoning(t *testing.T) {
 // To run these reasoning tests:
 // ANTHROPIC_API_KEY=your_key go test -v -run TestLive_GenerateWithReasoning
 func TestLive_GenerateWithReasoningStreaming(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping test in short mode")
+	}
+
 	if os.Getenv("ANTHROPIC_API_KEY") == "" {
 		t.Skip("ANTHROPIC_API_KEY not set")
 	}
@@ -489,6 +508,10 @@ func TestLive_GenerateWithReasoningStreaming(t *testing.T) {
 //
 // This test verifies both the default automatic reasoning and explicit configuration overrides.
 func TestLive_Claude4AutomaticReasoning(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping test in short mode")
+	}
+
 	if os.Getenv("ANTHROPIC_API_KEY") == "" {
 		t.Skip("ANTHROPIC_API_KEY not set")
 	}
@@ -606,6 +629,10 @@ func TestLive_Claude4AutomaticReasoning(t *testing.T) {
 // TestLive_Claude4ExplicitReasoningControl tests that users can override the default reasoning behavior
 // by explicitly setting ExtendedThinkingConfig
 func TestLive_Claude4ExplicitReasoningControl(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping test in short mode")
+	}
+
 	if os.Getenv("ANTHROPIC_API_KEY") == "" {
 		t.Skip("ANTHROPIC_API_KEY not set")
 	}
@@ -734,6 +761,10 @@ func TestLive_Claude4ExplicitReasoningControl(t *testing.T) {
 }
 
 func TestLive_Claud4ThinkingStreamingCompareGenerate(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping test in short mode")
+	}
+
 	if os.Getenv("ANTHROPIC_API_KEY") == "" {
 		t.Skip("ANTHROPIC_API_KEY not set")
 	}
@@ -776,6 +807,10 @@ func TestLive_Claud4ThinkingStreamingCompareGenerate(t *testing.T) {
 // TestLive_GenerateWithToolCallStreaming tests tool calling with streaming to verify
 // InputJSONDelta handling in the streaming response processing
 func TestLive_GenerateWithToolCallStreaming(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping test in short mode")
+	}
+
 	if os.Getenv("ANTHROPIC_API_KEY") == "" {
 		t.Skip("ANTHROPIC_API_KEY not set")
 	}
@@ -884,6 +919,10 @@ func TestLive_GenerateWithToolCallStreaming(t *testing.T) {
 // TestLive_GenerateWithComplexToolCallStreaming tests more complex tool calling scenarios
 // to ensure InputJSONDelta handling works with larger JSON inputs
 func TestLive_GenerateWithComplexToolCallStreaming(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping test in short mode")
+	}
+
 	if os.Getenv("ANTHROPIC_API_KEY") == "" {
 		t.Skip("ANTHROPIC_API_KEY not set")
 	}
@@ -1016,6 +1055,10 @@ func TestLive_GenerateWithComplexToolCallStreaming(t *testing.T) {
 // TestLive_GenerateWithMultipleToolCallsStreaming tests scenarios with multiple tool calls
 // to ensure InputJSONDelta handling works correctly with tool index matching
 func TestLive_GenerateWithMultipleToolCallsStreaming(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping test in short mode")
+	}
+
 	if os.Getenv("ANTHROPIC_API_KEY") == "" {
 		t.Skip("ANTHROPIC_API_KEY not set")
 	}
@@ -1116,6 +1159,10 @@ func TestLive_GenerateWithMultipleToolCallsStreaming(t *testing.T) {
 }
 
 func TestLive_GenerateWithWebSearchStreaming(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping test in short mode")
+	}
+
 	if os.Getenv("ANTHROPIC_API_KEY") == "" {
 		t.Skip("ANTHROPIC_API_KEY not set")
 	}
@@ -1288,7 +1335,10 @@ func TestLive_GenerateWithWebSearchStreaming(t *testing.T) {
 }
 
 func TestLive_GenerateWithPDF(t *testing.T) {
-	godotenv.Load("../../../../.env")
+	if testing.Short() {
+		t.Skip("Skipping test in short mode")
+	}
+
 	if os.Getenv("ANTHROPIC_API_KEY") == "" {
 		t.Skip("ANTHROPIC_API_KEY not set")
 	}
