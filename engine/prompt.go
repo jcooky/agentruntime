@@ -12,6 +12,7 @@ import (
 )
 
 func (s *Engine) BuildPromptValues(ctx context.Context, agent entity.Agent, history []Conversation, thread Thread) (*ChatPromptValues, error) {
+
 	// construct inst promptValues
 	promptValues := &ChatPromptValues{
 		Agent:               agent,

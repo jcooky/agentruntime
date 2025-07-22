@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/goccy/go-yaml"
@@ -348,6 +349,10 @@ func TestAgentRuntimeWithEx1(t *testing.T) {
 }
 
 func TestAgentRuntimeWithDennis(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping test in short mode")
+	}
+
 	if os.Getenv("OPENAI_API_KEY") == "" {
 		t.Skip("Skipping test because OPENAI_API_KEY is not set")
 	}
@@ -389,4 +394,146 @@ func TestAgentRuntimeWithDennis(t *testing.T) {
 	out = resp.Text()
 	t.Logf("Response: %+v", resp)
 	t.Logf("Output: %s", out)
+}
+
+func TestAgentRuntimeWithImageAnalysis(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping test in short mode")
+	}
+
+	if os.Getenv("ANTHROPIC_API_KEY") == "" {
+		t.Skip("Skipping test because ANTHROPIC_API_KEY is not set")
+	}
+
+	// Create image analyzer agent directly as struct
+	agent := entity.Agent{
+		Name: "Iris",
+		Description: `Iris is an AI vision assistant specialized in analyzing and describing images. 
+She can provide detailed descriptions of visual content, identify objects, read text in images, 
+analyze compositions, and answer questions about what she sees.`,
+		ModelName: "anthropic/claude-3.5-haiku",
+		System:    "You are a helpful AI vision assistant. Analyze images carefully and provide detailed, accurate descriptions.",
+		Role:      "Image Analysis Assistant",
+		Prompt: `<INSTRUCTIONS>
+* Your name is Iris.
+* You are an expert at analyzing and describing images in detail.
+* When you receive an image, provide a comprehensive description including:
+  - Overall scene and setting
+  - Main objects and people present
+  - Colors, lighting, and composition
+  - Any text or writing visible
+  - Mood or atmosphere of the image
+  - Interesting details or notable features
+* Always be observant and precise in your descriptions.
+* If asked specific questions about the image, focus on those aspects while being thorough.
+* Use clear, descriptive language that helps others visualize what you see.
+</INSTRUCTIONS>`,
+		MessageExamples: [][]entity.MessageExample{
+			{
+				{
+					User: "USER",
+					Text: "Can you analyze this image and tell me what you see?",
+				},
+				{
+					User:    "Iris",
+					Text:    "I'll carefully analyze the image you've shared and provide you with a detailed description of what I observe.",
+					Actions: []string{},
+				},
+			},
+			{
+				{
+					User: "USER",
+					Text: "What are the main colors and objects in this picture?",
+				},
+				{
+					User:    "Iris",
+					Text:    "I'll examine the image to identify the main colors and objects present, giving you a clear breakdown of the visual elements.",
+					Actions: []string{},
+				},
+			},
+		},
+		Skills: []entity.AgentSkillUnion{},
+	}
+
+	// Test basic agent information
+	require.Equal(t, "Iris", agent.Name, "Agent name should be 'Iris'")
+	require.Contains(t, agent.Description, "vision assistant specialized in analyzing", "Agent description should contain vision assistant info")
+	require.Equal(t, "anthropic/claude-3.5-haiku", agent.ModelName, "Model name should be 'anthropic/claude-3.5-haiku'")
+	require.Equal(t, "Image Analysis Assistant", agent.Role, "Role should be 'Image Analysis Assistant'")
+
+	// Test prompt contains key instructions
+	require.Contains(t, agent.Prompt, "Your name is Iris", "Prompt should contain name instruction")
+	require.Contains(t, agent.Prompt, "analyzing and describing images", "Prompt should contain image analysis instruction")
+	require.Contains(t, agent.Prompt, "Overall scene and setting", "Prompt should contain analysis guidelines")
+
+	// Test message examples
+	require.Len(t, agent.MessageExamples, 2, "Should have 2 message examples")
+
+	// Test first message example (image analysis)
+	firstExample := agent.MessageExamples[0]
+	require.Len(t, firstExample, 2, "First example should have 2 messages (user and agent)")
+	require.Contains(t, firstExample[0].Text, "analyze this image", "First user message should mention image analysis")
+	require.Contains(t, firstExample[1].Text, "detailed description", "First agent response should mention detailed description")
+
+	// Test second message example (specific question)
+	secondExample := agent.MessageExamples[1]
+	require.Len(t, secondExample, 2, "Second example should have 2 messages (user and agent)")
+	require.Contains(t, secondExample[0].Text, "main colors and objects", "Second user message should mention colors and objects")
+	require.Contains(t, secondExample[1].Text, "visual elements", "Second agent response should mention visual elements")
+
+	// Test runtime creation and execution with image
+	runtime, err := agentruntime.NewAgentRuntime(
+		context.TODO(),
+		agentruntime.WithAgent(agent),
+		agentruntime.WithAnthropicAPIKey(os.Getenv("ANTHROPIC_API_KEY")),
+		agentruntime.WithLogger(slog.Default()),
+	)
+	require.NoError(t, err)
+	defer runtime.Close()
+
+	// Test image analysis with the provided URL
+	imageURL := "https://image.inblog.dev/?url=https%3A%2F%2Fsource.inblog.dev%2Ffeatured_image%2F2025-06-20T07%3A14%3A20.048Z-ffcf5a69-c04a-49a3-ae57-baa7ecda6545&w=2048&q=75"
+
+	resp, err := runtime.Run(context.TODO(), engine.RunRequest{
+		ThreadInstruction: "User asks for image analysis.",
+		History: []engine.Conversation{
+			{
+				User: "USER",
+				Text: "Please analyze this image and describe what you see in detail.",
+			},
+		},
+		Files: []engine.File{
+			{
+				ContentType: "image/jpeg",
+				Data:        imageURL,
+				Filename:    "image_to_analyze.jpg",
+			},
+		},
+	}, nil)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	out := resp.Text()
+	t.Logf("Image Analysis Response: %+v", resp)
+	t.Logf("Analysis Output: %s", out)
+
+	// Verify the output contains analysis elements
+	require.NotEmpty(t, out, "Output should not be empty")
+
+	// Basic verification that the agent provided an image analysis
+	// Look for common image analysis terms
+	outLower := strings.ToLower(out)
+	hasAnalysisTerms := strings.Contains(outLower, "image") ||
+		strings.Contains(outLower, "see") ||
+		strings.Contains(outLower, "picture") ||
+		strings.Contains(outLower, "visual") ||
+		strings.Contains(outLower, "shows") ||
+		strings.Contains(outLower, "depicts") ||
+		strings.Contains(outLower, "color") ||
+		strings.Contains(outLower, "object")
+
+	require.True(t, hasAnalysisTerms, "Output should contain image analysis terms")
+
+	// Verify response is substantial (more than just a simple acknowledgment)
+	require.Greater(t, len(out), 50, "Analysis should be more detailed than 50 characters")
 }

@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"strings"
 
 	"github.com/anthropics/anthropic-sdk-go"
@@ -392,34 +394,62 @@ func convertContent(parts []*ai.Part) ([]anthropic.ContentBlockParamUnion, error
 			// Handle image content
 			data := part.Text
 
+			isUrl := strings.HasPrefix(data, "http://") || strings.HasPrefix(data, "https://")
 			// Check if it's a URL
-			if strings.HasPrefix(data, "http://") || strings.HasPrefix(data, "https://") {
-				// Create URL image source param
-				imageSource := anthropic.URLImageSourceParam{
-					URL: data,
+			if !isUrl && strings.HasPrefix(data, "data:") {
+				if !strings.Contains(data, ";base64,") {
+					return nil, fmt.Errorf("data URL is not base64 encoded")
 				}
-
-				// Create image block with URL source
-				blocks = append(blocks, anthropic.NewImageBlock(imageSource))
-			} else {
-				// Assume it's base64 data
-				// If it has data URL prefix, extract the base64 part
-				if strings.HasPrefix(data, "data:") && strings.Contains(data, ";base64,") {
-					parts := strings.SplitN(data, ",", 2)
-					if len(parts) == 2 {
-						data = parts[1]
-					}
+				parts := strings.SplitN(data, ",", 2)
+				if len(parts) == 2 {
+					data = parts[1]
 				}
-
-				// Create base64 image source param
-				imageSource := anthropic.Base64ImageSourceParam{
-					Data:      data,
-					MediaType: getAnthropicMediaType(part.ContentType),
-				}
-
-				// Create image block with base64 source
-				blocks = append(blocks, anthropic.NewImageBlock(imageSource))
 			}
+
+			switch strings.ToLower(part.ContentType) {
+			case "image/jpeg", "image/png", "image/webp", "image/gif", "image/jpg":
+				if isUrl {
+					// Create image block with URL source
+					blocks = append(blocks, anthropic.NewImageBlock(anthropic.URLImageSourceParam{
+						URL: data,
+					}))
+				} else {
+					// Create image block with base64 source
+					blocks = append(blocks, anthropic.NewImageBlock(anthropic.Base64ImageSourceParam{
+						Data:      data,
+						MediaType: getAnthropicMediaType(part.ContentType),
+					}))
+				}
+			case "application/pdf":
+				if isUrl {
+					blocks = append(blocks, anthropic.NewDocumentBlock(anthropic.URLPDFSourceParam{
+						URL: data,
+					}))
+				} else {
+					blocks = append(blocks, anthropic.NewDocumentBlock(anthropic.Base64PDFSourceParam{
+						Data: data,
+					}))
+				}
+			case "text/plain":
+				if isUrl {
+					resp, err := http.Get(data)
+					if err != nil {
+						return nil, fmt.Errorf("failed to get URL: %w", err)
+					}
+					defer resp.Body.Close()
+					body, err := io.ReadAll(resp.Body)
+					if err != nil {
+						return nil, fmt.Errorf("failed to read URL body: %w", err)
+					}
+					data = string(body)
+				}
+				blocks = append(blocks, anthropic.NewDocumentBlock(anthropic.PlainTextSourceParam{
+					Data: data,
+				}))
+			default:
+				return nil, fmt.Errorf("unsupported media type: %s", part.ContentType)
+			}
+
 		} else if part.IsToolRequest() {
 			// Convert tool request to Anthropic format
 			toolReq := part.ToolRequest

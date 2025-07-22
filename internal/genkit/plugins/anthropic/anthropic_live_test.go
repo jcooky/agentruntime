@@ -6,6 +6,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"strings"
 	"testing"
@@ -14,6 +16,7 @@ import (
 	"github.com/firebase/genkit/go/ai"
 	"github.com/firebase/genkit/go/genkit"
 	"github.com/habiliai/agentruntime/internal/genkit/plugins/anthropic"
+	"github.com/joho/godotenv"
 	"github.com/mokiat/gog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1282,4 +1285,99 @@ func TestLive_GenerateWithWebSearchStreaming(t *testing.T) {
 	t.Logf("  - Valid search citations: %d", validCitationsFound)
 	t.Logf("  - Web search output length: %d chars", len(webSearchOutput))
 	t.Logf("  - Final response length: %d chars", totalTextLength)
+}
+
+func TestLive_GenerateWithPDF(t *testing.T) {
+	godotenv.Load("../../../../.env")
+	if os.Getenv("ANTHROPIC_API_KEY") == "" {
+		t.Skip("ANTHROPIC_API_KEY not set")
+	}
+
+	ctx := context.Background()
+	g, err := genkit.Init(ctx, genkit.WithPlugins(&anthropic.Plugin{
+		APIKey: os.Getenv("ANTHROPIC_API_KEY"),
+	}))
+	require.NoError(t, err)
+
+	model := anthropic.Model(g, "claude-3.5-haiku")
+	require.NotNil(t, model)
+
+	// Download PDF from the given URL
+	pdfURL := "https://arxiv.org/pdf/2109.10282"
+	resp, err := http.Get(pdfURL)
+	require.NoError(t, err, "Failed to download PDF")
+	defer resp.Body.Close()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode, "Failed to download PDF: status %d", resp.StatusCode)
+
+	// Read PDF content
+	pdfData, err := io.ReadAll(resp.Body)
+	require.NoError(t, err, "Failed to read PDF data")
+	require.NotEmpty(t, pdfData, "PDF data should not be empty")
+
+	tests := []struct {
+		name     string
+		question string
+		timeout  time.Duration
+	}{
+		{
+			name:     "TrOCR main concept",
+			question: "What is TrOCR and what makes it different from traditional OCR approaches?",
+			timeout:  2 * time.Minute,
+		},
+		{
+			name:     "TrOCR architecture",
+			question: "Describe the architecture of TrOCR. What are the main components?",
+			timeout:  2 * time.Minute,
+		},
+		{
+			name:     "TrOCR advantages",
+			question: "What are the three main advantages of TrOCR mentioned in the paper?",
+			timeout:  2 * time.Minute,
+		},
+		{
+			name:     "TrOCR evaluation",
+			question: "On which types of text recognition tasks was TrOCR evaluated?",
+			timeout:  2 * time.Minute,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create context with timeout
+			ctx, cancel := context.WithTimeout(context.Background(), tt.timeout)
+			defer cancel()
+
+			req := &ai.ModelRequest{
+				Messages: []*ai.Message{
+					{
+						Role: ai.RoleUser,
+						Content: []*ai.Part{
+							ai.NewTextPart(tt.question),
+							ai.NewMediaPart("application/pdf", "https://arxiv.org/pdf/2109.10282"),
+						},
+					},
+				},
+			}
+
+			resp, err := model.Generate(ctx, req, nil)
+			require.NoError(t, err)
+			require.NotNil(t, resp)
+			require.NotNil(t, resp.Message)
+			require.NotEmpty(t, resp.Message.Content)
+
+			content := resp.Message.Content[0].Text
+			assert.NotEmpty(t, content)
+
+			// Basic validation that the response is relevant to TrOCR
+			contentLower := strings.ToLower(content)
+			assert.True(t,
+				strings.Contains(contentLower, "trocr") ||
+					strings.Contains(contentLower, "transformer") ||
+					strings.Contains(contentLower, "ocr"),
+				"Response should mention TrOCR, transformer, or OCR concepts")
+
+			t.Logf("Q: %s\nA: %s\n\n", tt.question, content)
+		})
+	}
 }
