@@ -159,6 +159,9 @@ func generateStream(ctx context.Context, client *anthropic.Client, genRequest *a
 			}
 		case anthropic.ContentBlockStopEvent:
 			if toolUsePart != nil {
+				defer func() {
+					toolUsePart = nil
+				}()
 				chunk := &ai.ModelResponseChunk{
 					Index:      int(event.Index),
 					Role:       ai.RoleModel,
@@ -169,12 +172,14 @@ func generateStream(ctx context.Context, client *anthropic.Client, genRequest *a
 						Input: json.RawMessage(toolUsePart.Input),
 					})},
 				}
-				toolUsePart = nil
 				if err := cb(ctx, chunk); err != nil {
 					return nil, err
 				}
 			}
 			if webSearchToolResultPart != nil {
+				defer func() {
+					webSearchToolResultPart = nil
+				}()
 				chunk := &ai.ModelResponseChunk{
 					Index:      int(event.Index),
 					Role:       ai.RoleModel,
@@ -185,7 +190,6 @@ func generateStream(ctx context.Context, client *anthropic.Client, genRequest *a
 						Output: json.RawMessage(webSearchToolResultPart.Result),
 					})},
 				}
-				webSearchToolResultPart = nil
 				if err := cb(ctx, chunk); err != nil {
 					return nil, err
 				}

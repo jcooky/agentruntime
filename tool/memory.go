@@ -121,9 +121,8 @@ Uses **AI embeddings** to find conceptually related memories, not just keyword m
 				return
 			}
 
-			if len(memories) == 0 {
-				resp.Error = gog.PtrOf("No memories stored yet.")
-				return
+			if memories == nil {
+				memories = make([]*memory.Memory, 0, 1)
 			}
 
 			resp.Memories = memories
