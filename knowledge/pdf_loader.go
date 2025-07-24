@@ -120,8 +120,10 @@ func ProcessKnowledgeFromPDF(ctx context.Context, g *genkit.Genkit, id string, i
 
 		// Resize image if it's too large to prevent token limit issues
 		bounds := img.Bounds()
-		maxWidth := 512
-		maxHeight := 512
+		// 1280x1280 is the maximum size for the vision model
+		// We expect to scale down to this size for HD scale
+		maxWidth := 1280
+		maxHeight := 1280
 
 		// Calculate scaling factor if needed
 		width := bounds.Dx()
