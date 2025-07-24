@@ -2,6 +2,7 @@ package anthropic
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,6 +13,7 @@ import (
 	"github.com/firebase/genkit/go/ai"
 	"github.com/firebase/genkit/go/core"
 	"github.com/firebase/genkit/go/genkit"
+	"github.com/pkg/errors"
 )
 
 // DefineModel creates and registers a new generative model with Genkit.
@@ -398,9 +400,27 @@ func convertContent(parts []*ai.Part) ([]anthropic.ContentBlockParamUnion, error
 			// Handle image content
 			data := part.Text
 
-			isUrl := strings.HasPrefix(data, "http://") || strings.HasPrefix(data, "https://")
-			// Check if it's a URL
-			if !isUrl && strings.HasPrefix(data, "data:") {
+			isHttpsUrl := strings.HasPrefix(data, "https://")
+
+			if strings.HasPrefix(data, "http://") {
+				resp, err := http.Get(data)
+				if err != nil {
+					return nil, errors.Wrapf(err, "failed to get URL")
+				}
+				defer resp.Body.Close()
+				body, err := io.ReadAll(resp.Body)
+				if err != nil {
+					return nil, errors.Wrapf(err, "failed to read URL body")
+				}
+
+				if part.ContentType == "plain/text" {
+					data = string(body)
+				} else {
+					data = base64.StdEncoding.EncodeToString(body)
+				}
+			}
+
+			if !isHttpsUrl && strings.HasPrefix(data, "data:") {
 				if !strings.Contains(data, ";base64,") {
 					return nil, fmt.Errorf("data URL is not base64 encoded")
 				}
@@ -412,7 +432,7 @@ func convertContent(parts []*ai.Part) ([]anthropic.ContentBlockParamUnion, error
 
 			switch strings.ToLower(part.ContentType) {
 			case "image/jpeg", "image/png", "image/webp", "image/gif", "image/jpg":
-				if isUrl {
+				if isHttpsUrl {
 					// Create image block with URL source
 					blocks = append(blocks, anthropic.NewImageBlock(anthropic.URLImageSourceParam{
 						URL: data,
@@ -425,7 +445,7 @@ func convertContent(parts []*ai.Part) ([]anthropic.ContentBlockParamUnion, error
 					}))
 				}
 			case "application/pdf":
-				if isUrl {
+				if isHttpsUrl {
 					blocks = append(blocks, anthropic.NewDocumentBlock(anthropic.URLPDFSourceParam{
 						URL: data,
 					}))
@@ -435,7 +455,7 @@ func convertContent(parts []*ai.Part) ([]anthropic.ContentBlockParamUnion, error
 					}))
 				}
 			case "text/plain":
-				if isUrl {
+				if isHttpsUrl {
 					resp, err := http.Get(data)
 					if err != nil {
 						return nil, fmt.Errorf("failed to get URL: %w", err)
