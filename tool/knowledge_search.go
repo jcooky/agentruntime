@@ -5,7 +5,6 @@ import (
 
 	"github.com/firebase/genkit/go/ai"
 	"github.com/habiliai/agentruntime/entity"
-	"github.com/habiliai/agentruntime/knowledge"
 )
 
 type Knowledge struct {
@@ -82,16 +81,16 @@ The search uses semantic similarity, so exact keyword matches are not required. 
 				k := Knowledge{
 					Score: float64(res.Score),
 				}
-				switch res.Content.Type {
-				case knowledge.ContentTypeImage:
+				switch res.Content.MIMEType {
+				case "image/jpeg", "image/png", "image/jpg", "image/webp":
 					k.Media = ai.Media{
 						ContentType: res.Content.MIMEType,
 						Url:         res.Content.Image,
 					}
-				case knowledge.ContentTypeText:
+				case "text/plain", "plain/text":
 					k.Context = res.Content.Text
 				default:
-					return reply, fmt.Errorf("unknown content type: %s", res.Content.Type)
+					return reply, fmt.Errorf("unknown content type: %s", res.Content.MIMEType)
 				}
 				reply.Output = append(reply.Output, k)
 			}

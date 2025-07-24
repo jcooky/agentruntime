@@ -26,8 +26,8 @@ func createKnowledgeSearchResult(content string) *knowledge.KnowledgeSearchResul
 	return &knowledge.KnowledgeSearchResult{
 		Document: &knowledge.Document{
 			Content: knowledge.Content{
-				Type: knowledge.ContentTypeText,
-				Text: content,
+				MIMEType: "text/plain",
+				Text:     content,
 			},
 		},
 		Score: 1.0,
@@ -36,7 +36,7 @@ func createKnowledgeSearchResult(content string) *knowledge.KnowledgeSearchResul
 
 // Helper function to get text content from KnowledgeSearchResult
 func getTextContent(result *knowledge.KnowledgeSearchResult) string {
-	if result.Document != nil && result.Document.Content.Type == knowledge.ContentTypeText {
+	if result.Document != nil && result.Document.Content.Type() == knowledge.ContentTypeText {
 		return result.Document.Content.Text
 	}
 	return ""
@@ -88,8 +88,8 @@ func TestRerankResult(t *testing.T) {
 		{
 			Document: &knowledge.Document{
 				Content: knowledge.Content{
-					Type: knowledge.ContentTypeText,
-					Text: "Low relevance",
+					MIMEType: "text/plain",
+					Text:     "Low relevance",
 				},
 			},
 			Score: 0.2,
@@ -97,8 +97,8 @@ func TestRerankResult(t *testing.T) {
 		{
 			Document: &knowledge.Document{
 				Content: knowledge.Content{
-					Type: knowledge.ContentTypeText,
-					Text: "High relevance",
+					MIMEType: "text/plain",
+					Text:     "High relevance",
 				},
 			},
 			Score: 0.9,
@@ -106,8 +106,8 @@ func TestRerankResult(t *testing.T) {
 		{
 			Document: &knowledge.Document{
 				Content: knowledge.Content{
-					Type: knowledge.ContentTypeText,
-					Text: "Medium relevance",
+					MIMEType: "text/plain",
+					Text:     "Medium relevance",
 				},
 			},
 			Score: 0.5,

@@ -9,7 +9,7 @@ import (
 
 // Helper function to get text content from Document
 func getDocumentText(doc *knowledge.Document) string {
-	if doc != nil && doc.Content.Type == knowledge.ContentTypeText {
+	if doc != nil && doc.Content.Type() == knowledge.ContentTypeText {
 		return doc.Content.Text
 	}
 	return ""

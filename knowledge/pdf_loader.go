@@ -181,7 +181,6 @@ func ProcessKnowledgeFromPDF(ctx context.Context, g *genkit.Genkit, id string, i
 		document := &Document{
 			ID: fmt.Sprintf("%s_page_%d", id, pageNum+1),
 			Content: Content{
-				Type:     ContentTypeImage,
 				Image:    base64Image,
 				MIMEType: "image/jpeg",
 			},

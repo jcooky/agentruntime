@@ -413,7 +413,7 @@ func convertContent(parts []*ai.Part) ([]anthropic.ContentBlockParamUnion, error
 					return nil, errors.Wrapf(err, "failed to read URL body")
 				}
 
-				if part.ContentType == "plain/text" {
+				if part.ContentType == "plain/text" || part.ContentType == "text/plain" {
 					data = string(body)
 				} else {
 					data = base64.StdEncoding.EncodeToString(body)
@@ -454,7 +454,7 @@ func convertContent(parts []*ai.Part) ([]anthropic.ContentBlockParamUnion, error
 						Data: data,
 					}))
 				}
-			case "text/plain":
+			case "plain/text", "text/plain":
 				if isHttpsUrl {
 					resp, err := http.Get(data)
 					if err != nil {
@@ -572,21 +572,36 @@ func convertToolResultBlockContents(output any) (contents []anthropic.ToolResult
 		if contentType, ok := v["contentType"].(string); ok {
 			if url, ok := v["url"].(string); ok {
 				// Handle ai.Media type
+
+				var source anthropic.ImageBlockParamSourceUnion
+				if strings.HasPrefix(url, "http://") {
+					resp, err := http.Get(url)
+					if err != nil {
+						return nil, err
+					}
+					defer resp.Body.Close()
+					body, err := io.ReadAll(resp.Body)
+					if err != nil {
+						return nil, err
+					}
+					source.OfBase64 = &anthropic.Base64ImageSourceParam{
+						Data:      base64.StdEncoding.EncodeToString(body),
+						MediaType: getAnthropicMediaType(contentType),
+					}
+				} else if strings.HasPrefix(url, "https://") {
+					source.OfURL = &anthropic.URLImageSourceParam{
+						URL: url,
+					}
+				} else {
+					source.OfBase64 = &anthropic.Base64ImageSourceParam{
+						Data:      url,
+						MediaType: getAnthropicMediaType(contentType),
+					}
+				}
+
 				contents = append(contents, anthropic.ToolResultBlockParamContentUnion{
 					OfImage: &anthropic.ImageBlockParam{
-						Source: func() (source anthropic.ImageBlockParamSourceUnion) {
-							if strings.HasPrefix(url, "https://") || strings.HasPrefix(url, "http://") {
-								source.OfURL = &anthropic.URLImageSourceParam{
-									URL: url,
-								}
-							} else {
-								source.OfBase64 = &anthropic.Base64ImageSourceParam{
-									Data:      url,
-									MediaType: getAnthropicMediaType(contentType),
-								}
-							}
-							return
-						}(),
+						Source: source,
 					},
 				})
 				break

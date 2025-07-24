@@ -81,8 +81,8 @@ func ProcessKnowledgeFromMap(data []map[string]any) []*Document {
 
 		documents = append(documents, &Document{
 			Content: Content{
-				Type: ContentTypeText,
-				Text: content,
+				MIMEType: "text/plain",
+				Text:     content,
 			},
 			Metadata:      item,
 			EmbeddingText: content,

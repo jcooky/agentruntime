@@ -28,8 +28,8 @@ func TestInMemoryStore_StoreAndRetrieve(t *testing.T) {
 			{
 				ID: "doc-1",
 				Content: knowledge.Content{
-					Type: knowledge.ContentTypeText,
-					Text: "This is a test document about Python programming",
+					MIMEType: "text/plain",
+					Text:     "This is a test document about Python programming",
 				},
 				EmbeddingText: "This is a test document about Python programming",
 				Embeddings:    generateTestEmbedding(128, 1), // 128-dim embedding with seed 1
@@ -40,8 +40,8 @@ func TestInMemoryStore_StoreAndRetrieve(t *testing.T) {
 			{
 				ID: "doc-2",
 				Content: knowledge.Content{
-					Type: knowledge.ContentTypeText,
-					Text: "JavaScript is a dynamic programming language",
+					MIMEType: "text/plain",
+					Text:     "JavaScript is a dynamic programming language",
 				},
 				EmbeddingText: "JavaScript is a dynamic programming language",
 				Embeddings:    generateTestEmbedding(128, 2), // 128-dim embedding with seed 2
@@ -82,8 +82,8 @@ func TestInMemoryStore_Search(t *testing.T) {
 		{
 			ID: "doc-1",
 			Content: knowledge.Content{
-				Type: knowledge.ContentTypeText,
-				Text: "Python programming basics",
+				MIMEType: "text/plain",
+				Text:     "Python programming basics",
 			},
 			EmbeddingText: "Python programming basics",
 			Embeddings:    generateTestEmbedding(128, 1),
@@ -91,8 +91,8 @@ func TestInMemoryStore_Search(t *testing.T) {
 		{
 			ID: "doc-2",
 			Content: knowledge.Content{
-				Type: knowledge.ContentTypeText,
-				Text: "Advanced Python techniques",
+				MIMEType: "text/plain",
+				Text:     "Advanced Python techniques",
 			},
 			EmbeddingText: "Advanced Python techniques",
 			Embeddings:    generateTestEmbedding(128, 2),
@@ -100,8 +100,8 @@ func TestInMemoryStore_Search(t *testing.T) {
 		{
 			ID: "doc-3",
 			Content: knowledge.Content{
-				Type: knowledge.ContentTypeText,
-				Text: "JavaScript fundamentals",
+				MIMEType: "text/plain",
+				Text:     "JavaScript fundamentals",
 			},
 			EmbeddingText: "JavaScript fundamentals",
 			Embeddings:    generateTestEmbedding(128, 3),
@@ -145,8 +145,8 @@ func TestInMemoryStore_Delete(t *testing.T) {
 			{
 				ID: "doc-1",
 				Content: knowledge.Content{
-					Type: knowledge.ContentTypeText,
-					Text: "Test document",
+					MIMEType: "text/plain",
+					Text:     "Test document",
 				},
 				EmbeddingText: "Test document",
 				Embeddings:    generateTestEmbedding(128, 1),
@@ -190,8 +190,8 @@ func TestInMemoryStore_Concurrency(t *testing.T) {
 					{
 						ID: string(rune('a'+id)) + "-doc",
 						Content: knowledge.Content{
-							Type: knowledge.ContentTypeText,
-							Text: "Concurrent test",
+							MIMEType: "text/plain",
+							Text:     "Concurrent test",
 						},
 						EmbeddingText: "Concurrent test",
 						Embeddings:    generateTestEmbedding(128, id),

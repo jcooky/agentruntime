@@ -38,20 +38,20 @@ type (
 	}
 
 	Content struct {
-		Type string `json:"type"`
-
 		Text     string `json:"text,omitempty"`
 		Image    string `json:"data,omitempty"`
 		MIMEType string `json:"mimeType,omitempty"`
 	}
+
+	ContentType = string
 )
 
 const (
 	SourceTypeMap = "map"
 	SourceTypePDF = "pdf"
 
-	ContentTypeText  = "text"
-	ContentTypeImage = "image"
+	ContentTypeText  ContentType = "text"
+	ContentTypeImage ContentType = "image"
 )
 
 func (d *Document) ToDoc() (*ai.Document, error) {
@@ -61,14 +61,24 @@ func (d *Document) ToDoc() (*ai.Document, error) {
 		}),
 	}
 
-	switch d.Content.Type {
-	case ContentTypeText:
+	switch d.Content.MIMEType {
+	case "text/plain", "plain/text":
 		doc.Content = append(doc.Content, ai.NewTextPart(d.Content.Text))
-	case ContentTypeImage:
+	case "image/jpeg", "image/jpg", "image/png", "image/webp":
 		doc.Content = append(doc.Content, ai.NewMediaPart(d.Content.MIMEType, d.Content.Image))
 	default:
-		return nil, fmt.Errorf("unknown content type: %s", d.Content.Type)
+		return nil, fmt.Errorf("unknown content type: %s", d.Content.MIMEType)
 	}
 
 	return doc, nil
+}
+
+func (c *Content) Type() ContentType {
+	switch c.MIMEType {
+	case "plain/text", "text/plain":
+		return ContentTypeText
+	case "image/jpeg", "image/jpg", "image/png", "image/webp":
+		return ContentTypeImage
+	}
+	return ""
 }
