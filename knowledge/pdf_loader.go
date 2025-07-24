@@ -55,6 +55,10 @@ func (s *service) IndexKnowledgeFromPDF(ctx context.Context, id string, input io
 
 	// Assign embeddings to documents
 	for i := range knowledge.Documents {
+		emb := embeddings[i]
+		if emb == nil {
+			continue
+		}
 		knowledge.Documents[i].Embeddings = embeddings[i]
 	}
 
@@ -185,6 +189,10 @@ func ProcessKnowledgeFromPDF(ctx context.Context, g *genkit.Genkit, id string, i
 				"total_pages":       pageCount,
 				"extraction_method": config.PDFExtractionMethod,
 			},
+		}
+
+		if document.EmbeddingText == "" {
+			continue
 		}
 
 		knowledge.Documents = append(knowledge.Documents, document)
