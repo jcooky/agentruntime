@@ -65,19 +65,19 @@ func generateStream(ctx context.Context, client *anthropic.Client, genRequest *a
 	defer stream.Close()
 
 	type ToolUsePart struct {
-		Index int64
-		Ref   string
-		Name  string
-		Input string
+		Ref     string
+		Name    string
+		Input   string
+		Enabled bool
 	}
 	type WebSearchToolResultPart struct {
-		Index  int64
-		Ref    string
-		Name   string
-		Result string
+		Ref     string
+		Name    string
+		Result  string
+		Enabled bool
 	}
-	var toolUsePart *ToolUsePart
-	var webSearchToolResultPart *WebSearchToolResultPart
+	var toolUsePart ToolUsePart
+	var webSearchToolResultPart WebSearchToolResultPart
 
 	message := anthropic.Message{}
 	for stream.Next() {
@@ -90,32 +90,25 @@ func generateStream(ctx context.Context, client *anthropic.Client, genRequest *a
 		case anthropic.ContentBlockStartEvent:
 			switch block := event.ContentBlock.AsAny().(type) {
 			case anthropic.ToolUseBlock:
-				if toolUsePart != nil {
-					return nil, fmt.Errorf("received tool use block but no tool use part found")
-				}
-				toolUsePart = &ToolUsePart{
-					Index: event.Index,
-					Ref:   block.ID,
-					Name:  block.Name,
+				toolUsePart = ToolUsePart{
+					Ref:     block.ID,
+					Name:    block.Name,
+					Input:   "",
+					Enabled: true,
 				}
 			case anthropic.ServerToolUseBlock:
-				if toolUsePart != nil {
-					return nil, fmt.Errorf("received server tool use block but no tool use part found")
-				}
-				toolUsePart = &ToolUsePart{
-					Index: event.Index,
-					Ref:   block.ID,
-					Name:  string(block.Name),
+				toolUsePart = ToolUsePart{
+					Ref:     block.ID,
+					Name:    string(block.Name),
+					Input:   "",
+					Enabled: true,
 				}
 			case anthropic.WebSearchToolResultBlock:
-				if webSearchToolResultPart != nil {
-					return nil, fmt.Errorf("received web search tool result block but no web search tool result part found")
-				}
-				webSearchToolResultPart = &WebSearchToolResultPart{
-					Index:  event.Index,
-					Ref:    block.ToolUseID,
-					Name:   "web_search",
-					Result: block.Content.RawJSON(),
+				webSearchToolResultPart = WebSearchToolResultPart{
+					Ref:     block.ToolUseID,
+					Name:    "web_search",
+					Result:  block.Content.RawJSON(),
+					Enabled: true,
 				}
 			}
 		case anthropic.ContentBlockDeltaEvent:
@@ -132,7 +125,7 @@ func generateStream(ctx context.Context, client *anthropic.Client, genRequest *a
 					return nil, err
 				}
 			case anthropic.InputJSONDelta:
-				if toolUsePart == nil {
+				if !toolUsePart.Enabled {
 					return nil, fmt.Errorf("received input JSON delta but no tool use part found")
 				}
 				toolUsePart.Input += delta.PartialJSON
@@ -160,10 +153,8 @@ func generateStream(ctx context.Context, client *anthropic.Client, genRequest *a
 				}
 			}
 		case anthropic.ContentBlockStopEvent:
-			if toolUsePart != nil {
-				defer func() {
-					toolUsePart = nil
-				}()
+			if toolUsePart.Enabled {
+				toolUsePart.Enabled = false
 				chunk := &ai.ModelResponseChunk{
 					Index:      int(event.Index),
 					Role:       ai.RoleModel,
@@ -178,10 +169,8 @@ func generateStream(ctx context.Context, client *anthropic.Client, genRequest *a
 					return nil, err
 				}
 			}
-			if webSearchToolResultPart != nil {
-				defer func() {
-					webSearchToolResultPart = nil
-				}()
+			if webSearchToolResultPart.Enabled {
+				webSearchToolResultPart.Enabled = false
 				chunk := &ai.ModelResponseChunk{
 					Index:      int(event.Index),
 					Role:       ai.RoleModel,
