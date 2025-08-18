@@ -372,3 +372,201 @@ Be clear about what memory operations you're performing.`,
 		t.Logf("Direct verification passed: Found %d memories", len(memories))
 	})
 }
+
+func TestAgentRuntimeWithUserInfo(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping test in short mode")
+	}
+
+	// Check required environment variables
+	if os.Getenv("OPENAI_API_KEY") == "" {
+		t.Skip("Skipping test because OPENAI_API_KEY is not set")
+	}
+	if os.Getenv("ANTHROPIC_API_KEY") == "" {
+		t.Skip("Skipping test because ANTHROPIC_API_KEY is not set")
+	}
+
+	ctx := context.Background()
+
+	// Create agent that can use user info
+	agent := entity.Agent{
+		Name:        "PersonalizedAgent",
+		Description: "An agent that provides personalized responses based on user information",
+		ModelName:   "openai/gpt-4o-mini",
+		System: `You are a personalized assistant. Use the provided user information to tailor your responses.
+When user information is available:
+- Address the user by their name when appropriate
+- Consider their location, company, and interests in your responses
+- Be more helpful by understanding their context
+- Reference their background when relevant
+
+Always be professional but friendly, and make good use of the user context provided.`,
+		Role: "Personalized Assistant",
+		Skills: []entity.AgentSkillUnion{
+			{
+				Type: "nativeTool",
+				OfNative: &entity.NativeAgentSkill{
+					Name:    "memory",
+					Details: "Memory management tools for enhanced personalization",
+				},
+			},
+		},
+	}
+
+	// Create runtime
+	runtime, err := NewAgentRuntime(
+		ctx,
+		WithAgent(agent),
+		WithOpenAIAPIKey(os.Getenv("OPENAI_API_KEY")),
+		WithAnthropicAPIKey(os.Getenv("ANTHROPIC_API_KEY")),
+		WithLogger(slog.Default()),
+	)
+	require.NoError(t, err)
+	defer runtime.Close()
+
+	t.Run("Test with complete user info", func(t *testing.T) {
+		// Test with full user information
+		userInfo := &engine.UserInfo{
+			FullName: "Dennis Kim",
+			Username: "dennis",
+			Location: "Seoul, South Korea",
+			Company:  "HabiliAI",
+			Bio:      "Software engineer passionate about AI and automation",
+		}
+
+		response, err := runtime.Run(ctx, engine.RunRequest{
+			History: []engine.Conversation{
+				{
+					User: "user",
+					Text: "Hi! Could you help me plan my day? I have some coding work to do.",
+				},
+			},
+			UserInfo: userInfo,
+		}, nil)
+		require.NoError(t, err)
+		require.NotEmpty(t, response.Text())
+
+		responseText := strings.ToLower(response.Text())
+
+		// Verify that the response uses user information contextually
+		hasPersonalization := strings.Contains(responseText, "dennis") ||
+			strings.Contains(responseText, "seoul") ||
+			strings.Contains(responseText, "habili") ||
+			strings.Contains(responseText, "korea")
+
+		require.True(t, hasPersonalization, "Response should use user information for personalization")
+
+		t.Logf("Complete user info response: %s", response.Text())
+	})
+
+	t.Run("Test with partial user info", func(t *testing.T) {
+		// Test with minimal user information
+		userInfo := &engine.UserInfo{
+			FullName: "Dennis",
+			Company:  "HabiliAI",
+		}
+
+		response, err := runtime.Run(ctx, engine.RunRequest{
+			History: []engine.Conversation{
+				{
+					User: "user",
+					Text: "What's the best approach for implementing AI agents in a startup environment?",
+				},
+			},
+			UserInfo: userInfo,
+		}, nil)
+		require.NoError(t, err)
+		require.NotEmpty(t, response.Text())
+
+		responseText := strings.ToLower(response.Text())
+
+		// Should use the available user context
+		hasPersonalization := strings.Contains(responseText, "dennis") ||
+			strings.Contains(responseText, "habili") ||
+			strings.Contains(responseText, "startup")
+
+		require.True(t, hasPersonalization, "Response should use available user information")
+
+		t.Logf("Partial user info response: %s", response.Text())
+	})
+
+	t.Run("Test without user info", func(t *testing.T) {
+		// Test without user information (should still work)
+		response, err := runtime.Run(ctx, engine.RunRequest{
+			History: []engine.Conversation{
+				{
+					User: "user",
+					Text: "Tell me about Go programming best practices.",
+				},
+			},
+			UserInfo: nil, // No user info provided
+		}, nil)
+		require.NoError(t, err)
+		require.NotEmpty(t, response.Text())
+
+		// Should still provide a helpful response even without user context
+		require.Contains(t, strings.ToLower(response.Text()), "go", "Should provide Go programming advice")
+
+		t.Logf("No user info response: %s", response.Text())
+	})
+
+	t.Run("Test user info with memory integration", func(t *testing.T) {
+		// Test that user info and memory work well together
+		userInfo := &engine.UserInfo{
+			FullName: "Dennis Kim",
+			Username: "dennis",
+			Location: "Seoul, South Korea",
+			Company:  "HabiliAI",
+			Bio:      "AI engineer working on agent runtime systems",
+		}
+
+		// First interaction: introduce a preference
+		response, err := runtime.Run(ctx, engine.RunRequest{
+			History: []engine.Conversation{
+				{
+					User: "user",
+					Text: "I prefer TypeScript over JavaScript for frontend development. Please remember this.",
+				},
+			},
+			UserInfo: userInfo,
+		}, nil)
+		require.NoError(t, err)
+		require.NotEmpty(t, response.Text())
+
+		// Check if memory tool was used
+		foundMemoryCall := false
+		for _, toolCall := range response.ToolCalls {
+			if toolCall.Name == "remember_memory" {
+				foundMemoryCall = true
+				break
+			}
+		}
+		require.True(t, foundMemoryCall, "Should store user preference in memory")
+
+		t.Logf("Preference storage response: %s", response.Text())
+
+		// Second interaction: ask for personalized advice
+		response, err = runtime.Run(ctx, engine.RunRequest{
+			History: []engine.Conversation{
+				{
+					User: "user",
+					Text: "I'm building a new web application. What technology stack would you recommend?",
+				},
+			},
+			UserInfo: userInfo,
+		}, nil)
+		require.NoError(t, err)
+		require.NotEmpty(t, response.Text())
+
+		responseText := strings.ToLower(response.Text())
+
+		// Should use both user info and memory for personalized recommendation
+		hasPersonalization := strings.Contains(responseText, "typescript") ||
+			strings.Contains(responseText, "dennis") ||
+			(strings.Contains(responseText, "seoul") || strings.Contains(responseText, "korea"))
+
+		require.True(t, hasPersonalization, "Should provide personalized recommendation using both user info and memory")
+
+		t.Logf("Personalized recommendation response: %s", response.Text())
+	})
+}

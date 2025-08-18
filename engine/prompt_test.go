@@ -48,7 +48,13 @@ func (s *EngineTestSuite) TestBuildPromptValues() {
 		},
 	}
 
-	promptValues, err := s.engine.BuildPromptValues(context.Background(), agent, history, thread)
+	runRequest := engine.RunRequest{
+		History:           history,
+		ThreadInstruction: thread.Instruction,
+		Participant:       thread.Participants,
+	}
+
+	promptValues, err := s.engine.BuildPromptValues(context.Background(), agent, runRequest)
 	s.Require().NoError(err)
 	s.Require().NotNil(promptValues)
 

@@ -11,19 +11,20 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (s *Engine) BuildPromptValues(ctx context.Context, agent entity.Agent, history []Conversation, thread Thread) (*ChatPromptValues, error) {
+func (s *Engine) BuildPromptValues(ctx context.Context, agent entity.Agent, req RunRequest) (*ChatPromptValues, error) {
 
 	// construct inst promptValues
 	promptValues := &ChatPromptValues{
 		Agent:               agent,
 		MessageExamples:     sliceutils.RandomSampleN(agent.MessageExamples, 100),
-		RecentConversations: sliceutils.Cut(history, -200, len(history)),
+		RecentConversations: sliceutils.Cut(req.History, -200, len(req.History)),
 		AvailableActions:    make([]AvailableAction, 0, len(agent.Skills)),
 		Thread: Thread{
-			Instruction:  thread.Instruction,
-			Participants: thread.Participants,
+			Instruction:  req.ThreadInstruction,
+			Participants: req.Participant,
 		},
-		System: agent.System,
+		UserInfo: req.UserInfo,
+		System:   agent.System,
 	}
 
 	// build available actions

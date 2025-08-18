@@ -153,12 +153,23 @@ Uses **AI embeddings** to find conceptually related memories, not just keyword m
 			Memory *memory.Memory `json:"memory" jsonschema:"description=The specific memory object retrieved by key (includes value, source, tags, timestamp)"`
 			Error  *string        `json:"error,omitempty" jsonschema:"description=Error message if recall failed (e.g. key not found, invalid key format, access error)"`
 		}, err error) {
+			resp.Memory = &memory.Memory{
+				Key:       req.Key,
+				Value:     "",
+				Tags:      []string{},
+				Embedding: []float32{},
+			}
+
 			memory, err := m.memoryService.GetMemory(ctx, req.Key)
 			if err != nil {
 				resp.Error = gog.PtrOf(err.Error())
-				return
+			} else if memory == nil {
+				resp.Error = gog.PtrOf("memory not found")
 			}
-			resp.Memory = memory
+
+			if memory != nil {
+				resp.Memory = memory
+			}
 			return
 		},
 	); err != nil {

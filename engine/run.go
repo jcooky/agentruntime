@@ -70,6 +70,7 @@ type (
 		Thread              Thread
 		Tools               []ai.ToolRef
 		System              string
+		UserInfo            *UserInfo
 	}
 
 	RunRequest struct {
@@ -77,6 +78,15 @@ type (
 		History           []Conversation `json:"history"`
 		Participant       []Participant  `json:"participants,omitempty"`
 		Files             []File         `json:"files"`
+		UserInfo          *UserInfo      `json:"user_info"`
+	}
+
+	UserInfo struct {
+		FullName string `json:"full_name"`
+		Username string `json:"username,omitempty"`
+		Location string `json:"location,omitempty"`
+		Company  string `json:"company,omitempty"`
+		Bio      string `json:"bio,omitempty"`
 	}
 
 	RunResponse struct {
@@ -98,10 +108,7 @@ func (s *Engine) Run(
 	streamCallback ai.ModelStreamCallback,
 ) (*RunResponse, error) {
 
-	promptValues, err := s.BuildPromptValues(ctx, agent, req.History, Thread{
-		Instruction:  req.ThreadInstruction,
-		Participants: req.Participant,
-	})
+	promptValues, err := s.BuildPromptValues(ctx, agent, req)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to build prompt values")
 	}
