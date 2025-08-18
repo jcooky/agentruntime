@@ -9,6 +9,7 @@ import (
 	"github.com/firebase/genkit/go/genkit"
 	"github.com/habiliai/agentruntime/config"
 	xgenkit "github.com/habiliai/agentruntime/internal/genkit"
+	"github.com/mendableai/firecrawl-go"
 )
 
 type (
@@ -16,6 +17,7 @@ type (
 		// Knowledge management methods
 		IndexKnowledgeFromMap(ctx context.Context, id string, input []map[string]any) (*Knowledge, error)
 		IndexKnowledgeFromPDF(ctx context.Context, id string, input io.Reader) (*Knowledge, error)
+		IndexKnowledgeFromURL(ctx context.Context, id string, inputUrl string, crawlParams firecrawl.CrawlParams) (*Knowledge, error)
 		RetrieveRelevantKnowledge(ctx context.Context, query string, limit int, allowedKnowledgeIds []string) ([]*KnowledgeSearchResult, error)
 		DeleteKnowledge(ctx context.Context, knowledgeId string) error
 		Close() error
@@ -25,12 +27,13 @@ type (
 	service struct {
 		genkit *genkit.Genkit
 
-		store         Store
-		embedder      Embedder
-		reranker      Reranker
-		queryRewriter QueryRewriter
-		config        *config.KnowledgeConfig
-		logger        *slog.Logger
+		store           Store
+		embedder        Embedder
+		reranker        Reranker
+		queryRewriter   QueryRewriter
+		config          *config.KnowledgeConfig
+		firecrawlConfig *config.FireCrawlConfig
+		logger          *slog.Logger
 	}
 )
 
@@ -40,7 +43,7 @@ var (
 
 // NewService creates a new knowledge service with default SQLite-based storage
 func NewService(ctx context.Context, modelConfig *config.ModelConfig, conf *config.KnowledgeConfig, logger *slog.Logger) (Service, error) {
-	return NewServiceWithStore(ctx, conf, modelConfig, logger, NewInMemoryStore())
+	return NewServiceWithStore(ctx, conf, modelConfig, logger, NewInMemoryStore(), nil)
 }
 
 // NewServiceWithStore creates a new knowledge service with a custom knowledge store
@@ -50,6 +53,7 @@ func NewServiceWithStore(
 	modelConfig *config.ModelConfig,
 	logger *slog.Logger,
 	store Store,
+	firecrawlConfig *config.FireCrawlConfig,
 ) (Service, error) {
 	genkit, err := xgenkit.NewGenkit(ctx, modelConfig, logger, modelConfig.TraceVerbose)
 	if err != nil {
@@ -83,14 +87,20 @@ func NewServiceWithStore(
 		queryRewriter = NewNoOpQueryRewriter()
 	}
 
+	// Use default FireCrawl config if not provided
+	if firecrawlConfig == nil {
+		firecrawlConfig = config.NewFireCrawlConfig()
+	}
+
 	return &service{
-		genkit:        genkit,
-		store:         store,
-		embedder:      embedder,
-		reranker:      reranker,
-		queryRewriter: queryRewriter,
-		config:        conf,
-		logger:        logger,
+		genkit:          genkit,
+		store:           store,
+		embedder:        embedder,
+		reranker:        reranker,
+		queryRewriter:   queryRewriter,
+		config:          conf,
+		firecrawlConfig: firecrawlConfig,
+		logger:          logger,
 	}, nil
 }
 

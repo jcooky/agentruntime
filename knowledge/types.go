@@ -49,6 +49,7 @@ type (
 const (
 	SourceTypeMap = "map"
 	SourceTypePDF = "pdf"
+	SourceTypeURL = "url"
 
 	ContentTypeText  = "text"
 	ContentTypeImage = "image"

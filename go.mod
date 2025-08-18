@@ -21,11 +21,13 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/lmittmann/tint v1.0.7
 	github.com/mark3labs/mcp-go v0.32.0
+	github.com/mendableai/firecrawl-go v1.0.0
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/mmcdole/gofeed v1.3.0
 	github.com/mokiat/gog v0.15.0
 	github.com/openai/openai-go v0.1.0-alpha.65
 	github.com/pkg/errors v0.9.1
+	github.com/samber/lo v1.51.0
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0
 	go.opentelemetry.io/otel/sdk v1.36.0
@@ -67,7 +69,6 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
-	github.com/samber/lo v1.51.0 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/spf13/cast v1.7.1 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect

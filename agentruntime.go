@@ -83,7 +83,7 @@ func NewAgentRuntime(ctx context.Context, optionFuncs ...Option) (*AgentRuntime,
 	}
 
 	if e.knowledgeService == nil {
-		e.knowledgeService, err = knowledge.NewServiceWithStore(ctx, e.knowledgeConfig, e.modelConfig, e.logger, knowledge.NewInMemoryStore())
+		e.knowledgeService, err = knowledge.NewServiceWithStore(ctx, e.knowledgeConfig, e.modelConfig, e.logger, knowledge.NewInMemoryStore(), config.NewFireCrawlConfig())
 		if err != nil {
 			return nil, err
 		}
@@ -127,6 +127,10 @@ func (r *AgentRuntime) GetToolManager() tool.Manager {
 
 func (r *AgentRuntime) GetMemoryService() memory.Service {
 	return r.memoryService
+}
+
+func (r *AgentRuntime) GetKnowledgeService() knowledge.Service {
+	return r.knowledgeService
 }
 
 func WithOpenAIAPIKey(apiKey string) func(e *AgentRuntime) {
