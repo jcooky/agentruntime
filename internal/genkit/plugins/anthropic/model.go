@@ -46,7 +46,7 @@ func generate(ctx context.Context, client *anthropic.Client, genRequest *ai.Mode
 	}
 
 	// Use standard Messages API (which supports extended thinking for Claude 4 models)
-	resp, err := client.Messages.New(ctx, params)
+	resp, err := client.Beta.Messages.New(ctx, params)
 	if err != nil {
 		return nil, fmt.Errorf("anthropic message generation failed: %w", err)
 	}
@@ -61,7 +61,7 @@ func generateStream(ctx context.Context, client *anthropic.Client, genRequest *a
 	}
 
 	// Use standard streaming API
-	stream := client.Messages.NewStreaming(ctx, params)
+	stream := client.Beta.Messages.NewStreaming(ctx, params)
 	defer stream.Close()
 
 	type ToolUsePart struct {
@@ -79,7 +79,7 @@ func generateStream(ctx context.Context, client *anthropic.Client, genRequest *a
 	var toolUsePart ToolUsePart
 	var webSearchToolResultPart WebSearchToolResultPart
 
-	message := anthropic.Message{}
+	message := anthropic.BetaMessage{}
 	for stream.Next() {
 		event := stream.Current()
 		err := message.Accumulate(event)
@@ -87,23 +87,23 @@ func generateStream(ctx context.Context, client *anthropic.Client, genRequest *a
 			return nil, fmt.Errorf("error accumulating message: %w", err)
 		}
 		switch event := event.AsAny().(type) {
-		case anthropic.ContentBlockStartEvent:
+		case anthropic.BetaRawContentBlockStartEvent:
 			switch block := event.ContentBlock.AsAny().(type) {
-			case anthropic.ToolUseBlock:
+			case anthropic.BetaToolUseBlock:
 				toolUsePart = ToolUsePart{
 					Ref:     block.ID,
 					Name:    block.Name,
 					Input:   "",
 					Enabled: true,
 				}
-			case anthropic.ServerToolUseBlock:
+			case anthropic.BetaServerToolUseBlock:
 				toolUsePart = ToolUsePart{
 					Ref:     block.ID,
 					Name:    string(block.Name),
 					Input:   "",
 					Enabled: true,
 				}
-			case anthropic.WebSearchToolResultBlock:
+			case anthropic.BetaWebSearchToolResultBlock:
 				webSearchToolResultPart = WebSearchToolResultPart{
 					Ref:     block.ToolUseID,
 					Name:    "web_search",
@@ -111,7 +111,7 @@ func generateStream(ctx context.Context, client *anthropic.Client, genRequest *a
 					Enabled: true,
 				}
 			}
-		case anthropic.ContentBlockDeltaEvent:
+		case anthropic.BetaRawContentBlockDeltaEvent:
 			chunk := &ai.ModelResponseChunk{
 				Index:      int(event.Index),
 				Role:       ai.RoleModel,
@@ -119,27 +119,27 @@ func generateStream(ctx context.Context, client *anthropic.Client, genRequest *a
 			}
 
 			switch delta := event.Delta.AsAny().(type) {
-			case anthropic.TextDelta:
+			case anthropic.BetaTextDelta:
 				chunk.Content = []*ai.Part{ai.NewTextPart(delta.Text)}
 				if err := cb(ctx, chunk); err != nil {
 					return nil, err
 				}
-			case anthropic.InputJSONDelta:
+			case anthropic.BetaInputJSONDelta:
 				if !toolUsePart.Enabled {
 					return nil, fmt.Errorf("received input JSON delta but no tool use part found")
 				}
 				toolUsePart.Input += delta.PartialJSON
-			case anthropic.ThinkingDelta:
+			case anthropic.BetaThinkingDelta:
 				chunk.Content = []*ai.Part{ai.NewReasoningPart(delta.Thinking, []byte{})}
 				if err := cb(ctx, chunk); err != nil {
 					return nil, err
 				}
-			case anthropic.SignatureDelta:
+			case anthropic.BetaSignatureDelta:
 				chunk.Content = []*ai.Part{ai.NewReasoningPart("", []byte(delta.Signature))}
 				if err := cb(ctx, chunk); err != nil {
 					return nil, err
 				}
-			case anthropic.CitationsDelta:
+			case anthropic.BetaCitationsDelta:
 				var citation map[string]any
 				if err := json.Unmarshal([]byte(delta.Citation.RawJSON()), &citation); err != nil {
 					return nil, fmt.Errorf("could not unmarshal citation delta into citation type: %w", err)
@@ -152,7 +152,7 @@ func generateStream(ctx context.Context, client *anthropic.Client, genRequest *a
 					return nil, err
 				}
 			}
-		case anthropic.ContentBlockStopEvent:
+		case anthropic.BetaRawContentBlockStopEvent:
 			if toolUsePart.Enabled {
 				toolUsePart.Enabled = false
 				chunk := &ai.ModelResponseChunk{
@@ -195,20 +195,24 @@ func generateStream(ctx context.Context, client *anthropic.Client, genRequest *a
 	return translateResponse(message, genRequest)
 }
 
-func buildMessageParams(genRequest *ai.ModelRequest, apiModelName string) (anthropic.MessageNewParams, error) {
+func buildMessageParams(genRequest *ai.ModelRequest, apiModelName string) (anthropic.BetaMessageNewParams, error) {
 	messages, systems, err := convertMessages(genRequest.Messages)
 	if err != nil {
-		return anthropic.MessageNewParams{}, err
+		return anthropic.BetaMessageNewParams{}, err
 	}
 
 	defaultParams, ok := defaultModelParams[apiModelName]
 	if !ok {
-		return anthropic.MessageNewParams{}, fmt.Errorf("model %s not found", apiModelName)
+		return anthropic.BetaMessageNewParams{}, fmt.Errorf("model %s not found", apiModelName)
 	}
 
-	params := anthropic.MessageNewParams{
+	params := anthropic.BetaMessageNewParams{
 		Model:    anthropic.Model(apiModelName),
 		Messages: messages,
+		Betas: []anthropic.AnthropicBeta{
+			anthropic.AnthropicBetaContext1m2025_08_07,
+			anthropic.AnthropicBetaInterleavedThinking2025_05_14,
+		},
 	}
 
 	// Convert systems prompt to TextBlockParam array
@@ -216,7 +220,7 @@ func buildMessageParams(genRequest *ai.ModelRequest, apiModelName string) (anthr
 		if strings.TrimSpace(system) == "" {
 			continue
 		}
-		params.System = append(params.System, anthropic.TextBlockParam{
+		params.System = append(params.System, anthropic.BetaTextBlockParam{
 			Text: system,
 		})
 	}
@@ -228,7 +232,7 @@ func buildMessageParams(genRequest *ai.ModelRequest, apiModelName string) (anthr
 	// Handle generation config
 	jsonBytes, err := json.Marshal(genRequest.Config)
 	if err != nil {
-		return anthropic.MessageNewParams{}, err
+		return anthropic.BetaMessageNewParams{}, err
 	}
 
 	// Extract and apply extended thinking config
@@ -245,14 +249,14 @@ func buildMessageParams(genRequest *ai.ModelRequest, apiModelName string) (anthr
 
 	// Unmarshal user config - this will only override provided fields
 	if err := json.Unmarshal(jsonBytes, &config); err != nil {
-		return anthropic.MessageNewParams{}, fmt.Errorf("failed to unmarshal config: %w", err)
+		return anthropic.BetaMessageNewParams{}, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
 	// Apply basic config
 	if config.MaxOutputTokens > 0 {
 		params.MaxTokens = int64(config.MaxOutputTokens)
 	} else {
-		return anthropic.MessageNewParams{}, fmt.Errorf("maxOutputTokens is required")
+		return anthropic.BetaMessageNewParams{}, fmt.Errorf("maxOutputTokens is required")
 	}
 	if config.Temperature > 0 {
 		params.Temperature = anthropic.Float(config.Temperature)
@@ -272,25 +276,25 @@ func buildMessageParams(genRequest *ai.ModelRequest, apiModelName string) (anthr
 		// Calculate budget based on ratio
 		budgetRatio := config.ExtendedThinkingBudgetRatio
 		if budgetRatio == 0 {
-			budgetRatio = 0.5 // Default to 50% if not specified
+			budgetRatio = 0.1 // Default to 10% if not specified
 		}
 
 		budget := int64(float64(config.MaxOutputTokens) * budgetRatio)
 
 		// Only enable if budget meets minimum requirement (1024 tokens)
 		if budget >= 1024 {
-			params.Thinking = anthropic.ThinkingConfigParamOfEnabled(budget)
+			params.Thinking = anthropic.BetaThinkingConfigParamOfEnabled(budget)
 		}
 	}
 
 	// Handle tools if present
 	if len(genRequest.Tools) > 0 {
-		tools := make([]anthropic.ToolUnionParam, len(genRequest.Tools))
+		tools := make([]anthropic.BetaToolUnionParam, len(genRequest.Tools))
 		for i, tool := range genRequest.Tools {
 			switch tool.Name {
 			case "web_search":
-				tools[i] = anthropic.ToolUnionParam{
-					OfWebSearchTool20250305: &anthropic.WebSearchTool20250305Param{
+				tools[i] = anthropic.BetaToolUnionParam{
+					OfWebSearchTool20250305: &anthropic.BetaWebSearchTool20250305Param{
 						MaxUses: anthropic.Int(99),
 					},
 				}
@@ -304,19 +308,19 @@ func buildMessageParams(genRequest *ai.ModelRequest, apiModelName string) (anthr
 	return params, nil
 }
 
-func convertMessages(messages []*ai.Message) ([]anthropic.MessageParam, []string, error) {
+func convertMessages(messages []*ai.Message) ([]anthropic.BetaMessageParam, []string, error) {
 	var systems []string
-	var anthropicMessages []anthropic.MessageParam
+	var anthropicMessages []anthropic.BetaMessageParam
 
 	for _, msg := range messages {
-		var role anthropic.MessageParamRole
+		var role anthropic.BetaMessageParamRole
 		switch msg.Role {
 		case ai.RoleUser:
-			role = anthropic.MessageParamRoleUser
+			role = anthropic.BetaMessageParamRoleUser
 		case ai.RoleModel:
-			role = anthropic.MessageParamRoleAssistant
+			role = anthropic.BetaMessageParamRoleAssistant
 		case ai.RoleTool:
-			role = anthropic.MessageParamRoleUser
+			role = anthropic.BetaMessageParamRoleUser
 		case ai.RoleSystem:
 			for _, part := range msg.Content {
 				if part.IsText() && part.Text != "" {
@@ -333,7 +337,7 @@ func convertMessages(messages []*ai.Message) ([]anthropic.MessageParam, []string
 			return nil, nil, err
 		}
 
-		anthropicMessages = append(anthropicMessages, anthropic.MessageParam{
+		anthropicMessages = append(anthropicMessages, anthropic.BetaMessageParam{
 			Role:    role,
 			Content: content,
 		})
@@ -342,8 +346,8 @@ func convertMessages(messages []*ai.Message) ([]anthropic.MessageParam, []string
 	return anthropicMessages, systems, nil
 }
 
-func convertContent(parts []*ai.Part) ([]anthropic.ContentBlockParamUnion, error) {
-	var blocks []anthropic.ContentBlockParamUnion
+func convertContent(parts []*ai.Part) ([]anthropic.BetaContentBlockParamUnion, error) {
+	var blocks []anthropic.BetaContentBlockParamUnion
 
 	for _, part := range parts {
 		if part.IsCustom() {
@@ -358,19 +362,19 @@ func convertContent(parts []*ai.Part) ([]anthropic.ContentBlockParamUnion, error
 			}
 			switch customType {
 			case "web_search_tool_result":
-				block := anthropic.WebSearchToolResultBlockParam{}
+				block := anthropic.BetaWebSearchToolResultBlockParam{}
 				if err := block.UnmarshalJSON([]byte(body)); err != nil {
 					return nil, fmt.Errorf("failed to unmarshal web search tool result: %w", err)
 				}
-				blocks = append(blocks, anthropic.ContentBlockParamUnion{
+				blocks = append(blocks, anthropic.BetaContentBlockParamUnion{
 					OfWebSearchToolResult: &block,
 				})
 			case "redacted_thinking":
-				block := anthropic.RedactedThinkingBlockParam{}
+				block := anthropic.BetaRedactedThinkingBlockParam{}
 				if err := block.UnmarshalJSON([]byte(body)); err != nil {
 					return nil, fmt.Errorf("failed to unmarshal redacted thinking: %w", err)
 				}
-				blocks = append(blocks, anthropic.ContentBlockParamUnion{
+				blocks = append(blocks, anthropic.BetaContentBlockParamUnion{
 					OfRedactedThinking: &block,
 				})
 			default:
@@ -381,10 +385,10 @@ func convertContent(parts []*ai.Part) ([]anthropic.ContentBlockParamUnion, error
 			if !ok {
 				return nil, fmt.Errorf("signature not found in reasoning part")
 			}
-			blocks = append(blocks, anthropic.NewThinkingBlock(string(signature), part.Text))
+			blocks = append(blocks, anthropic.NewBetaThinkingBlock(string(signature), part.Text))
 		} else if part.IsText() {
 			// Use the NewTextBlock helper function
-			blocks = append(blocks, anthropic.NewTextBlock(part.Text))
+			blocks = append(blocks, anthropic.NewBetaTextBlock(part.Text))
 		} else if part.IsMedia() {
 			// Handle image content
 			data := part.Text
@@ -423,23 +427,23 @@ func convertContent(parts []*ai.Part) ([]anthropic.ContentBlockParamUnion, error
 			case "image/jpeg", "image/png", "image/webp", "image/gif", "image/jpg":
 				if isHttpsUrl {
 					// Create image block with URL source
-					blocks = append(blocks, anthropic.NewImageBlock(anthropic.URLImageSourceParam{
+					blocks = append(blocks, anthropic.NewBetaImageBlock(anthropic.BetaURLImageSourceParam{
 						URL: data,
 					}))
 				} else {
 					// Create image block with base64 source
-					blocks = append(blocks, anthropic.NewImageBlock(anthropic.Base64ImageSourceParam{
+					blocks = append(blocks, anthropic.NewBetaImageBlock(anthropic.BetaBase64ImageSourceParam{
 						Data:      data,
 						MediaType: getAnthropicMediaType(part.ContentType),
 					}))
 				}
 			case "application/pdf":
 				if isHttpsUrl {
-					blocks = append(blocks, anthropic.NewDocumentBlock(anthropic.URLPDFSourceParam{
+					blocks = append(blocks, anthropic.NewBetaDocumentBlock(anthropic.BetaURLPDFSourceParam{
 						URL: data,
 					}))
 				} else {
-					blocks = append(blocks, anthropic.NewDocumentBlock(anthropic.Base64PDFSourceParam{
+					blocks = append(blocks, anthropic.NewBetaDocumentBlock(anthropic.BetaBase64PDFSourceParam{
 						Data: data,
 					}))
 				}
@@ -456,7 +460,7 @@ func convertContent(parts []*ai.Part) ([]anthropic.ContentBlockParamUnion, error
 					}
 					data = string(body)
 				}
-				blocks = append(blocks, anthropic.NewDocumentBlock(anthropic.PlainTextSourceParam{
+				blocks = append(blocks, anthropic.NewBetaDocumentBlock(anthropic.BetaPlainTextSourceParam{
 					Data: data,
 				}))
 			default:
@@ -480,7 +484,7 @@ func convertContent(parts []*ai.Part) ([]anthropic.ContentBlockParamUnion, error
 				inputMsg = json.RawMessage("{}")
 			}
 
-			toolUse := anthropic.NewToolUseBlock(
+			toolUse := anthropic.NewBetaToolUseBlock(
 				toolReq.Ref,  // ID
 				inputMsg,     // Input as JSON string
 				toolReq.Name, // Name
@@ -492,14 +496,21 @@ func convertContent(parts []*ai.Part) ([]anthropic.ContentBlockParamUnion, error
 
 			contents, err := convertToolResultBlockContents(toolResp.Output)
 			if err != nil {
-				blocks = append(blocks, anthropic.NewToolResultBlock(
+				resultBlock := anthropic.NewBetaToolResultBlock(
 					toolResp.Ref,
-					err.Error(),
-					true,
-				))
+				)
+				resultBlock.OfToolResult.Content = []anthropic.BetaToolResultBlockParamContentUnion{
+					{
+						OfText: &anthropic.BetaTextBlockParam{
+							Text: err.Error(),
+						},
+					},
+				}
+				resultBlock.OfToolResult.IsError = anthropic.Opt(true)
+				blocks = append(blocks, resultBlock)
 			} else {
-				blocks = append(blocks, anthropic.ContentBlockParamUnion{
-					OfToolResult: &anthropic.ToolResultBlockParam{
+				blocks = append(blocks, anthropic.BetaContentBlockParamUnion{
+					OfToolResult: &anthropic.BetaToolResultBlockParam{
 						ToolUseID: toolResp.Ref,
 						Content:   contents,
 						IsError:   anthropic.Opt(false),
@@ -512,12 +523,12 @@ func convertContent(parts []*ai.Part) ([]anthropic.ContentBlockParamUnion, error
 	return blocks, nil
 }
 
-func convertToolResultBlockContents(output any) (contents []anthropic.ToolResultBlockParamContentUnion, err error) {
+func convertToolResultBlockContents(output any) (contents []anthropic.BetaToolResultBlockParamContentUnion, err error) {
 	// Handle tool response content
 	switch v := output.(type) {
 	case string:
-		contents = append(contents, anthropic.ToolResultBlockParamContentUnion{
-			OfText: &anthropic.TextBlockParam{
+		contents = append(contents, anthropic.BetaToolResultBlockParamContentUnion{
+			OfText: &anthropic.BetaTextBlockParam{
 				Text: v,
 			},
 		})
@@ -542,8 +553,8 @@ func convertToolResultBlockContents(output any) (contents []anthropic.ToolResult
 			}
 
 			if content != "" {
-				contents = append(contents, anthropic.ToolResultBlockParamContentUnion{
-					OfText: &anthropic.TextBlockParam{
+				contents = append(contents, anthropic.BetaToolResultBlockParamContentUnion{
+					OfText: &anthropic.BetaTextBlockParam{
 						Text: content,
 					},
 				})
@@ -562,7 +573,7 @@ func convertToolResultBlockContents(output any) (contents []anthropic.ToolResult
 			if url, ok := v["url"].(string); ok {
 				// Handle ai.Media type
 
-				var source anthropic.ImageBlockParamSourceUnion
+				var source anthropic.BetaImageBlockParamSourceUnion
 				if strings.HasPrefix(url, "http://") {
 					resp, err := http.Get(url)
 					if err != nil {
@@ -573,23 +584,23 @@ func convertToolResultBlockContents(output any) (contents []anthropic.ToolResult
 					if err != nil {
 						return nil, err
 					}
-					source.OfBase64 = &anthropic.Base64ImageSourceParam{
+					source.OfBase64 = &anthropic.BetaBase64ImageSourceParam{
 						Data:      base64.StdEncoding.EncodeToString(body),
 						MediaType: getAnthropicMediaType(contentType),
 					}
 				} else if strings.HasPrefix(url, "https://") {
-					source.OfURL = &anthropic.URLImageSourceParam{
+					source.OfURL = &anthropic.BetaURLImageSourceParam{
 						URL: url,
 					}
 				} else {
-					source.OfBase64 = &anthropic.Base64ImageSourceParam{
+					source.OfBase64 = &anthropic.BetaBase64ImageSourceParam{
 						Data:      url,
 						MediaType: getAnthropicMediaType(contentType),
 					}
 				}
 
-				contents = append(contents, anthropic.ToolResultBlockParamContentUnion{
-					OfImage: &anthropic.ImageBlockParam{
+				contents = append(contents, anthropic.BetaToolResultBlockParamContentUnion{
+					OfImage: &anthropic.BetaImageBlockParam{
 						Source: source,
 					},
 				})
@@ -603,8 +614,8 @@ func convertToolResultBlockContents(output any) (contents []anthropic.ToolResult
 			return nil, err
 		}
 
-		contents = append(contents, anthropic.ToolResultBlockParamContentUnion{
-			OfText: &anthropic.TextBlockParam{
+		contents = append(contents, anthropic.BetaToolResultBlockParamContentUnion{
+			OfText: &anthropic.BetaTextBlockParam{
 				Text: string(jsonBytes),
 			},
 		})
@@ -616,15 +627,15 @@ func convertToolResultBlockContents(output any) (contents []anthropic.ToolResult
 	return
 }
 
-func convertTool(tool *ai.ToolDefinition) anthropic.ToolUnionParam {
+func convertTool(tool *ai.ToolDefinition) anthropic.BetaToolUnionParam {
 	// Convert the InputSchema map to ToolInputSchemaParam
-	inputSchema := anthropic.ToolInputSchemaParam{
+	inputSchema := anthropic.BetaToolInputSchemaParam{
 		Type:       "object",
 		Properties: tool.InputSchema["properties"],
 	}
 
-	return anthropic.ToolUnionParam{
-		OfTool: &anthropic.ToolParam{
+	return anthropic.BetaToolUnionParam{
+		OfTool: &anthropic.BetaToolParam{
 			Name:        tool.Name,
 			Description: anthropic.String(tool.Description),
 			InputSchema: inputSchema,
@@ -632,29 +643,29 @@ func convertTool(tool *ai.ToolDefinition) anthropic.ToolUnionParam {
 	}
 }
 
-func translateContent(content anthropic.ContentBlockUnion) *ai.Part {
+func translateContent(content anthropic.BetaContentBlockUnion) *ai.Part {
 	switch block := content.AsAny().(type) {
-	case anthropic.TextBlock:
+	case anthropic.BetaTextBlock:
 		return ai.NewTextPart(block.Text)
-	case anthropic.ToolUseBlock:
+	case anthropic.BetaToolUseBlock:
 		return ai.NewToolRequestPart(&ai.ToolRequest{
 			Ref:   block.ID,
 			Name:  block.Name,
-			Input: json.RawMessage(block.Input),
+			Input: block.Input,
 		})
-	case anthropic.WebSearchToolResultBlock:
+	case anthropic.BetaWebSearchToolResultBlock:
 		return ai.NewCustomPart(map[string]any{
 			"type": "web_search_tool_result",
 			"body": block.RawJSON(),
 		})
-	case anthropic.RedactedThinkingBlock:
+	case anthropic.BetaRedactedThinkingBlock:
 		return ai.NewCustomPart(map[string]any{
 			"type": "redacted_thinking",
 			"body": block.RawJSON(),
 		})
-	case anthropic.ThinkingBlock:
+	case anthropic.BetaThinkingBlock:
 		return ai.NewReasoningPart(block.Thinking, []byte(block.Signature))
-	case anthropic.ServerToolUseBlock:
+	case anthropic.BetaServerToolUseBlock:
 		return ai.NewCustomPart(map[string]any{
 			"type": "server_tool_use",
 			"body": block.RawJSON(),
@@ -664,7 +675,7 @@ func translateContent(content anthropic.ContentBlockUnion) *ai.Part {
 	return nil
 }
 
-func translateContents(contents []anthropic.ContentBlockUnion) []*ai.Part {
+func translateContents(contents []anthropic.BetaContentBlockUnion) []*ai.Part {
 	var parts []*ai.Part
 
 	for _, content := range contents {
@@ -674,7 +685,7 @@ func translateContents(contents []anthropic.ContentBlockUnion) []*ai.Part {
 	return parts
 }
 
-func translateResponse(resp anthropic.Message, genRequest *ai.ModelRequest) (*ai.ModelResponse, error) {
+func translateResponse(resp anthropic.BetaMessage, genRequest *ai.ModelRequest) (*ai.ModelResponse, error) {
 	r := &ai.ModelResponse{}
 
 	m := &ai.Message{
@@ -686,13 +697,13 @@ func translateResponse(resp anthropic.Message, genRequest *ai.ModelRequest) (*ai
 
 	// Map stop reason
 	switch resp.StopReason {
-	case anthropic.StopReasonEndTurn:
+	case anthropic.BetaStopReasonEndTurn:
 		r.FinishReason = ai.FinishReasonStop
-	case anthropic.StopReasonMaxTokens:
+	case anthropic.BetaStopReasonMaxTokens:
 		r.FinishReason = ai.FinishReasonLength
-	case anthropic.StopReasonStopSequence:
+	case anthropic.BetaStopReasonStopSequence:
 		r.FinishReason = ai.FinishReasonStop
-	case anthropic.StopReasonToolUse:
+	case anthropic.BetaStopReasonToolUse:
 		r.FinishReason = ai.FinishReasonStop
 	default:
 		if resp.StopReason != "" {
@@ -716,18 +727,18 @@ func translateResponse(resp anthropic.Message, genRequest *ai.ModelRequest) (*ai
 	return r, nil
 }
 
-func getAnthropicMediaType(mimeType string) anthropic.Base64ImageSourceMediaType {
+func getAnthropicMediaType(mimeType string) anthropic.BetaBase64ImageSourceMediaType {
 	switch strings.ToLower(mimeType) {
 	case "image/jpeg", "image/jpg":
-		return anthropic.Base64ImageSourceMediaTypeImageJPEG
+		return anthropic.BetaBase64ImageSourceMediaTypeImageJPEG
 	case "image/png":
-		return anthropic.Base64ImageSourceMediaTypeImagePNG
+		return anthropic.BetaBase64ImageSourceMediaTypeImagePNG
 	case "image/gif":
-		return anthropic.Base64ImageSourceMediaTypeImageGIF
+		return anthropic.BetaBase64ImageSourceMediaTypeImageGIF
 	case "image/webp":
-		return anthropic.Base64ImageSourceMediaTypeImageWebP
+		return anthropic.BetaBase64ImageSourceMediaTypeImageWebP
 	default:
 		// Default to JPEG if unsupported
-		return anthropic.Base64ImageSourceMediaTypeImageJPEG
+		return anthropic.BetaBase64ImageSourceMediaTypeImageJPEG
 	}
 }
