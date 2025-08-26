@@ -31,9 +31,9 @@ Examples: user_name_full, user_preference_coffee, project_requirements_2024
 			Memory string   `json:"memory" jsonschema:"required,description=The information to store - be specific and descriptive (e.g. 'Prefers dark roast coffee with oat milk, no sugar')"`
 			Tags   []string `json:"tags,omitempty" jsonschema:"description=Optional categorization tags (e.g. ['personal', 'preferences'], ['work', 'decisions'], ['goals'])"`
 		}) (resp struct {
-			Memory *memory.Memory `json:"memory" jsonschema:"description=Successfully stored memory object with key, value, source, tags, and timestamp"`
+			Memory *memory.Memory `json:"memory,omitempty" jsonschema:"description=Successfully stored memory object with key, value, source, tags, and timestamp"`
 			Error  *string        `json:"error,omitempty" jsonschema:"description=Error message if storage failed (e.g. invalid key format, duplicate key, storage error)"`
-		}, err error) {
+		}, globalErr error) {
 			input := memory.RememberInput{
 				Key:    req.Key,
 				Value:  req.Memory,
@@ -150,7 +150,7 @@ Uses **AI embeddings** to find conceptually related memories, not just keyword m
 		func(ctx *Context, req struct {
 			Key string `json:"key" jsonschema:"required,description=Exact memory key to retrieve - must match stored key exactly (e.g. user_name_full, user_preference_coffee). Use search_memory if unsure of exact key."`
 		}) (resp struct {
-			Memory *memory.Memory `json:"memory" jsonschema:"description=The specific memory object retrieved by key (includes value, source, tags, timestamp)"`
+			Memory *memory.Memory `json:"memory,omitempty" jsonschema:"description=The specific memory object retrieved by key (includes value, source, tags, timestamp)"`
 			Error  *string        `json:"error,omitempty" jsonschema:"description=Error message if recall failed (e.g. key not found, invalid key format, access error)"`
 		}, err error) {
 			resp.Memory = &memory.Memory{

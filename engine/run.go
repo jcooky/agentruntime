@@ -116,56 +116,49 @@ func (s *Engine) Run(
 	promptFn := GetPromptFn(promptValues)
 
 	ctx = tool.WithEmptyCallDataStore(ctx)
-	res := &RunResponse{}
-	for i := 0; i < 3; i++ {
-		res.ModelResponse, err = s.Generate(
-			ctx,
-			&GenerateRequest{
-				Model: agent.ModelName,
-			},
-			ai.WithSystem(promptValues.System),
-			ai.WithMessagesFn(func(ctx context.Context, _ any) ([]*ai.Message, error) {
-				prompt, err := promptFn(ctx, nil)
-				if err != nil {
-					return nil, err
-				}
-				return []*ai.Message{
-					{
-						Role: ai.RoleUser,
-						Content: slices.Concat(
-							[]*ai.Part{
-								ai.NewTextPart(prompt),
-							},
-							lo.Map(req.Files, func(f File, _ int) *ai.Part {
-								return ai.NewMediaPart(f.ContentType, f.Data)
-							}),
-							[]*ai.Part{
-								ai.NewTextPart(
-									fmt.Sprintf(
-										"<documents>Attached files:\n%s\n</documents>",
-										strings.Join(lo.Map(req.Files, func(f File, i int) string {
-											return fmt.Sprintf("%d. filename:'%s', content_type:'%s', data_length:%d", i+1, f.Filename, f.ContentType, len(f.Data))
-										}), "\n"),
-									),
+	var res RunResponse
+	res.ModelResponse, err = s.Generate(
+		ctx,
+		&GenerateRequest{
+			Model: agent.ModelName,
+		},
+		ai.WithSystem(promptValues.System),
+		ai.WithMessagesFn(func(ctx context.Context, _ any) ([]*ai.Message, error) {
+			prompt, err := promptFn(ctx, nil)
+			if err != nil {
+				return nil, err
+			}
+			return []*ai.Message{
+				{
+					Role: ai.RoleUser,
+					Content: slices.Concat(
+						[]*ai.Part{
+							ai.NewTextPart(prompt),
+						},
+						lo.Map(req.Files, func(f File, _ int) *ai.Part {
+							return ai.NewMediaPart(f.ContentType, f.Data)
+						}),
+						[]*ai.Part{
+							ai.NewTextPart(
+								fmt.Sprintf(
+									"<documents>Attached files:\n%s\n</documents>",
+									strings.Join(lo.Map(req.Files, func(f File, i int) string {
+										return fmt.Sprintf("%d. filename:'%s', content_type:'%s', data_length:%d", i+1, f.Filename, f.ContentType, len(f.Data))
+									}), "\n"),
 								),
-							},
-						),
-					},
-				}, nil
-			}),
-			ai.WithConfig(agent.ModelConfig),
-			ai.WithTools(promptValues.Tools...),
-			ai.WithStreaming(streamCallback),
-			ai.WithMaxTurns(defaultMaxTurns),
-		)
-		if err != nil {
-			s.logger.Warn("failed to generate", "err", err)
-		} else {
-			break
-		}
-	}
+							),
+						},
+					),
+				},
+			}, nil
+		}),
+		ai.WithConfig(agent.ModelConfig),
+		ai.WithTools(promptValues.Tools...),
+		ai.WithStreaming(streamCallback),
+		ai.WithMaxTurns(defaultMaxTurns),
+	)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to generate")
+		return nil, errors.Wrapf(err, "failed to generate response")
 	}
 
 	toolCallData := tool.GetCallData(ctx)
@@ -189,5 +182,5 @@ func (s *Engine) Run(
 		res.ToolCalls = append(res.ToolCalls, tc)
 	}
 
-	return res, nil
+	return &res, nil
 }
