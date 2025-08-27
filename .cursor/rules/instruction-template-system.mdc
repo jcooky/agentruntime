@@ -1,0 +1,139 @@
+---
+description: 'AI Agent Instruction Template System - chat.md.tmpl and template management'
+globs: 'engine/data/instructions/*.tmpl,engine/prompt.go,engine/generate.go'
+---
+
+# AI Agent Instruction Template System
+
+System for managing AI agent instruction templates that control how agents generate responses and artifacts.
+
+## Core Components
+
+### Template File
+
+[engine/data/instructions/chat.md.tmpl](mdc:engine/data/instructions/chat.md.tmpl) - Main instruction template for AI agents
+
+### Template Processing
+
+- [engine/prompt.go](mdc:engine/prompt.go) - Template parsing and rendering
+- [engine/generate.go](mdc:engine/generate.go) - Template data preparation
+- [engine/embed.go](mdc:engine/embed.go) - Template embedding for runtime
+
+## Template Structure
+
+### Go Template Syntax
+
+```go
+{{- if .Agent.ArtifactGeneration }}
+<artifact_instruction required="true">
+<!-- HTML artifact instructions -->
+</artifact_instruction>
+{{- end }}
+```
+
+### Available Template Variables
+
+- `.Agent` - Agent configuration and metadata
+- `.Agent.ArtifactGeneration` - Boolean flag for artifact support
+- `.Agent.Name` - Agent name
+- `.Agent.Description` - Agent description
+- `.Agent.System` - System prompt
+
+## Conditional Rendering
+
+### Artifact Support
+
+Only agents with `ArtifactGeneration: true` receive artifact instructions:
+
+```yaml
+# Agent configuration
+artifactGeneration: true # Enables HTML artifact instructions
+```
+
+### Template Conditions
+
+```go
+{{- if .Agent.ArtifactGeneration }}
+  <!-- Artifact-specific instructions -->
+{{- else }}
+  <!-- Standard instructions only -->
+{{- end }}
+```
+
+## HTML Artifact Instructions
+
+### Required Content
+
+- **Universal HTML Method** - Complete HTML document structure
+- **Approved Technologies** - HTML, CSS, JavaScript, Chart.js, Tailwind
+- **Forbidden Technologies** - React, Vue, external APIs
+- **Security Guidelines** - iframe sandbox restrictions
+- **Example Artifacts** - Working code samples
+
+### XML Format Requirements
+
+```xml
+<habili:artifact type="html" title="Dashboard">
+<htmlCode>
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+  <!-- HTML content -->
+</body>
+</html>
+</htmlCode>
+</habili:artifact>
+```
+
+## Development Guidelines
+
+### Template Modifications
+
+1. **Test First**: Verify changes with test agents
+2. **Impact Assessment**: Consider all agent types
+3. **Version Control**: Document template changes
+4. **Validation**: Check template syntax and rendering
+
+### Testing Template Changes
+
+```bash
+go test ./engine -run TestArtifact -v
+go test ./engine -run TestArtifactGenerationInstructions -v
+```
+
+### Best Practices
+
+- Keep instructions concise but comprehensive
+- Provide multiple working examples
+- Include error prevention guidelines
+- Test with both artifact-enabled and disabled agents
+- Update examples when new features are added
+
+## Template Data Flow
+
+### 1. Agent Configuration
+
+```go
+agent := entity.Agent{
+  ArtifactGeneration: true,
+  // other configuration
+}
+```
+
+### 2. Template Rendering
+
+```go
+// In engine/generate.go
+templateData := map[string]interface{}{
+  "Agent": agent,
+}
+```
+
+### 3. Output Generation
+
+- Conditional sections rendered based on agent configuration
+- Full instruction set provided to AI model
+- Model generates responses according to instructions

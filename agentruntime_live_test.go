@@ -570,3 +570,155 @@ Always be professional but friendly, and make good use of the user context provi
 		t.Logf("Personalized recommendation response: %s", response.Text())
 	})
 }
+
+func TestAgentRuntimeArtifactGeneration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping test in short mode")
+	}
+
+	// Check required environment variables
+	if os.Getenv("ANTHROPIC_API_KEY") == "" {
+		t.Skip("Skipping test because ANTHROPIC_API_KEY is not set")
+	}
+
+	ctx := context.Background()
+
+	// Create agent specialized in artifact generation
+	agent := entity.Agent{
+		Name:        "ArtifactAgent",
+		Description: "An AI assistant that creates interactive visual components and artifacts",
+		ModelName:   "anthropic/claude-3.5-haiku", // Use the same model as working tests
+		System: `You are an AI assistant specialized in creating beautiful, interactive data visualizations and artifacts.
+
+When users request charts, graphs, interactive components, or data visualizations:
+1. Always use <habili:artifact> XML tags in your responses
+2. Choose between chart type for simple data visualization or react type for complex interactions
+3. Provide helpful explanations along with your artifacts
+
+Examples:
+- For simple charts: <habili:artifact type="chart" title="Sales Data" data='{"labels":["Jan","Feb"],"values":[100,150]}' chartType="bar" />
+- For interactive components: <habili:artifact type="react" title="Calculator"><reactCode>...React code...</reactCode></habili:artifact>
+
+You have access to modern React, Tailwind CSS, shadcn/ui components, and chart.js libraries.`,
+		Role:   "Artifact Creator",
+		Skills: []entity.AgentSkillUnion{
+			// Add a dummy skill to match the structure of working tests
+		},
+	}
+
+	// Initialize runtime
+	runtime, err := NewAgentRuntime(
+		ctx,
+		WithAgent(agent),
+		WithOpenAIAPIKey(os.Getenv("OPENAI_API_KEY")),
+		WithAnthropicAPIKey(os.Getenv("ANTHROPIC_API_KEY")),
+		WithLogger(slog.Default()),
+	)
+	require.NoError(t, err)
+	defer runtime.Close()
+
+	t.Run("Chart Generation Request", func(t *testing.T) {
+		// Test simple chart generation
+		response, err := runtime.Run(ctx, engine.RunRequest{
+			History: []engine.Conversation{
+				{User: "USER", Text: "Create a bar chart showing monthly sales data: January: $25,000, February: $32,000, March: $28,000"},
+			},
+		}, nil)
+
+		require.NoError(t, err)
+		require.NotNil(t, response)
+
+		responseText := response.Text()
+		t.Logf("Chart generation response: %s", responseText)
+
+		// Verify that the response contains artifact tags
+		require.Contains(t, responseText, "<habili:artifact", "Response should contain artifact opening tag")
+		require.Contains(t, responseText, `type="react"`, "Response should specify react type")
+		require.Contains(t, responseText, "<reactCode>", "Response should contain reactCode tag")
+		require.Contains(t, responseText, "sales", "Response should reference sales data context")
+
+		// Check for proper React chart data structure
+		if strings.Contains(responseText, "<reactCode>") {
+			require.Contains(t, responseText, "January", "Chart should include January data")
+			require.Contains(t, responseText, "25000", "Chart should include correct sales figures")
+			require.Contains(t, responseText, "react-chartjs-2", "Should use approved chart library")
+		}
+	})
+
+	t.Run("Interactive Component Request", func(t *testing.T) {
+		// Test React component generation
+		response, err := runtime.Run(ctx, engine.RunRequest{
+			History: []engine.Conversation{
+				{User: "USER", Text: "Create an interactive counter component that users can increment and decrement"},
+			},
+		}, nil)
+
+		require.NoError(t, err)
+		require.NotNil(t, response)
+
+		responseText := response.Text()
+		t.Logf("Interactive component response: %s", responseText)
+
+		// Verify artifact structure for React components
+		require.Contains(t, responseText, "<habili:artifact", "Response should contain artifact opening tag")
+		require.Contains(t, responseText, `type="react"`, "Response should specify react type")
+
+		// Check for React code structure if present
+		if strings.Contains(responseText, "<reactCode>") {
+			require.Contains(t, responseText, "<reactCode>", "Should contain reactCode opening tag")
+			require.Contains(t, responseText, "</reactCode>", "Should contain reactCode closing tag")
+			require.Contains(t, responseText, "useState", "React component should use hooks")
+			require.Contains(t, responseText, "export default", "React component should export default")
+		}
+	})
+
+	t.Run("Data Table Request", func(t *testing.T) {
+		// Test table generation
+		response, err := runtime.Run(ctx, engine.RunRequest{
+			History: []engine.Conversation{
+				{User: "USER", Text: "Show this employee data in a table: John (Engineering, 95 score), Sarah (Marketing, 87 score), Mike (Sales, 92 score)"},
+			},
+		}, nil)
+
+		require.NoError(t, err)
+		require.NotNil(t, response)
+
+		responseText := response.Text()
+		t.Logf("Data table response: %s", responseText)
+
+		// Verify artifact creation for table
+		require.Contains(t, responseText, "<habili:artifact", "Response should contain artifact opening tag")
+		// Could be either table type or react type depending on AI choice
+		shouldContainTableOrReact := strings.Contains(responseText, `type="table"`) || strings.Contains(responseText, `type="react"`)
+		require.True(t, shouldContainTableOrReact, "Response should specify table or react type for tabular data")
+
+		// Check that employee data is referenced
+		require.Contains(t, responseText, "John", "Table should include John's data")
+		require.Contains(t, responseText, "Engineering", "Table should include department info")
+	})
+
+	t.Run("Instruction Coverage Verification", func(t *testing.T) {
+		// Verify that the AI understands when to use artifacts
+		response, err := runtime.Run(ctx, engine.RunRequest{
+			History: []engine.Conversation{
+				{User: "USER", Text: "When should I use artifacts? Can you explain the different types available?"},
+			},
+		}, nil)
+
+		require.NoError(t, err)
+		require.NotNil(t, response)
+
+		responseText := response.Text()
+		t.Logf("Instruction coverage response: %s", responseText)
+
+		// Verify the AI understands the artifact system
+		require.Contains(t, responseText, "artifact", "Should mention artifacts")
+
+		// Should mention key use cases
+		shouldMentionUseCases := strings.Contains(responseText, "visualization") ||
+			strings.Contains(responseText, "chart") ||
+			strings.Contains(responseText, "interactive") ||
+			strings.Contains(responseText, "component")
+		require.True(t, shouldMentionUseCases, "Should explain artifact use cases")
+	})
+}

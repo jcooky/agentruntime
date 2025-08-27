@@ -1,0 +1,219 @@
+---
+description: 'HTML Artifact Testing Patterns - unit tests and live integration tests'
+globs: 'engine/artifact_test.go,engine/artifact_comprehensive_test.go,*_test.go'
+---
+
+# HTML Artifact Testing Patterns
+
+Comprehensive testing patterns for HTML artifact generation system including unit tests and live AI model integration tests.
+
+## Test Files
+
+### Unit Tests
+
+[engine/artifact_test.go](mdc:engine/artifact_test.go) - Template validation and instruction testing
+
+### Integration Tests
+
+[engine/artifact_comprehensive_test.go](mdc:engine/artifact_comprehensive_test.go) - End-to-end artifact generation testing
+
+### Live AI Tests
+
+[agentruntime_live_test.go](mdc:agentruntime_live_test.go) - Real AI model integration testing
+
+## Test Structure
+
+### TestSuite Pattern
+
+```go
+type EngineTestSuite struct {
+    suite.Suite
+    // test setup
+}
+
+func (s *EngineTestSuite) TestArtifactGenerationInstructions() {
+    // Test artifact instruction rendering
+}
+```
+
+### Agent Configuration for Tests
+
+```go
+agent := entity.Agent{
+    Name:               "HTMLAgent",
+    Role:               "html developer",
+    Prompt:             "Create HTML components for users",
+    ModelName:          "openai/gpt-4o",
+    ArtifactGeneration: true,  // Enable artifact support
+}
+```
+
+## Testing Categories
+
+### 1. Template Rendering Tests
+
+Verify that instruction templates render correctly:
+
+```go
+func (s *EngineTestSuite) TestArtifactInstructionConditionalRendering() {
+    // Test conditional artifact instructions
+    // Verify required="true" attribute
+    // Check HTML-specific content
+}
+```
+
+### 2. Content Validation Tests
+
+Ensure generated instructions contain required elements:
+
+```go
+// Check for essential components
+s.Assert().Contains(result, "Universal HTML Method")
+s.Assert().Contains(result, "CDN")
+s.Assert().Contains(result, "Tailwind CSS")
+s.Assert().Contains(result, "Chart.js")
+s.Assert().Contains(result, "<htmlCode>")
+```
+
+### 3. Live AI Integration Tests
+
+Test with real AI models using environment configuration:
+
+```go
+func TestArtifactGenerationLive(t *testing.T) {
+    // Requires: ANTHROPIC_API_KEY environment variable
+    // Uses: anthropic/claude-4-sonnet model
+    // Tests: End-to-end artifact generation
+}
+```
+
+## Environment Setup
+
+### Test Configuration
+
+```bash
+# Required environment variables for live tests
+ANTHROPIC_API_KEY=your_key_here
+OPENAI_API_KEY=your_key_here
+
+# Run with environment
+godotenv go test ./engine -run TestArtifactGeneration -v
+```
+
+### Test Execution Patterns
+
+```bash
+# Unit tests only
+go test ./engine -run TestArtifact -v
+
+# All artifact tests
+go test ./engine -run TestArtifact -v -timeout 30s
+
+# Live AI tests (requires API keys)
+godotenv go test -run TestArtifactGenerationLive -v -timeout 60s
+```
+
+## Assertion Patterns
+
+### Template Content Assertions
+
+```go
+// Verify HTML-specific instructions
+s.Assert().Contains(prompt, "HTML artifacts are currently supported")
+s.Assert().Contains(prompt, "Use vanilla JavaScript")
+s.Assert().Contains(prompt, "CDN-based libraries only")
+
+// Check for forbidden technologies
+s.Assert().Contains(prompt, "No React, Vue, or other frameworks")
+```
+
+### XML Structure Validation
+
+```go
+// Verify XML format examples
+s.Assert().Contains(prompt, `<habili:artifact type="html"`)
+s.Assert().Contains(prompt, `<htmlCode>`)
+s.Assert().Contains(prompt, `<!DOCTYPE html>`)
+```
+
+### Error Handling Tests
+
+```go
+// Test agents without artifact generation
+agentWithoutArtifacts := entity.Agent{
+    ArtifactGeneration: false,
+}
+// Should not contain artifact instructions
+s.Assert().NotContains(result, "<artifact_instruction")
+```
+
+## Live Testing Strategies
+
+### Model Coverage
+
+Test with multiple AI models:
+
+- `anthropic/claude-4-sonnet` - Primary model for HTML generation
+- `openai/gpt-4o` - Alternative model testing
+- Different model configurations and temperatures
+
+### Artifact Generation Scenarios
+
+```go
+testCases := []struct {
+    name   string
+    prompt string
+    expect []string
+}{
+    {
+        name:   "Chart Generation",
+        prompt: "Create a bar chart showing sales data",
+        expect: []string{"<habili:artifact", "chart", "Chart.js"},
+    },
+    {
+        name:   "Dashboard Creation",
+        prompt: "Build an interactive dashboard",
+        expect: []string{"<!DOCTYPE html", "Tailwind", "JavaScript"},
+    },
+}
+```
+
+## Performance Testing
+
+### Test Timeouts
+
+```go
+// Appropriate timeouts for different test types
+func TestArtifactGeneration(t *testing.T) {
+    // Unit tests: 10s
+    // Integration tests: 30s
+    // Live AI tests: 60s+
+}
+```
+
+### Memory and Resource Testing
+
+- Monitor template rendering performance
+- Track artifact parsing efficiency
+- Validate memory usage during long tests
+
+## Continuous Integration
+
+### Test Selection
+
+```bash
+# CI environment - skip live tests
+go test ./engine -run TestArtifact -short
+
+# Full test suite - requires API keys
+godotenv go test ./engine -run TestArtifact -v
+```
+
+### Test Reporting
+
+```go
+// Structured test output
+t.Logf("✅ Artifact instructions generated successfully")
+t.Logf("📝 Template length: %d characters", len(result))
+t.Logf("🎯 Found %d required components", componentCount)
+```

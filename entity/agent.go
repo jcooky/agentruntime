@@ -15,6 +15,9 @@ type Agent struct {
 	// Skills are a unit of capability that an agent can perform.
 	Skills []AgentSkillUnion `json:"skills"`
 
+	// ArtifactGeneration enables artifact generation capabilities for this agent
+	ArtifactGeneration bool `json:"artifactGeneration,omitempty"`
+
 	Metadata map[string]any `json:"metadata"`
 }
 

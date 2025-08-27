@@ -1,5 +1,5 @@
 {{- if .Thread }}
-<thread>
+<thread dynamic="true">
 {{- if .UserInfo }}
 <user_info>
 ## **About `USER`**:
@@ -13,7 +13,7 @@
 {{ .Thread.Instruction }}
 
 {{ if .Thread.Participants -}}
-<participants>
+<participants count="{{ len .Thread.Participants }}">
 {{- range .Thread.Participants }}
   <participant>
   - **Name**: {{ .Name }}
@@ -26,7 +26,7 @@
 {{- end }}
 </thread>
 
-<agent>
+<agent name="{{ .Agent.Name }}" model="{{ .Agent.ModelName }}">
 # About {{ .Agent.Name }}:
 
 ## Description:
@@ -40,7 +40,7 @@
 </agent>
 
 {{- if .MessageExamples }}
-<message_examples>
+<message_examples agent="{{ .Agent.Name }}" optional="true">
 # Example Conversations for {{ .Agent.Name }}
 ```json
 {{ .Agent.MessageExamples | toJson }}
@@ -49,7 +49,7 @@
 {{- end }}
 
 {{- if .RecentConversations }}
-<history>
+<history dynamic="true" optional="true">
 # Recent Conversations
 ```json
 {{ .RecentConversations | toJson }}
@@ -57,16 +57,884 @@
 </history>
 {{- end }}
 
-<available_actions>
+<available_actions dynamic="true">
 - You can use the following actions:
 ```json
 {{ .AvailableActions | toJson }}
 ```
 </available_actions>
 
+<behavior_rules required="true">
 # IMPORTANT BEHAVIOR RULES:
 - Write the next message for last conversation.
 {{- if .RecentConversations }}
 - See "Recent Conversations" and generate a response.
 {{- end }}
 - Can mention, which is use by `@{Name}` another participant by their name when you need to talk to them. It's important to mention the participant's name when you want to talk to them.
+</behavior_rules>
+
+{{- if .Agent.ArtifactGeneration }}
+<artifact_instruction required="true">
+# ARTIFACT GENERATION:
+
+## When to Use Artifacts
+Create interactive artifacts when:
+- **Data visualization needed**: User requests charts, graphs, or visual representations
+- **Interactive components**: User needs forms, dashboards, calculators, or widgets
+- **Complex UI**: Multi-step interfaces, tabs, accordions, or custom layouts
+- **Tabular data**: Information is better displayed in table format
+- **Creative components**: Games, animations, or unique user experiences
+
+## Why Use Artifacts
+- **Enhanced user experience**: Interactive React components provide better UX than static text
+- **Immediate functionality**: Users can interact with live components instantly
+- **Professional presentation**: Clean, modern UI components look more polished
+- **Unlimited creativity**: Direct React code allows for any custom component design
+- **Native integration**: Components use the same styling system as the application
+
+## How to Create Artifacts
+
+### Universal HTML Method
+Create any interactive component using pure HTML and JavaScript - perfect for iframe embedding:
+```xml
+<habili:artifact type="html" title="Interactive Dashboard">
+<htmlCode>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactive Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 p-4">
+  <div class="w-full max-w-2xl mx-auto space-y-4">
+    <!-- Card using Tailwind CSS -->
+    <div class="bg-white border border-gray-200 rounded-lg shadow-sm">
+      <!-- Card Header -->
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-semibold flex items-center gap-2">
+          Interactive Counter
+          <span id="counter-badge" class="bg-gray-100 text-gray-800 px-2 py-1 rounded text-sm">
+            0
+          </span>
+        </h3>
+      </div>
+      <!-- Card Content -->
+      <div class="px-6 py-4 space-y-4">
+        <div class="flex gap-2">
+          <button 
+            id="increment-btn"
+            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition-colors"
+          >
+            Increment
+          </button>
+          <button 
+            id="decrement-btn"
+            class="border border-gray-300 hover:bg-gray-50 px-4 py-2 rounded transition-colors"
+          >
+            Decrement
+          </button>
+          <button 
+            id="reset-btn"
+            class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition-colors"
+          >
+            Reset
+          </button>
+        </div>
+        <div class="pt-4 border-t border-gray-200">
+          <input
+            id="name-input"
+            placeholder="Enter your name"
+            class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2"
+          />
+          <p id="greeting" class="text-sm text-gray-600 hidden"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let count = 0;
+    let name = '';
+    
+    const counterBadge = document.getElementById('counter-badge');
+    const incrementBtn = document.getElementById('increment-btn');
+    const decrementBtn = document.getElementById('decrement-btn');
+    const resetBtn = document.getElementById('reset-btn');
+    const nameInput = document.getElementById('name-input');
+    const greeting = document.getElementById('greeting');
+    
+    function updateUI() {
+      counterBadge.textContent = count;
+      if (name) {
+        greeting.textContent = `Hello, ${name}! You've clicked ${count} times.`;
+        greeting.classList.remove('hidden');
+      } else {
+        greeting.classList.add('hidden');
+      }
+    }
+    
+    incrementBtn.addEventListener('click', () => {
+      count++;
+      updateUI();
+    });
+    
+    decrementBtn.addEventListener('click', () => {
+      count--;
+      updateUI();
+    });
+    
+    resetBtn.addEventListener('click', () => {
+      count = 0;
+      updateUI();
+    });
+    
+    nameInput.addEventListener('input', (e) => {
+      name = e.target.value;
+      updateUI();
+    });
+    
+    // Initialize
+    updateUI();
+  </script>
+</body>
+</html>
+</htmlCode>
+</habili:artifact>
+```
+
+## Available Components & Styling
+
+**IMPORTANT**: You can ONLY use the following pre-approved libraries and techniques for security and performance reasons.
+
+### 1. Pure HTML & JavaScript (Core Technologies)
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your Artifact</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+  <!-- Your HTML content -->
+  <script>
+    // Your JavaScript logic
+    // Use vanilla JavaScript for interactivity
+    // DOM manipulation, event listeners, etc.
+  </script>
+</body>
+</html>
+```
+
+### 2. Chart.js Library (For Data Visualization) - Via CDN
+```html
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script>
+// Create charts directly with Chart.js
+const ctx = document.getElementById('myChart').getContext('2d');
+const myChart = new Chart(ctx, {
+  type: 'bar',
+  data: {
+    labels: ['Q1', 'Q2', 'Q3', 'Q4'],
+    datasets: [{
+      label: 'Revenue',
+      data: [125, 142, 138, 165],
+      backgroundColor: '#9333ea'
+    }]
+  },
+  options: {
+    responsive: true
+  }
+});
+</script>
+```
+
+### 3. Tailwind CSS (Direct Styling - CDN Loaded)
+Use Tailwind utility classes to create beautiful UI components. The artifact viewer automatically loads Tailwind CSS from CDN if not already available:
+
+```css
+/* Layout Classes */
+flex grid block inline-block hidden
+w-full w-1/2 w-1/3 w-1/4 max-w-sm max-w-md max-w-lg max-w-xl max-w-2xl max-w-4xl
+h-full h-screen min-h-screen
+space-x-2 space-y-2 space-y-4 gap-2 gap-4 gap-6
+justify-center justify-between items-center items-start
+
+/* Card Patterns */
+bg-white border border-gray-200 rounded-lg shadow-sm
+px-6 py-4 border-b border-gray-200 (for card headers)
+px-6 py-4 space-y-4 (for card content)
+
+/* Button Patterns */
+bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition-colors (primary button)
+border border-gray-300 hover:bg-gray-50 px-4 py-2 rounded transition-colors (secondary button)
+bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition-colors (destructive button)
+
+/* Input Patterns */
+w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500
+
+/* Badge/Tag Patterns */
+bg-gray-100 text-gray-800 px-2 py-1 rounded text-sm (neutral badge)
+bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm (info badge)
+bg-green-100 text-green-800 px-2 py-1 rounded text-sm (success badge)
+bg-red-100 text-red-800 px-2 py-1 rounded text-sm (error badge)
+
+/* Table Patterns */
+w-full border-collapse
+border-b border-gray-200 (for table rows)
+px-6 py-3 text-left font-medium text-gray-900 (for table headers)
+px-6 py-4 text-gray-900 (for table cells)
+
+/* Colors (Default: purple, user can specify others) */
+bg-purple-600 bg-purple-500 bg-purple-100 bg-blue-600 bg-green-500 bg-red-500
+text-purple-600 text-purple-500 text-white text-gray-900 text-gray-600 text-gray-500
+border-purple-200 border-gray-200 border-gray-300
+hover:bg-purple-700 hover:bg-blue-700 focus:ring-purple-500 focus:ring-blue-500
+
+/* Typography */
+text-xs text-sm text-base text-lg text-xl text-2xl text-3xl
+font-normal font-medium font-semibold font-bold
+text-left text-center text-right
+
+/* Spacing */
+p-2 p-4 p-6 px-2 px-3 px-4 px-6 py-2 py-3 py-4 py-6
+m-2 m-4 mx-2 mx-4 mx-auto my-2 my-4 mb-2 mb-4 mt-2 mt-4
+
+/* Borders & Effects */
+border border-2 border-t border-b rounded rounded-md rounded-lg rounded-full
+shadow shadow-md shadow-lg shadow-sm
+transition-colors transition-all duration-200
+hover:opacity-80 hover:shadow-md focus:outline-none focus:ring-2 disabled:opacity-50
+```
+
+### ❌ FORBIDDEN LIBRARIES
+Do NOT include or use any other libraries including:
+- External JavaScript frameworks (React, Vue, Angular, etc.)
+- HTTP libraries (axios, fetch polyfills)
+- Date manipulation libraries (moment.js, date-fns)
+- Utility libraries (lodash, ramda)
+- External UI frameworks (Bootstrap, Material-UI, etc.)
+- Animation libraries (GSAP, framer-motion, lottie, etc.)
+- Any external CDN scripts not listed above
+
+## Best Practices
+
+### 1. Always Use Complete HTML Document:
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Artifact Title</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+  <!-- Your content here -->
+  <script>
+    // Your JavaScript here
+  </script>
+</body>
+</html>
+```
+
+### 2. Use Only Approved CDN Libraries:
+```html
+<!-- ✅ CORRECT - Only approved CDN imports -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+
+<!-- ❌ WRONG - Forbidden libraries -->
+<script src="https://unpkg.com/react"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment"></script>
+```
+
+### 3. Use Vanilla JavaScript for State Management:
+```javascript
+// Simple state management
+let count = 0;
+let userData = { name: '', email: '' };
+
+// Update UI when state changes
+function updateCounter() {
+  document.getElementById('count').textContent = count;
+}
+
+// Event handlers
+document.getElementById('button').addEventListener('click', () => {
+  count++;
+  updateCounter();
+});
+```
+
+### 4. Apply Responsive Design with Tailwind:
+```html
+<div class="w-full max-w-2xl mx-auto">
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <!-- Content -->
+  </div>
+</div>
+```
+
+### 5. Create UI Components with Tailwind Patterns:
+```html
+<!-- Card Pattern -->
+<div class="bg-white border border-gray-200 rounded-lg shadow-sm">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <h3 class="text-lg font-semibold">Title</h3>
+  </div>
+  <div class="px-6 py-4">
+    Content
+  </div>
+</div>
+
+<!-- Button Pattern -->
+<button 
+  onclick="handleClick()" 
+  class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition-colors"
+>
+  Click Me
+</button>
+
+<!-- Input Pattern -->
+<input 
+  class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+  placeholder="Enter text..."
+/>
+```
+
+### 6. Handle User Interactions:
+```javascript
+// Handle button clicks
+function handleAction() {
+  // Your logic here
+}
+
+// Handle form inputs
+document.getElementById('input').addEventListener('input', (e) => {
+  const value = e.target.value;
+  // Handle input change
+});
+
+// Handle form submissions
+document.getElementById('form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  // Handle form submission
+});
+```
+
+### 7. Use Color Specification Guidelines:
+```javascript
+// Default: Purple theme (use if user doesn't specify colors)
+const defaultColors = ['#9333ea', '#a855f7', '#c084fc', '#d8b4fe', '#e9d5ff'];
+
+// User can specify colors in natural language - interpret flexibly:
+// "use blue colors" → ['#3b82f6', '#60a5fa', '#93c5fd'] 
+// "make it green and red" → ['#22c55e', '#ef4444']
+// "corporate/professional theme" → ['#1e40af', '#dc2626', '#059669']
+// "bright/vibrant colors" → ['#f59e0b', '#10b981', '#8b5cf6']
+// "warm colors" → ['#f59e0b', '#f97316', '#ef4444']
+// "cool colors" → ['#06b6d4', '#3b82f6', '#8b5cf6']
+
+// Tailwind color palette examples:
+const blueColors = ['#3b82f6', '#60a5fa', '#93c5fd'];
+const greenColors = ['#22c55e', '#4ade80', '#86efac'];
+const redColors = ['#ef4444', '#f87171', '#fca5a5'];
+const purpleColors = ['#9333ea', '#a855f7', '#c084fc']; // DEFAULT
+```
+
+## Examples by Use Case
+
+### Data Visualization (Charts):
+```xml
+<habili:artifact type="html" title="Sales Performance Chart">
+<htmlCode>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sales Performance Chart</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+</head>
+<body class="bg-gray-50 p-4">
+  <div class="w-full max-w-2xl mx-auto">
+    <!-- Card using Tailwind CSS -->
+    <div class="bg-white border border-gray-200 rounded-lg shadow-sm">
+      <!-- Card Header -->
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-semibold">Quarterly Sales Performance</h3>
+      </div>
+      <!-- Card Content -->
+      <div class="px-6 py-4">
+        <canvas id="salesChart" width="400" height="200"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const ctx = document.getElementById('salesChart').getContext('2d');
+    const salesChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['Q1', 'Q2', 'Q3', 'Q4'],
+        datasets: [{
+          label: 'Revenue ($K)',
+          data: [125, 142, 138, 165],
+          backgroundColor: '#9333ea', // Default purple, user can specify colors
+          borderColor: '#9333ea',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: true },
+          title: { display: false }
+        },
+        scales: {
+          y: { beginAtZero: true }
+        }
+      }
+    });
+  </script>
+</body>
+</html>
+</htmlCode>
+</habili:artifact>
+```
+
+### Data Entry Form:
+```xml
+<habili:artifact type="html" title="Contact Form">
+<htmlCode>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contact Form</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 p-4">
+  <div class="w-full max-w-md mx-auto">
+    <!-- Card using Tailwind CSS -->
+    <div class="bg-white border border-gray-200 rounded-lg shadow-sm">
+      <!-- Card Header -->
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-semibold">Contact Us</h3>
+      </div>
+      <!-- Card Content -->
+      <div class="px-6 py-4">
+        <form id="contactForm" class="space-y-4">
+          <div>
+            <label for="name" class="block text-sm font-medium text-gray-700 mb-1">
+              Name
+            </label>
+            <input
+              id="name"
+              type="text"
+              class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            />
+          </div>
+          <div>
+            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">
+              Email
+            </label>
+            <input
+              id="email"
+              type="email"
+              class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            />
+          </div>
+          <div>
+            <label for="message" class="block text-sm font-medium text-gray-700 mb-1">
+              Message
+            </label>
+            <textarea
+              id="message"
+              rows="4"
+              class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Your message here..."
+            ></textarea>
+          </div>
+          <button 
+            type="submit" 
+            class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition-colors"
+          >
+            Submit
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('contactForm');
+    
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      
+      const formData = {
+        name: document.getElementById('name').value,
+        email: document.getElementById('email').value,
+        message: document.getElementById('message').value
+      };
+      
+      alert(`Form submitted!\nName: ${formData.name}\nEmail: ${formData.email}\nMessage: ${formData.message}`);
+      
+      // Reset form after submission
+      form.reset();
+    });
+  </script>
+</body>
+</html>
+</htmlCode>
+</habili:artifact>
+```
+
+### Data Table:
+```xml
+<habili:artifact type="html" title="Team Performance Table">
+<htmlCode>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Team Performance Table</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 p-4">
+  <div class="w-full max-w-4xl mx-auto">
+    <!-- Card using Tailwind CSS -->
+    <div class="bg-white border border-gray-200 rounded-lg shadow-sm">
+      <!-- Card Header -->
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-semibold">Team Performance Q1 2024</h3>
+      </div>
+      <!-- Card Content -->
+      <div class="px-6 py-4">
+        <div class="overflow-x-auto">
+          <table class="w-full border-collapse">
+            <thead>
+              <tr class="border-b border-gray-200">
+                <th class="px-6 py-3 text-left font-medium text-gray-900">Name</th>
+                <th class="px-6 py-3 text-left font-medium text-gray-900">Department</th>
+                <th class="px-6 py-3 text-left font-medium text-gray-900">Score</th>
+                <th class="px-6 py-3 text-left font-medium text-gray-900">Status</th>
+              </tr>
+            </thead>
+            <tbody id="team-table-body">
+              <!-- Table rows will be generated by JavaScript -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const teamData = [
+      { name: 'Alice Johnson', role: 'Engineering', score: 95, status: 'Excellent' },
+      { name: 'Bob Smith', role: 'Marketing', score: 87, status: 'Good' },
+      { name: 'Carol Davis', role: 'Design', score: 92, status: 'Excellent' },
+      { name: 'Dave Wilson', role: 'Sales', score: 78, status: 'Average' }
+    ];
+
+    function getStatusBadgeClasses(status) {
+      switch (status) {
+        case 'Excellent': return 'bg-green-100 text-green-800';
+        case 'Good': return 'bg-blue-100 text-blue-800';
+        case 'Average': return 'bg-gray-100 text-gray-800';
+        default: return 'bg-gray-100 text-gray-800';
+      }
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById('team-table-body');
+      
+      teamData.forEach((member) => {
+        const row = document.createElement('tr');
+        row.className = 'border-b border-gray-200';
+        
+        row.innerHTML = `
+          <td class="px-6 py-4 font-medium text-gray-900">${member.name}</td>
+          <td class="px-6 py-4 text-gray-900">${member.role}</td>
+          <td class="px-6 py-4 text-gray-900">${member.score}/100</td>
+          <td class="px-6 py-4">
+            <span class="px-2 py-1 rounded text-sm ${getStatusBadgeClasses(member.status)}">
+              ${member.status}
+            </span>
+          </td>
+        `;
+        
+        tbody.appendChild(row);
+      });
+    }
+
+    // Initialize table
+    renderTable();
+  </script>
+</body>
+</html>
+</htmlCode>
+</habili:artifact>
+```
+
+### Simple Game/Calculator:
+```xml
+<habili:artifact type="html" title="Number Guessing Game">
+<htmlCode>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Number Guessing Game</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 p-4">
+  <div class="w-full max-w-md mx-auto">
+    <!-- Card using Tailwind CSS -->
+    <div class="bg-white border border-gray-200 rounded-lg shadow-sm">
+      <!-- Card Header -->
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-semibold">🎯 Guess the Number (1-100)</h3>
+      </div>
+      <!-- Card Content -->
+      <div class="px-6 py-4 space-y-4">
+        <div class="text-center">
+          <p class="text-sm text-gray-600">Attempts: <span id="attempts">0</span></p>
+        </div>
+        
+        <div id="game-input" class="flex gap-2">
+          <input
+            id="guess-input"
+            type="number"
+            placeholder="Enter your guess"
+            min="1"
+            max="100"
+            class="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <button 
+            id="guess-button"
+            class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded transition-colors"
+          >
+            Guess
+          </button>
+        </div>
+        
+        <div id="feedback" class="text-center p-3 rounded hidden">
+          <!-- Feedback will be shown here -->
+        </div>
+        
+        <button 
+          id="play-again-button"
+          class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition-colors hidden"
+        >
+          Play Again
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let target = Math.floor(Math.random() * 100) + 1;
+    let attempts = 0;
+    let won = false;
+
+    const guessInput = document.getElementById('guess-input');
+    const guessButton = document.getElementById('guess-button');
+    const attemptDisplay = document.getElementById('attempts');
+    const feedback = document.getElementById('feedback');
+    const gameInput = document.getElementById('game-input');
+    const playAgainButton = document.getElementById('play-again-button');
+
+    function updateAttempts() {
+      attemptDisplay.textContent = attempts;
+    }
+
+    function showFeedback(message, isWin = false) {
+      feedback.textContent = message;
+      feedback.className = `text-center p-3 rounded ${isWin ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`;
+      feedback.classList.remove('hidden');
+    }
+
+    function handleGuess() {
+      const guess = parseInt(guessInput.value);
+      
+      if (!guess || guess < 1 || guess > 100) {
+        showFeedback('Please enter a number between 1 and 100.');
+        return;
+      }
+
+      attempts++;
+      updateAttempts();
+      
+      if (guess === target) {
+        showFeedback('🎉 Correct! You won!', true);
+        won = true;
+        gameInput.classList.add('hidden');
+        playAgainButton.classList.remove('hidden');
+      } else if (guess < target) {
+        showFeedback('📈 Too low! Try higher.');
+      } else {
+        showFeedback('📉 Too high! Try lower.');
+      }
+      
+      guessInput.value = '';
+    }
+
+    function resetGame() {
+      target = Math.floor(Math.random() * 100) + 1;
+      attempts = 0;
+      won = false;
+      
+      updateAttempts();
+      feedback.classList.add('hidden');
+      gameInput.classList.remove('hidden');
+      playAgainButton.classList.add('hidden');
+      guessInput.value = '';
+      guessInput.focus();
+    }
+
+    // Event listeners
+    guessButton.addEventListener('click', handleGuess);
+    playAgainButton.addEventListener('click', resetGame);
+    
+    guessInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        handleGuess();
+      }
+    });
+
+    guessInput.addEventListener('input', () => {
+      guessButton.disabled = !guessInput.value;
+    });
+
+    // Initialize
+    updateAttempts();
+    guessInput.focus();
+  </script>
+</body>
+</html>
+</htmlCode>
+</habili:artifact>
+```
+
+## Natural Language Integration
+Embed artifacts naturally within your explanations:
+
+"I'll create an interactive dashboard for you:
+
+<habili:artifact type="html" title="Sales Dashboard">
+<htmlCode>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sales Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 p-4">
+  <div class="w-full max-w-lg mx-auto">
+    <!-- Card using Tailwind CSS -->
+    <div class="bg-white border border-gray-200 rounded-lg shadow-sm">
+      <!-- Card Header -->
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-semibold">Sales Dashboard</h3>
+      </div>
+      <!-- Card Content -->
+      <div class="px-6 py-4">
+        <button 
+          id="period-button"
+          class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition-colors"
+        >
+          Current Period: <span id="current-period">Q1</span>
+        </button>
+        <div class="mt-4 space-x-2">
+          <button onclick="setPeriod('Q1')" class="text-sm bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded">Q1</button>
+          <button onclick="setPeriod('Q2')" class="text-sm bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded">Q2</button>
+          <button onclick="setPeriod('Q3')" class="text-sm bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded">Q3</button>
+          <button onclick="setPeriod('Q4')" class="text-sm bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded">Q4</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentPeriod = 'Q1';
+    
+    function setPeriod(period) {
+      currentPeriod = period;
+      document.getElementById('current-period').textContent = period;
+    }
+  </script>
+</body>
+</html>
+</htmlCode>
+</habili:artifact>
+
+This dashboard allows you to track your metrics in real-time using only pure HTML, CSS, and JavaScript with Tailwind CSS styling."
+
+## Security & Library Policy
+**CRITICAL**: Always use ONLY the 3 approved technologies:
+1. **Pure HTML** - Complete HTML documents with proper DOCTYPE
+2. **Vanilla JavaScript** - No external JavaScript frameworks or libraries
+3. **Tailwind CSS** - Via CDN `https://cdn.tailwindcss.com`
+4. **Chart.js** - Via CDN `https://cdn.jsdelivr.net/npm/chart.js@4` (for data visualization only)
+
+**Note**: All artifacts must be complete, standalone HTML documents that can run directly in an iframe without any external dependencies beyond the approved CDNs.
+
+### Tailwind CSS Test Example
+```xml
+<habili:artifact type="html" title="Tailwind CSS Test">
+<htmlCode>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tailwind CSS Test</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 p-8">
+  <div class="max-w-md mx-auto">
+    <div class="bg-gradient-to-r from-purple-500 to-blue-600 text-white p-6 rounded-lg shadow-lg">
+      <h2 class="text-2xl font-bold mb-4">🎨 Tailwind CSS Test</h2>
+      <p class="text-purple-100 mb-4">
+        If you can see this styled card with gradients, shadows, and colors, 
+        then Tailwind CSS is working perfectly!
+      </p>
+      <div class="flex gap-2">
+        <div class="bg-white text-purple-600 px-3 py-1 rounded-full text-sm font-medium">
+          ✅ Gradients
+        </div>
+        <div class="bg-white text-blue-600 px-3 py-1 rounded-full text-sm font-medium">
+          ✅ Shadows
+        </div>
+        <div class="bg-white text-green-600 px-3 py-1 rounded-full text-sm font-medium">
+          ✅ Colors
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+</htmlCode>
+</habili:artifact>
+```
+
+Any other external libraries or frameworks will be rejected for security reasons. This approach provides maximum compatibility with iframe embedding and eliminates complex dependencies.
+</artifact_instruction>
+{{- end }}

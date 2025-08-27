@@ -1,0 +1,222 @@
+---
+description: 'AgentRuntime Engine Architecture - core execution engine and artifact generation'
+globs: 'engine/*.go,engine/**/*.go'
+---
+
+# AgentRuntime Engine Architecture
+
+The core execution engine responsible for AI agent prompt generation, instruction templating, and artifact system integration.
+
+## Core Components
+
+### Main Engine Files
+
+- [engine/engine.go](mdc:engine/engine.go) - Core engine implementation
+- [engine/generate.go](mdc:engine/generate.go) - Prompt and instruction generation
+- [engine/prompt.go](mdc:engine/prompt.go) - Template processing and rendering
+- [engine/run.go](mdc:engine/run.go) - Agent execution logic
+- [engine/embed.go](mdc:engine/embed.go) - Template embedding system
+
+### Instruction System
+
+- [engine/data/instructions/chat.md.tmpl](mdc:engine/data/instructions/chat.md.tmpl) - AI agent instruction template
+- [engine/funcs.go](mdc:engine/funcs.go) - Template helper functions
+
+## Engine Workflow
+
+### 1. Agent Configuration Processing
+
+```go
+type Agent struct {
+    Name               string
+    Description        string
+    ArtifactGeneration bool  // Controls artifact instruction inclusion
+    // ... other fields
+}
+```
+
+### 2. Instruction Template Rendering
+
+```go
+// In engine/prompt.go
+func RenderPrompt(agent *entity.Agent) (string, error) {
+    // Load template from embedded files
+    // Process with Go template engine
+    // Apply conditional logic based on agent configuration
+}
+```
+
+### 3. Artifact System Integration
+
+```go
+// Conditional rendering based on agent configuration
+{{- if .Agent.ArtifactGeneration }}
+<artifact_instruction required="true">
+<!-- HTML artifact generation instructions -->
+</artifact_instruction>
+{{- end }}
+```
+
+## Template System
+
+### Go Template Processing
+
+- Uses Go's `text/template` package for instruction generation
+- Supports conditional rendering with `{{- if }}` statements
+- Template data includes agent configuration and metadata
+
+### Template Data Structure
+
+```go
+templateData := map[string]interface{}{
+    "Agent": agent,
+    // Additional context variables
+}
+```
+
+### Embedded Templates
+
+Templates are embedded at compile time using Go's `embed` package:
+
+```go
+//go:embed data/instructions/*.tmpl
+var instructionTemplates embed.FS
+```
+
+## Artifact Generation Flow
+
+### 1. Agent Initialization
+
+```go
+agent := &entity.Agent{
+    Name:               "HTMLArtifactAgent",
+    ArtifactGeneration: true,  // Enable HTML artifact support
+}
+```
+
+### 2. Instruction Generation
+
+```go
+instructions, err := engine.RenderPrompt(agent)
+// Includes HTML artifact generation guidelines
+// Contains approved technologies list
+// Provides security restrictions
+```
+
+### 3. AI Model Interaction
+
+- Instructions sent to AI model (Claude, GPT-4, etc.)
+- Model generates response with embedded XML artifacts
+- Frontend parses and renders artifacts safely
+
+## Testing Integration
+
+### Unit Testing
+
+```go
+// Test instruction generation
+func TestArtifactInstructionGeneration(t *testing.T) {
+    agent := &entity.Agent{ArtifactGeneration: true}
+    result, err := RenderPrompt(agent)
+    // Verify artifact instructions included
+}
+```
+
+### Integration Testing
+
+```go
+// Test with live AI models
+func TestLiveArtifactGeneration(t *testing.T) {
+    // Full end-to-end testing with real AI models
+    // Validates instruction effectiveness
+}
+```
+
+## Security Considerations
+
+### Template Security
+
+- All templates are statically embedded (no dynamic loading)
+- Input validation for agent configuration
+- Safe template rendering with controlled data
+
+### Artifact Security
+
+- Instructions enforce iframe sandbox restrictions
+- CDN-only library policy embedded in templates
+- No server-side code execution allowed
+
+## Performance Optimization
+
+### Template Caching
+
+```go
+// Templates parsed once at startup
+var parsedTemplates = template.Must(
+    template.ParseFS(instructionTemplates, "data/instructions/*.tmpl")
+)
+```
+
+### Memory Management
+
+- Efficient template data structures
+- Minimal memory allocation during rendering
+- Reusable template instances
+
+## Development Guidelines
+
+### Engine Modifications
+
+1. **Backwards Compatibility**: Ensure existing agents continue working
+2. **Template Validation**: Test template syntax thoroughly
+3. **Performance Testing**: Measure instruction generation speed
+4. **Security Review**: Validate any new template features
+
+### Adding New Instruction Types
+
+```go
+// 1. Update template with conditional logic
+{{- if .Agent.NewFeature }}
+<new_instruction>
+<!-- Feature-specific instructions -->
+</new_instruction>
+{{- end }}
+
+// 2. Add agent configuration field
+type Agent struct {
+    NewFeature bool `json:"newFeature,omitempty"`
+    // ... existing fields
+}
+
+// 3. Add comprehensive tests
+func TestNewFeatureInstructions(t *testing.T) {
+    // Test with feature enabled/disabled
+}
+```
+
+### Template Best Practices
+
+- Keep instructions concise but comprehensive
+- Provide working code examples
+- Include error prevention guidelines
+- Test with multiple AI models
+- Document breaking changes
+
+## Error Handling
+
+### Template Rendering Errors
+
+```go
+func RenderPrompt(agent *entity.Agent) (string, error) {
+    if err := validateAgent(agent); err != nil {
+        return "", fmt.Errorf("invalid agent configuration: %w", err)
+    }
+    // ... template rendering logic
+}
+```
+
+### Runtime Error Recovery
+
+- Graceful degradation for template errors
+- Fallback to basic instructions if templates fail
+- Comprehensive error logging and monitoring

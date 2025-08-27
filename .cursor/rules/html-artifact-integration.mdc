@@ -1,0 +1,237 @@
+---
+description: 'HTML Artifact Integration - AgentRuntime to TeamZero communication'
+globs: 'engine/data/instructions/chat.md.tmpl,entity/agent.go,engine/artifact*.go'
+---
+
+# HTML Artifact Integration
+
+Integration layer between AgentRuntime (AI agent execution) and TeamZero (frontend rendering) for HTML artifact generation and display.
+
+## System Overview
+
+### AgentRuntime Responsibilities
+
+- Generate AI agent instructions for HTML artifacts
+- Configure agents with `ArtifactGeneration: true` flag
+- Provide comprehensive HTML generation guidelines
+- Test artifact instruction effectiveness
+
+### TeamZero Responsibilities
+
+- Parse `<habili:artifact>` XML tags from AI responses
+- Render HTML content safely in iframe sandbox
+- Handle streaming artifact updates with `isCompleted` flag
+- Provide user interface for artifact interaction
+
+## Communication Protocol
+
+### XML Message Format
+
+AgentRuntime instructions teach AI models to generate:
+
+```xml
+<habili:artifact type="html" title="Interactive Dashboard">
+<htmlCode>
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <!-- Interactive HTML content -->
+</body>
+</html>
+</htmlCode>
+</habili:artifact>
+```
+
+### Agent Configuration
+
+```go
+// In entity/agent.go
+type Agent struct {
+    // ... other fields
+    ArtifactGeneration bool `json:"artifactGeneration,omitempty"`
+}
+```
+
+## Integration Points
+
+### 1. Instruction Template
+
+[engine/data/instructions/chat.md.tmpl](mdc:engine/data/instructions/chat.md.tmpl) contains:
+
+- **Universal HTML Method** - Complete document structure requirements
+- **Approved Technologies** - HTML5, Tailwind CSS, Chart.js, vanilla JavaScript
+- **Forbidden Technologies** - React, Vue, external APIs, build tools
+- **Security Guidelines** - iframe sandbox restrictions
+- **Working Examples** - Dashboard, forms, charts, games
+
+### 2. Agent Entity Configuration
+
+```go
+// Enable artifacts for specific agents
+agent := entity.Agent{
+    Name:               "HTMLDeveloper",
+    Description:        "Creates interactive HTML components",
+    ArtifactGeneration: true,  // Enables artifact instructions
+    ModelName:          "anthropic/claude-4-sonnet",
+}
+```
+
+### 3. TeamZero Processing
+
+TeamZero frontend receives AI responses and:
+
+1. **Parses XML** - Extracts `<habili:artifact>` tags
+2. **Validates Content** - Checks for `<htmlCode>` sections
+3. **Renders Safely** - Uses iframe with sandbox restrictions
+4. **Handles Streaming** - Progressive updates during generation
+
+## Development Workflow
+
+### 1. AgentRuntime Development
+
+```bash
+# Test instruction generation
+go test ./engine -run TestArtifact -v
+
+# Test with live AI models
+godotenv go test -run TestArtifactGenerationLive -v
+
+# Validate template changes
+go test ./engine -run TestArtifactInstructionConditionalRendering -v
+```
+
+### 2. TeamZero Integration
+
+```bash
+# Test artifact parsing
+cd teamzero
+yarn test lib/artifact.ts
+
+# Test component rendering
+yarn test components/HtmlArtifactViewer
+
+# Integration testing
+yarn test app/team0/teams/AgentMessageBubble
+```
+
+## Security Model
+
+### AgentRuntime Instruction Level
+
+- Enforces iframe sandbox through instructions
+- Prohibits external network requests in guidelines
+- Restricts to approved CDN libraries
+- Requires complete HTML documents
+
+### TeamZero Rendering Level
+
+- iframe sandbox: `allow-scripts allow-same-origin allow-forms`
+- Content Security Policy restrictions
+- No direct DOM access from artifacts
+- Isolated execution environment
+
+## Approved Technology Stack
+
+### Allowed in Artifacts
+
+- ✅ **HTML5** - All standard elements and APIs
+- ✅ **CSS3** - Styling and animations (via Tailwind)
+- ✅ **JavaScript ES6+** - Vanilla JS only, no frameworks
+- ✅ **Tailwind CSS** - `https://cdn.tailwindcss.com`
+- ✅ **Chart.js** - `https://cdn.jsdelivr.net/npm/chart.js`
+
+### Forbidden in Artifacts
+
+- ❌ **React/Vue/Angular** - Framework dependencies
+- ❌ **Node.js Modules** - Require build processes
+- ❌ **External APIs** - Network security risks
+- ❌ **File System Access** - Local resource access
+- ❌ **Server-side Processing** - No backend integration
+
+## Testing Strategy
+
+### AgentRuntime Tests
+
+```go
+// Verify instruction quality
+func TestArtifactInstructionComprehensive(t *testing.T) {
+    // Check for all required components
+    // Validate example code quality
+    // Ensure security guidelines present
+}
+
+// Test with real AI models
+func TestLiveArtifactGeneration(t *testing.T) {
+    // Generate actual artifacts
+    // Validate XML structure
+    // Check HTML validity
+}
+```
+
+### Integration Tests
+
+```typescript
+// TeamZero artifact parsing tests
+describe('parseArtifactTags', () => {
+  it('handles AgentRuntime generated XML', () => {
+    // Test with realistic AI-generated content
+    // Validate streaming artifact support
+    // Check isCompleted flag handling
+  });
+});
+```
+
+## Monitoring and Debugging
+
+### AgentRuntime Logging
+
+```go
+log.Printf("Generated artifact instructions for agent: %s", agent.Name)
+log.Printf("Instruction length: %d characters", len(instructions))
+```
+
+### TeamZero Debug Information
+
+```typescript
+console.log('🔍 Parsing XML content length:', content.length);
+console.log('✅ Added artifact:', {
+  type: artifact.type,
+  isCompleted: artifact.isCompleted,
+});
+```
+
+## Version Compatibility
+
+### Breaking Changes Protocol
+
+1. **AgentRuntime Changes** - Update instruction templates
+2. **Version Documentation** - Document template changes
+3. **TeamZero Updates** - Adapt parsing logic if needed
+4. **Integration Testing** - Verify end-to-end compatibility
+5. **Gradual Rollout** - Deploy with feature flags
+
+### Backwards Compatibility
+
+- Maintain support for existing XML structure
+- Graceful degradation for unsupported features
+- Clear migration paths for breaking changes
+
+## Performance Considerations
+
+### AgentRuntime Optimization
+
+- Template caching and reuse
+- Efficient instruction generation
+- Minimal memory allocation
+
+### TeamZero Rendering Performance
+
+- Lazy loading for off-screen artifacts
+- Efficient XML parsing with streaming support
+- Progressive rendering during generation
+- iframe resource optimization
