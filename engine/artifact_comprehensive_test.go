@@ -116,6 +116,157 @@ func (s *EngineTestSuite) TestXMLAttributesWithoutVersions() {
 	s.T().Logf("✅ XML attributes work correctly without version numbers")
 }
 
+func (s *EngineTestSuite) TestChartDesignGuidelineScenarios() {
+	// Test various chart design guideline scenarios
+	agent := entity.Agent{
+		Name:               "ChartDesignAgent",
+		Role:               "chart designer",
+		Prompt:             "You create beautiful charts following design guidelines. Use appropriate color palettes for different scenarios.",
+		ModelName:          "openai/gpt-4o",
+		ArtifactGeneration: true,
+	}
+
+	scenarios := []struct {
+		name             string
+		userRequest      string
+		expectedPalette  string
+		expectedFeatures []string
+	}{
+		{
+			name:            "Multi-Series Chart",
+			userRequest:     "Create a chart showing revenue for Apple, Google, and Microsoft from 2020-2024",
+			expectedPalette: "basicColorPalette",
+			expectedFeatures: []string{
+				"diverse items/categories",
+				"#4F6D7A", // Slate Blue
+				"#3C9D9B", // Muted Teal
+				"#E4B363", // Golden Mustard
+			},
+		},
+		{
+			name:            "Professional Monochrome",
+			userRequest:     "Show quarterly data in black and white professional style",
+			expectedPalette: "greyModePalette",
+			expectedFeatures: []string{
+				"monochrome/professional",
+				"#333333", // Deep Slate
+				"#666666", // Charcoal Grey
+				"#999999", // Neutral Grey
+			},
+		},
+		{
+			name:            "Emphasis Single Item",
+			userRequest:     "Create a chart showing OpenAI revenue with emphasis, compared to other companies",
+			expectedPalette: "primaryEmphasisPalette",
+			expectedFeatures: []string{
+				"highlighting single item",
+				"#007ACC", // Primary Accent Blue
+				"#777777", // Supporting grey
+				"#BBBBBB", // Lighter supporting grey
+			},
+		},
+	}
+
+	for _, scenario := range scenarios {
+		s.T().Run(scenario.name, func(t *testing.T) {
+			runRequest := engine.RunRequest{
+				History: []engine.Conversation{
+					{User: "USER", Text: scenario.userRequest},
+				},
+			}
+
+			promptValues, err := s.engine.BuildPromptValues(context.Background(), agent, runRequest)
+			s.Require().NoError(err)
+
+			promptFn := engine.GetPromptFn(promptValues)
+			prompt, err := promptFn(context.Background(), nil)
+			s.Require().NoError(err)
+
+			// Verify the scenario instructions contain the expected palette
+			s.Assert().Contains(prompt, scenario.expectedPalette,
+				"Should contain palette: %s for scenario: %s", scenario.expectedPalette, scenario.name)
+
+			// Verify expected features are documented
+			for _, feature := range scenario.expectedFeatures {
+				s.Assert().Contains(prompt, feature,
+					"Should contain feature: %s for scenario: %s", feature, scenario.name)
+			}
+
+			s.T().Logf("✅ Chart design scenario '%s' has proper guidance", scenario.name)
+		})
+	}
+}
+
+func (s *EngineTestSuite) TestChartJSConfigurationStandards() {
+	// Test that Chart.js configuration standards are properly documented
+	agent := entity.Agent{
+		Name:               "ChartConfigAgent",
+		Role:               "chart configuration specialist",
+		Prompt:             "You configure Chart.js with proper design standards",
+		ModelName:          "openai/gpt-4o",
+		ArtifactGeneration: true,
+	}
+
+	runRequest := engine.RunRequest{
+		History: []engine.Conversation{
+			{User: "USER", Text: "Show me how to configure a professional chart"},
+		},
+	}
+
+	promptValues, err := s.engine.BuildPromptValues(context.Background(), agent, runRequest)
+	s.Require().NoError(err)
+
+	promptFn := engine.GetPromptFn(promptValues)
+	prompt, err := promptFn(context.Background(), nil)
+	s.Require().NoError(err)
+
+	// Test Chart.js design standards
+	configChecks := map[string][]string{
+		"Line Chart Standards": {
+			"borderWidth: 1",
+			"tension: 0",
+			"fill: false",
+			"pointRadius: 3",
+		},
+		"Mass Chart Standards": {
+			"borderWidth: 1",
+			"radius: 0",
+			"same color for border and fill",
+		},
+		"Layout Standards": {
+			"backgroundColor: '#FAFAFA'",
+			"plotAreaColor: '#FFFFFF'",
+			"axisLineColor: '#999999'",
+			"gridLineColor: '#DDDDDD'",
+		},
+		"Grid Configuration": {
+			"color: '#DDDDDD'",
+			"lineWidth: 1",
+			"opacity: 0.6",
+		},
+		"Axis Configuration": {
+			"bottom: true",
+			"left: true",
+			"top: false",
+			"right: false",
+		},
+	}
+
+	for section, checks := range configChecks {
+		for _, check := range checks {
+			s.Assert().Contains(prompt, check,
+				"Should contain %s standard: %s", section, check)
+		}
+	}
+
+	// Verify updated Chart.js examples use new standards
+	s.Assert().Contains(prompt, "basicColorPalette", "Examples should use basic color palette")
+	s.Assert().Contains(prompt, "grid: { color: '#DDDDDD', lineWidth: 1 }", "Examples should use proper grid config")
+	s.Assert().Contains(prompt, "border: { color: '#999999', width: 1 }", "Examples should use proper border config")
+
+	s.T().Logf("✅ Chart.js configuration standards are properly documented")
+}
+
 func (s *EngineTestSuite) TestTemplateRenderingVariousScenarios() {
 	// Test template rendering in different scenarios
 	scenarios := []struct {
@@ -290,8 +441,39 @@ func (s *EngineTestSuite) TestArtifactInstructionCompleteness() {
 	}
 
 	// Verify artifact section is comprehensive (length check)
-	s.Assert().Greater(len(artifactSection), 8000,
-		"Artifact section should be comprehensive (>8000 chars), got %d", len(artifactSection))
+	s.Assert().Greater(len(artifactSection), 25000,
+		"Artifact section should be comprehensive (>25000 chars with new chart guidelines), got %d", len(artifactSection))
+
+	// Verify comprehensive chart design guidelines
+	s.Assert().Contains(artifactSection, "=== CHART COLOR PALETTES ===", "Should contain chart color palettes section")
+	s.Assert().Contains(artifactSection, "=== CHART.JS DESIGN SETTINGS ===", "Should contain Chart.js design settings section")
+	s.Assert().Contains(artifactSection, "=== COLOR SELECTION LOGIC ===", "Should contain color selection logic section")
+
+	// Verify all three color palettes are defined
+	basicPaletteColors := []string{"#4F6D7A", "#3C9D9B", "#E4B363", "#E17A72", "#6DA34D", "#7A5C92", "#5B7C99", "#C46BAE"}
+	for _, color := range basicPaletteColors {
+		s.Assert().Contains(artifactSection, color, "Should contain basic palette color: %s", color)
+	}
+
+	greyPaletteColors := []string{"#333333", "#4D4D4D", "#666666", "#808080", "#999999", "#B3B3B3", "#CCCCCC", "#E5E5E5"}
+	for _, color := range greyPaletteColors {
+		s.Assert().Contains(artifactSection, color, "Should contain grey palette color: %s", color)
+	}
+
+	primaryColors := []string{"#007ACC", "#777777", "#999999", "#BBBBBB", "#DDDDDD", "#F0F0F0"}
+	for _, color := range primaryColors {
+		s.Assert().Contains(artifactSection, color, "Should contain primary emphasis color: %s", color)
+	}
+
+	// Verify chart design configuration objects
+	s.Assert().Contains(artifactSection, "chartLayout", "Should contain chart layout configuration")
+	s.Assert().Contains(artifactSection, "lineChartDefaults", "Should contain line chart defaults")
+	s.Assert().Contains(artifactSection, "massChartDefaults", "Should contain mass chart defaults")
+	s.Assert().Contains(artifactSection, "gridConfig", "Should contain grid configuration")
+	s.Assert().Contains(artifactSection, "axisConfig", "Should contain axis configuration")
+
+	// Verify color selection function
+	s.Assert().Contains(artifactSection, "getChartColors", "Should contain color selection function")
 
 	s.T().Logf("✅ Artifact instructions are complete and comprehensive (%d chars)", len(artifactSection))
 }

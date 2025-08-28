@@ -145,7 +145,24 @@ func (s *EngineTestSuite) TestArtifactExampleValidity() {
 	s.Assert().Contains(prompt, `labels: [`, "Should contain properly formatted chart data structure")
 	s.Assert().Contains(prompt, `backgroundColor: '#`, "Should contain proper color specification in JS code")
 
-	s.T().Logf("✅ All artifact examples have valid syntax")
+	// Verify new chart design guidelines are present
+	s.Assert().Contains(prompt, "Chart Design & Color Specification", "Should contain chart design guidelines")
+	s.Assert().Contains(prompt, "basicColorPalette", "Should contain basic color palette definition")
+	s.Assert().Contains(prompt, "greyModePalette", "Should contain grey-mode palette definition")
+	s.Assert().Contains(prompt, "primaryEmphasisPalette", "Should contain primary emphasis palette definition")
+
+	// Verify specific color values from the guidelines
+	s.Assert().Contains(prompt, "#4F6D7A", "Should contain Slate Blue color from basic palette")
+	s.Assert().Contains(prompt, "#007ACC", "Should contain primary accent blue color")
+	s.Assert().Contains(prompt, "#333333", "Should contain Deep Slate color from grey palette")
+
+	// Verify chart design settings
+	s.Assert().Contains(prompt, "borderWidth: 1", "Should contain proper border width setting")
+	s.Assert().Contains(prompt, "tension: 0", "Should contain proper tension setting for line charts")
+	s.Assert().Contains(prompt, "#FAFAFA", "Should contain page background color")
+	s.Assert().Contains(prompt, "#DDDDDD", "Should contain grid line color")
+
+	s.T().Logf("✅ All artifact examples have valid syntax with new chart design guidelines")
 }
 
 func (s *EngineTestSuite) TestTemplateXMLStructure() {
