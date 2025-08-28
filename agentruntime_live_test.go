@@ -585,22 +585,19 @@ func TestAgentRuntimeArtifactGeneration(t *testing.T) {
 
 	// Create agent specialized in artifact generation
 	agent := entity.Agent{
-		Name:        "ArtifactAgent",
-		Description: "An AI assistant that creates interactive visual components and artifacts",
-		ModelName:   "anthropic/claude-3.5-haiku", // Use the same model as working tests
-		System: `You are an AI assistant specialized in creating beautiful, interactive data visualizations and artifacts.
+		Name:               "ArtifactAgent",
+		Description:        "An AI assistant that creates interactive visual components and HTML artifacts",
+		ModelName:          "anthropic/claude-3.5-haiku", // Use the same model as working tests
+		ArtifactGeneration: true, // Enable artifact generation
+		System: `You are an AI assistant specialized in creating beautiful, interactive HTML data visualizations and artifacts.
 
 When users request charts, graphs, interactive components, or data visualizations:
 1. Always use <habili:artifact> XML tags in your responses
-2. Choose between chart type for simple data visualization or react type for complex interactions
+2. Use HTML with Chart.js for data visualization and vanilla JavaScript for interactivity
 3. Provide helpful explanations along with your artifacts
 
-Examples:
-- For simple charts: <habili:artifact type="chart" title="Sales Data" data='{"labels":["Jan","Feb"],"values":[100,150]}' chartType="bar" />
-- For interactive components: <habili:artifact type="react" title="Calculator"><reactCode>...React code...</reactCode></habili:artifact>
-
-You have access to modern React, Tailwind CSS, shadcn/ui components, and chart.js libraries.`,
-		Role:   "Artifact Creator",
+You have access to modern HTML5, Tailwind CSS (via CDN), and Chart.js libraries for creating interactive components.`,
+		Role:   "HTML Artifact Creator",
 		Skills: []entity.AgentSkillUnion{
 			// Add a dummy skill to match the structure of working tests
 		},
@@ -618,7 +615,7 @@ You have access to modern React, Tailwind CSS, shadcn/ui components, and chart.j
 	defer runtime.Close()
 
 	t.Run("Chart Generation Request", func(t *testing.T) {
-		// Test simple chart generation
+		// Test simple HTML chart generation
 		response, err := runtime.Run(ctx, engine.RunRequest{
 			History: []engine.Conversation{
 				{User: "USER", Text: "Create a bar chart showing monthly sales data: January: $25,000, February: $32,000, March: $28,000"},
@@ -633,20 +630,21 @@ You have access to modern React, Tailwind CSS, shadcn/ui components, and chart.j
 
 		// Verify that the response contains artifact tags
 		require.Contains(t, responseText, "<habili:artifact", "Response should contain artifact opening tag")
-		require.Contains(t, responseText, `type="react"`, "Response should specify react type")
-		require.Contains(t, responseText, "<reactCode>", "Response should contain reactCode tag")
+		require.Contains(t, responseText, `type="html"`, "Response should specify html type")
+		require.Contains(t, responseText, "<htmlCode>", "Response should contain htmlCode tag")
 		require.Contains(t, responseText, "sales", "Response should reference sales data context")
 
-		// Check for proper React chart data structure
-		if strings.Contains(responseText, "<reactCode>") {
+		// Check for proper HTML chart data structure
+		if strings.Contains(responseText, "<htmlCode>") {
 			require.Contains(t, responseText, "January", "Chart should include January data")
 			require.Contains(t, responseText, "25000", "Chart should include correct sales figures")
-			require.Contains(t, responseText, "react-chartjs-2", "Should use approved chart library")
+			require.Contains(t, responseText, "Chart.js", "Should use Chart.js library")
+			require.Contains(t, responseText, "<!DOCTYPE html>", "Should be complete HTML document")
 		}
 	})
 
 	t.Run("Interactive Component Request", func(t *testing.T) {
-		// Test React component generation
+		// Test HTML interactive component generation
 		response, err := runtime.Run(ctx, engine.RunRequest{
 			History: []engine.Conversation{
 				{User: "USER", Text: "Create an interactive counter component that users can increment and decrement"},
@@ -659,21 +657,26 @@ You have access to modern React, Tailwind CSS, shadcn/ui components, and chart.j
 		responseText := response.Text()
 		t.Logf("Interactive component response: %s", responseText)
 
-		// Verify artifact structure for React components
+		// Verify artifact structure for HTML components
 		require.Contains(t, responseText, "<habili:artifact", "Response should contain artifact opening tag")
-		require.Contains(t, responseText, `type="react"`, "Response should specify react type")
+		require.Contains(t, responseText, `type="html"`, "Response should specify html type")
 
-		// Check for React code structure if present
-		if strings.Contains(responseText, "<reactCode>") {
-			require.Contains(t, responseText, "<reactCode>", "Should contain reactCode opening tag")
-			require.Contains(t, responseText, "</reactCode>", "Should contain reactCode closing tag")
-			require.Contains(t, responseText, "useState", "React component should use hooks")
-			require.Contains(t, responseText, "export default", "React component should export default")
+		// Check for HTML/JS interactive code structure if present
+		if strings.Contains(responseText, "<htmlCode>") {
+			require.Contains(t, responseText, "<htmlCode>", "Should contain htmlCode opening tag")
+			require.Contains(t, responseText, "</htmlCode>", "Should contain htmlCode closing tag")
+			require.Contains(t, responseText, "<!DOCTYPE html>", "Should be complete HTML document")
+			
+			// Check for interactive functionality
+			shouldHaveInteractivity := strings.Contains(responseText, "addEventListener") ||
+				strings.Contains(responseText, "onclick") ||
+				strings.Contains(responseText, "function")
+			require.True(t, shouldHaveInteractivity, "Should contain interactive JavaScript functionality")
 		}
 	})
 
 	t.Run("Data Table Request", func(t *testing.T) {
-		// Test table generation
+		// Test HTML table generation
 		response, err := runtime.Run(ctx, engine.RunRequest{
 			History: []engine.Conversation{
 				{User: "USER", Text: "Show this employee data in a table: John (Engineering, 95 score), Sarah (Marketing, 87 score), Mike (Sales, 92 score)"},
@@ -686,11 +689,14 @@ You have access to modern React, Tailwind CSS, shadcn/ui components, and chart.j
 		responseText := response.Text()
 		t.Logf("Data table response: %s", responseText)
 
-		// Verify artifact creation for table
+		// Verify artifact creation for HTML table
 		require.Contains(t, responseText, "<habili:artifact", "Response should contain artifact opening tag")
-		// Could be either table type or react type depending on AI choice
-		shouldContainTableOrReact := strings.Contains(responseText, `type="table"`) || strings.Contains(responseText, `type="react"`)
-		require.True(t, shouldContainTableOrReact, "Response should specify table or react type for tabular data")
+		require.Contains(t, responseText, `type="html"`, "Response should specify html type for tabular data")
+		
+		if strings.Contains(responseText, "<htmlCode>") {
+			require.Contains(t, responseText, "<!DOCTYPE html>", "Should be complete HTML document")
+			require.Contains(t, responseText, "<table", "Should contain HTML table element")
+		}
 
 		// Check that employee data is referenced
 		require.Contains(t, responseText, "John", "Table should include John's data")
@@ -698,10 +704,10 @@ You have access to modern React, Tailwind CSS, shadcn/ui components, and chart.j
 	})
 
 	t.Run("Instruction Coverage Verification", func(t *testing.T) {
-		// Verify that the AI understands when to use artifacts
+		// Verify that the AI understands when to use HTML artifacts
 		response, err := runtime.Run(ctx, engine.RunRequest{
 			History: []engine.Conversation{
-				{User: "USER", Text: "When should I use artifacts? Can you explain the different types available?"},
+				{User: "USER", Text: "When should I use HTML artifacts? Can you explain how to create interactive visualizations?"},
 			},
 		}, nil)
 
@@ -711,14 +717,19 @@ You have access to modern React, Tailwind CSS, shadcn/ui components, and chart.j
 		responseText := response.Text()
 		t.Logf("Instruction coverage response: %s", responseText)
 
-		// Verify the AI understands the artifact system
+		// Verify the AI understands the HTML artifact system
 		require.Contains(t, responseText, "artifact", "Should mention artifacts")
 
-		// Should mention key use cases
+		// Should mention key technologies and use cases
+		shouldMentionTechnologies := strings.Contains(responseText, "HTML") ||
+			strings.Contains(responseText, "Chart.js") ||
+			strings.Contains(responseText, "Tailwind")
+		require.True(t, shouldMentionTechnologies, "Should explain HTML artifact technologies")
+
 		shouldMentionUseCases := strings.Contains(responseText, "visualization") ||
 			strings.Contains(responseText, "chart") ||
 			strings.Contains(responseText, "interactive") ||
-			strings.Contains(responseText, "component")
+			strings.Contains(responseText, "dashboard")
 		require.True(t, shouldMentionUseCases, "Should explain artifact use cases")
 	})
 }
