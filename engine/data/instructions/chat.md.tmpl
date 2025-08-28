@@ -233,7 +233,10 @@ Create any interactive component using pure HTML and JavaScript - perfect for if
 ```html
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script>
-// Create charts directly with Chart.js
+// Apply design guidelines - Basic Color Palette
+const chartColors = ['#4F6D7A', '#3C9D9B', '#E4B363', '#E17A72'];
+
+// Create charts with proper styling
 const ctx = document.getElementById('myChart').getContext('2d');
 const myChart = new Chart(ctx, {
   type: 'bar',
@@ -242,11 +245,31 @@ const myChart = new Chart(ctx, {
     datasets: [{
       label: 'Revenue',
       data: [125, 142, 138, 165],
-      backgroundColor: '#3b82f6' // Choose appropriate colors based on context
+      backgroundColor: chartColors,
+      borderColor: chartColors,
+      borderWidth: 1
     }]
   },
   options: {
-    responsive: true
+    responsive: true,
+    plugins: {
+      legend: {
+        position: 'top'
+      }
+    },
+    scales: {
+      x: {
+        grid: { color: '#DDDDDD', lineWidth: 1 },
+        border: { color: '#999999', width: 1 },
+        ticks: { color: '#666666' }
+      },
+      y: {
+        beginAtZero: true,
+        grid: { color: '#DDDDDD', lineWidth: 1 },
+        border: { color: '#999999', width: 1 },
+        ticks: { color: '#666666' }
+      }
+    }
   }
 });
 </script>
@@ -288,11 +311,11 @@ border-b border-gray-200 (for table rows)
 px-6 py-3 text-left font-medium text-gray-900 (for table headers)
 px-6 py-4 text-gray-900 (for table cells)
 
-/* Colors (Default: purple, user can specify others) */
-bg-purple-600 bg-purple-500 bg-purple-100 bg-blue-600 bg-green-500 bg-red-500
-text-purple-600 text-purple-500 text-white text-gray-900 text-gray-600 text-gray-500
-border-purple-200 border-gray-200 border-gray-300
-hover:bg-purple-700 hover:bg-blue-700 focus:ring-purple-500 focus:ring-blue-500
+/* Colors (Chart-compatible palette) */
+bg-slate-600 bg-teal-600 bg-amber-400 bg-orange-400 bg-green-500 bg-violet-500
+text-slate-700 text-teal-700 text-amber-600 text-orange-600 text-green-600 text-violet-600
+border-slate-200 border-teal-200 border-amber-200 border-gray-200 border-gray-300
+hover:bg-slate-700 hover:bg-teal-700 focus:ring-slate-500 focus:ring-teal-500
 
 /* Typography */
 text-xs text-sm text-base text-lg text-xl text-2xl text-3xl
@@ -427,27 +450,110 @@ document.getElementById('form').addEventListener('submit', (e) => {
 });
 ```
 
-### 7. Use Color Specification Guidelines:
+### 7. Chart Design & Color Specification:
 ```javascript
-// IMPORTANT: Choose colors that match the content theme and create visual appeal
-// Consider the data context, brand feel, or user preferences when selecting colors
-// Be creative and use appropriate color schemes - avoid monotone designs
-// Use complementary colors, gradients, or thematic palettes for better visual impact
+// === CHART COLOR PALETTES ===
 
-// User can specify colors in natural language - interpret flexibly:
-// "use blue colors" → ['#3b82f6', '#60a5fa', '#93c5fd'] 
-// "make it green and red" → ['#22c55e', '#ef4444']
-// "corporate/professional theme" → ['#1e40af', '#dc2626', '#059669']
-// "bright/vibrant colors" → ['#f59e0b', '#10b981', '#8b5cf6']
-// "warm colors" → ['#f59e0b', '#f97316', '#ef4444']
-// "cool colors" → ['#06b6d4', '#3b82f6', '#8b5cf6']
+// 1. BASIC COLOR PALETTE (for multiple data series)
+// Use this when creating charts with diverse items/categories
+const basicColorPalette = [
+  '#4F6D7A', // Slate Blue - Main data (neutral, calm)
+  '#3C9D9B', // Muted Teal - 2nd priority, contrasting sub-data
+  '#E4B363', // Golden Mustard - Eye-catching emphasis data
+  '#E17A72', // Warm Coral - Comparison/warning/risk data
+  '#6DA34D', // Soft Green - Positive/growth data
+  '#7A5C92', // Dusty Purple - Secondary, less important series
+  '#5B7C99', // Cool Steel - Secondary, less important series
+  '#C46BAE'  // Soft Red-Violet - Final secondary
+];
 
-// Tailwind color palette examples:
-const blueColors = ['#3b82f6', '#60a5fa', '#93c5fd'];
-const greenColors = ['#22c55e', '#4ade80', '#86efac'];
-const redColors = ['#ef4444', '#f87171', '#fca5a5'];
-const orangeColors = ['#f59e0b', '#fb923c', '#fdba74'];
-const purpleColors = ['#8b5cf6', '#a78bfa', '#c4b5fd'];
+// 2. GREY-MODE PALETTE (for monochrome/professional look)
+// Use when user requests black & white or grey themes
+const greyModePalette = [
+  '#333333', // Deep Slate - Main (strongest contrast)
+  '#4D4D4D', // Graphite - 2nd priority
+  '#666666', // Charcoal Grey - 3rd priority
+  '#808080', // Steel Grey - 4th priority
+  '#999999', // Neutral Grey - Secondary
+  '#B3B3B3', // Ash Grey - Secondary
+  '#CCCCCC', // Silver Mist - Secondary
+  '#E5E5E5'  // Light Silver - Weakest contrast, for background
+];
+
+// 3. PRIMARY COLOR EMPHASIS (when highlighting single item)
+// Use when user wants to emphasize one specific data series
+const primaryEmphasisPalette = [
+  '#007ACC', // Primary Accent Blue - Main highlighted data
+  '#777777', // Supporting grey tones for other data
+  '#999999',
+  '#BBBBBB',
+  '#DDDDDD',
+  '#F0F0F0'
+];
+
+// === CHART.JS DESIGN SETTINGS ===
+
+// Base Layout Colors
+const chartLayout = {
+  backgroundColor: '#FAFAFA', // Page background
+  plotAreaColor: '#FFFFFF',   // Chart box background
+  axisLineColor: '#999999',   // X, Y axis lines
+  gridLineColor: '#DDDDDD'    // Grid lines
+};
+
+// Line Chart Settings (Line, Scatter, Mixed Charts)
+const lineChartDefaults = {
+  borderWidth: 1,
+  tension: 0,        // No curve smoothing
+  fill: false,       // No area fill
+  pointRadius: 3     // Default point size
+};
+
+// Mass Chart Settings (Bar, Pie, Doughnut)
+const massChartDefaults = {
+  borderWidth: 1,
+  radius: 0          // Sharp corners for bars
+  // Note: Use same color for border and fill
+};
+
+// Grid & Axis Configuration
+const gridConfig = {
+  color: '#DDDDDD',
+  lineWidth: 1,
+  opacity: 0.6      // 60% transparency
+};
+
+const axisConfig = {
+  color: '#999999',
+  lineWidth: 1,
+  display: {
+    bottom: true,    // Show bottom X-axis only
+    left: true,      // Show left Y-axis only
+    top: false,      // Hide top axis
+    right: false     // Hide right axis
+  }
+};
+
+// === COLOR SELECTION LOGIC ===
+// Priority order for color selection:
+// 1. User's explicit color request (highest priority)
+// 2. Context-appropriate palette selection
+// 3. Basic color palette (default)
+
+// Example usage in Chart.js:
+const getChartColors = (dataCount, emphasis = null, theme = 'basic') => {
+  let palette;
+  
+  if (theme === 'grey') {
+    palette = greyModePalette;
+  } else if (emphasis) {
+    palette = primaryEmphasisPalette;
+  } else {
+    palette = basicColorPalette;
+  }
+  
+  return palette.slice(0, dataCount);
+};
 ```
 
 ## Examples by Use Case
@@ -481,6 +587,9 @@ const purpleColors = ['#8b5cf6', '#a78bfa', '#c4b5fd'];
   </div>
 
   <script>
+    // Apply design guidelines
+    const basicColorPalette = ['#4F6D7A', '#3C9D9B', '#E4B363', '#E17A72'];
+    
     const ctx = document.getElementById('salesChart').getContext('2d');
     const salesChart = new Chart(ctx, {
       type: 'bar',
@@ -489,20 +598,59 @@ const purpleColors = ['#8b5cf6', '#a78bfa', '#c4b5fd'];
         datasets: [{
           label: 'Revenue ($K)',
           data: [125, 142, 138, 165],
-          backgroundColor: '#3b82f6', // Use colors that match the data context
-          borderColor: '#3b82f6',
+          backgroundColor: basicColorPalette,
+          borderColor: basicColorPalette,
           borderWidth: 1
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        layout: {
+          padding: 10
+        },
         plugins: {
-          legend: { display: true },
+          legend: { 
+            display: true,
+            position: 'top'
+          },
           title: { display: false }
         },
         scales: {
-          y: { beginAtZero: true }
+          x: {
+            grid: {
+              color: '#DDDDDD',
+              lineWidth: 1,
+              display: true
+            },
+            ticks: {
+              color: '#666666'
+            },
+            border: {
+              color: '#999999',
+              width: 1
+            }
+          },
+          y: { 
+            beginAtZero: true,
+            grid: {
+              color: '#DDDDDD',
+              lineWidth: 1,
+              display: true
+            },
+            ticks: {
+              color: '#666666'
+            },
+            border: {
+              color: '#999999',
+              width: 1
+            }
+          }
+        },
+        elements: {
+          bar: {
+            borderWidth: 1
+          }
         }
       }
     });
