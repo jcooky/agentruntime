@@ -242,7 +242,7 @@ const myChart = new Chart(ctx, {
     datasets: [{
       label: 'Revenue',
       data: [125, 142, 138, 165],
-      backgroundColor: '#9333ea'
+      backgroundColor: '#3b82f6' // Choose appropriate colors based on context
     }]
   },
   options: {
@@ -429,8 +429,10 @@ document.getElementById('form').addEventListener('submit', (e) => {
 
 ### 7. Use Color Specification Guidelines:
 ```javascript
-// Default: Purple theme (use if user doesn't specify colors)
-const defaultColors = ['#9333ea', '#a855f7', '#c084fc', '#d8b4fe', '#e9d5ff'];
+// IMPORTANT: Choose colors that match the content theme and create visual appeal
+// Consider the data context, brand feel, or user preferences when selecting colors
+// Be creative and use appropriate color schemes - avoid monotone designs
+// Use complementary colors, gradients, or thematic palettes for better visual impact
 
 // User can specify colors in natural language - interpret flexibly:
 // "use blue colors" → ['#3b82f6', '#60a5fa', '#93c5fd'] 
@@ -444,7 +446,8 @@ const defaultColors = ['#9333ea', '#a855f7', '#c084fc', '#d8b4fe', '#e9d5ff'];
 const blueColors = ['#3b82f6', '#60a5fa', '#93c5fd'];
 const greenColors = ['#22c55e', '#4ade80', '#86efac'];
 const redColors = ['#ef4444', '#f87171', '#fca5a5'];
-const purpleColors = ['#9333ea', '#a855f7', '#c084fc']; // DEFAULT
+const orangeColors = ['#f59e0b', '#fb923c', '#fdba74'];
+const purpleColors = ['#8b5cf6', '#a78bfa', '#c4b5fd'];
 ```
 
 ## Examples by Use Case
@@ -486,8 +489,8 @@ const purpleColors = ['#9333ea', '#a855f7', '#c084fc']; // DEFAULT
         datasets: [{
           label: 'Revenue ($K)',
           data: [125, 142, 138, 165],
-          backgroundColor: '#9333ea', // Default purple, user can specify colors
-          borderColor: '#9333ea',
+          backgroundColor: '#3b82f6', // Use colors that match the data context
+          borderColor: '#3b82f6',
           borderWidth: 1
         }]
       },
