@@ -638,13 +638,13 @@ You have access to modern HTML5, Tailwind CSS (via CDN), and Chart.js libraries 
 		if strings.Contains(responseText, "<htmlCode>") {
 			require.Contains(t, responseText, "January", "Chart should include January data")
 			require.Contains(t, responseText, "25000", "Chart should include correct sales figures")
-			
+
 			// Check for Chart.js usage (either in CDN or constructor)
-			shouldUseChartJS := strings.Contains(responseText, "chart.js") || 
+			shouldUseChartJS := strings.Contains(responseText, "chart.js") ||
 				strings.Contains(responseText, "new Chart(") ||
 				strings.Contains(responseText, "Chart(ctx")
 			require.True(t, shouldUseChartJS, "Should use Chart.js library")
-			
+
 			require.Contains(t, responseText, "<!DOCTYPE html>", "Should be complete HTML document")
 		}
 	})
