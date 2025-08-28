@@ -1,0 +1,66 @@
+---
+globs: '*_test.go'
+---
+
+# Test Patterns and API Signatures
+
+## Token Counter Test Patterns
+
+When testing token counters and conversation summarizers, use these patterns:
+
+### ModelConfig Setup
+
+Always create a proper ModelConfig with API keys for testing:
+
+```go
+testConfig := &config.ModelConfig{
+    AnthropicAPIKey: "dummy-key-for-testing",
+    ConversationSummary: config.ConversationSummaryConfig{
+        MaxTokens: 5000,
+        SummaryTokens: 200,
+        MinConversationsToSummarize: 3,
+        ModelForSummary: "openai/gpt-4o-mini",
+        TokenProvider: "openai", // or "anthropic" or "auto"
+    },
+}
+```
+
+### Factory and Counter Creation
+
+```go
+// Factory creation
+factory := NewDefaultTokenCounterFactory(testConfig)
+
+// Counter creation
+counter, err := NewAnthropicTokenCounter("dummy-key-for-testing", "claude-3-5-sonnet-20241022")
+
+// Summarizer creation
+summarizer, err := NewConversationSummarizer(g, testConfig)
+```
+
+### Genkit Setup Pattern
+
+```go
+ctx := context.Background()
+logger := mylog.NewLogger("debug", "text")
+g, err := genkit.NewGenkit(ctx, testConfig, logger, false)
+require.NoError(t, err)
+```
+
+## ProcessConversationHistory Testing
+
+Always pass both conversations and files separately:
+
+```go
+result, err := summarizer.ProcessConversationHistory(ctx, conversations, []File{})
+```
+
+## Import Requirements
+
+Test files need these imports:
+
+- `"github.com/habiliai/agentruntime/config"`
+- `"github.com/habiliai/agentruntime/internal/genkit"`
+- `"github.com/habiliai/agentruntime/internal/mylog"`
+- `"github.com/stretchr/testify/assert"`
+- `"github.com/stretchr/testify/require"`

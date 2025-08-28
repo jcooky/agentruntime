@@ -12,12 +12,30 @@ import (
 )
 
 func (s *Engine) BuildPromptValues(ctx context.Context, agent entity.Agent, req RunRequest) (*ChatPromptValues, error) {
+	var recentConversations []Conversation
+	var conversationSummary *SummarizedConversation
+
+	// Use conversation summarizer if available
+	if s.conversationSummarizer != nil && len(req.History) > 0 {
+		result, err := s.conversationSummarizer.ProcessConversationHistory(ctx, req.History, req.Files)
+		if err != nil {
+			s.logger.Error("failed to process conversation history", "error", err)
+			// Fall back to simple truncation
+			recentConversations = sliceutils.Cut(req.History, -200, len(req.History))
+		} else {
+			recentConversations = result.RecentConversations
+			conversationSummary = result.Summary
+		}
+	} else {
+		// Fall back to simple truncation when summarizer is not available
+		recentConversations = sliceutils.Cut(req.History, -200, len(req.History))
+	}
 
 	// construct inst promptValues
 	promptValues := &ChatPromptValues{
 		Agent:               agent,
 		MessageExamples:     sliceutils.RandomSampleN(agent.MessageExamples, 100),
-		RecentConversations: sliceutils.Cut(req.History, -200, len(req.History)),
+		RecentConversations: recentConversations,
 		AvailableActions:    make([]AvailableAction, 0, len(agent.Skills)),
 		Thread: Thread{
 			Instruction:  req.ThreadInstruction,
@@ -25,6 +43,14 @@ func (s *Engine) BuildPromptValues(ctx context.Context, agent entity.Agent, req 
 		},
 		UserInfo: req.UserInfo,
 		System:   agent.System,
+	}
+
+	// If we have a conversation summary, we need to extend the prompt values
+	if conversationSummary != nil {
+		// We'll handle this in template, but store the summary for now
+		// This requires extending ChatPromptValues or handling it differently
+		// For now, we'll add it to the system prompt
+		promptValues.System += fmt.Sprintf("\n\n<conversation_summary>\n# Previous Conversation Summary\n%s\n</conversation_summary>", conversationSummary.Summary)
 	}
 
 	// build available actions

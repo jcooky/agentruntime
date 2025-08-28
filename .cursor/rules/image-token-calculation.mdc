@@ -1,0 +1,58 @@
+---
+globs: 'engine/image_token_calculator*.go'
+---
+
+# OpenAI Image Token Calculation
+
+## Algorithm Implementation
+
+The OpenAI image token calculation follows this exact sequence:
+
+1. **Scale to fit within 2048×2048** maintaining aspect ratio
+2. **Scale so shortest side is 768px** (critical step)
+3. **Calculate 512px tiles** using ceiling division
+4. **Apply formula**: `85 + (totalTiles * 170)`
+
+## Key Implementation Details
+
+```go
+// Step 1: Scale to fit within 2048x2048
+scaledWidth, scaledHeight := calc.scaleToFit(width, height, 2048, 2048)
+
+// Step 2: Scale so shortest side is 768px
+if scaledWidth < scaledHeight {
+    scale := 768.0 / float64(scaledWidth)
+    finalWidth = 768
+    finalHeight = int(float64(scaledHeight) * scale)
+} else {
+    scale := 768.0 / float64(scaledHeight)
+    finalHeight = 768
+    finalWidth = int(float64(scaledWidth) * scale)
+}
+
+// Step 3: Calculate tiles (ceiling division)
+tilesX := (finalWidth + 511) / 512
+tilesY := (finalHeight + 511) / 512
+totalTiles := tilesX * tilesY
+
+// Step 4: Apply token formula
+return 85 + (totalTiles * 170)
+```
+
+## Test Expectations
+
+Due to the 768px scaling step, many different input sizes result in similar token counts:
+
+- `512×512` → `768×768` → 4 tiles → **765 tokens**
+- `1024×768` → `1024×768` → 4 tiles → **765 tokens**
+- `2048×1536` → `1024×768` → 4 tiles → **765 tokens**
+
+Wide/tall images create more variation:
+
+- `1536×512` → `2304×768` → 10 tiles → **1785 tokens**
+
+## Detail Mode Support
+
+- `DetailMode: "low"` → Always **85 tokens**
+- `DetailMode: "high"` → Full calculation algorithm
+- Default is `"high"` mode

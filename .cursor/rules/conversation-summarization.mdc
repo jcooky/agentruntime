@@ -1,0 +1,47 @@
+---
+description: 'Conversation summarization system design and patterns'
+---
+
+# Conversation Summarization System
+
+The conversation summarization system manages long AI conversations by automatically summarizing older parts when token limits are exceeded.
+
+## Architecture Separation
+
+**IMPORTANT**: The system separates two distinct concepts:
+
+- **`RunRequest.History`** - Past conversations (text only, no files)
+- **`RunRequest.Files`** - Current request media files (images, PDFs, etc.)
+
+## Core Components
+
+- **[ConversationSummarizer](mdc:engine/conversation_summary.go)** - Main summarization engine
+- **[ConversationSummaryConfig](mdc:config/ai.go)** - Configuration for summarization behavior
+- **Token Management** - Uses TokenCounter interface for accurate counting
+
+## Key Methods
+
+```go
+// Count tokens in different contexts
+func (cs *ConversationSummarizer) CountTokens(text string) int
+func (cs *ConversationSummarizer) CountConversationTokens(conversations []Conversation) int
+func (cs *ConversationSummarizer) CountRequestFilesTokens(files []File) int
+
+// Main processing method
+func (cs *ConversationSummarizer) ProcessConversationHistory(ctx context.Context, conversations []Conversation, requestFiles []File) (*ConversationHistoryResult, error)
+```
+
+## Configuration Options
+
+- `MaxTokens` - Maximum tokens for conversation history
+- `SummaryTokens` - Target tokens per summary
+- `TokenProvider` - "auto", "openai", or "anthropic"
+- `ModelForSummary` - LLM model for generating summaries
+
+## Integration Pattern
+
+The summarizer is integrated into the prompt building process in [prompt.go](mdc:engine/prompt.go):
+
+```go
+result, err := s.conversationSummarizer.ProcessConversationHistory(ctx, req.History, req.Files)
+```

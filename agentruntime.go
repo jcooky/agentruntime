@@ -112,11 +112,30 @@ func NewAgentRuntime(ctx context.Context, optionFuncs ...Option) (*AgentRuntime,
 		}
 	}
 
-	e.engine = engine.NewEngine(
-		e.logger,
-		e.toolManager,
-		g,
-	)
+	// Create engine with conversation summarizer if configured
+	if e.modelConfig.ConversationSummary.MaxTokens > 0 {
+		var err error
+		e.engine, err = engine.NewEngineWithSummarizer(
+			e.logger,
+			e.toolManager,
+			g,
+			e.modelConfig,
+		)
+		if err != nil {
+			e.logger.Warn("failed to create engine with summarizer, falling back to default", "error", err)
+			e.engine = engine.NewEngine(
+				e.logger,
+				e.toolManager,
+				g,
+			)
+		}
+	} else {
+		e.engine = engine.NewEngine(
+			e.logger,
+			e.toolManager,
+			g,
+		)
+	}
 
 	return e, nil
 }
@@ -180,5 +199,30 @@ func WithKnowledgeService(knowledgeService knowledge.Service) func(e *AgentRunti
 func WithMemoryService(memoryService memory.Service) func(e *AgentRuntime) {
 	return func(e *AgentRuntime) {
 		e.memoryService = memoryService
+	}
+}
+
+// WithConversationSummary sets the conversation summarization configuration
+func WithConversationSummary(summaryConfig config.ConversationSummaryConfig) func(e *AgentRuntime) {
+	return func(e *AgentRuntime) {
+		e.modelConfig.ConversationSummary = summaryConfig
+	}
+}
+
+// WithDefaultConversationSummary enables conversation summarization with default settings
+func WithDefaultConversationSummary() func(e *AgentRuntime) {
+	return func(e *AgentRuntime) {
+		e.modelConfig.ConversationSummary = config.DefaultConversationSummaryConfig()
+	}
+}
+
+// WithConversationSummaryTokenLimit sets only the token limit for conversation summarization
+func WithConversationSummaryTokenLimit(maxTokens int) func(e *AgentRuntime) {
+	return func(e *AgentRuntime) {
+		if e.modelConfig.ConversationSummary.MaxTokens == 0 {
+			// Use default config and override max tokens
+			e.modelConfig.ConversationSummary = config.DefaultConversationSummaryConfig()
+		}
+		e.modelConfig.ConversationSummary.MaxTokens = maxTokens
 	}
 }

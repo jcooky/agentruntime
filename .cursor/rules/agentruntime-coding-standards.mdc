@@ -1,0 +1,52 @@
+---
+alwaysApply: true
+---
+
+# AgentRuntime Project Coding Standards
+
+## Language and Documentation
+
+- **MUST** use English for all comments in source code
+- **MUST** use English for all documentation files
+- Project documentation should be in English only
+
+## Dependency Management
+
+- **MUST** use `yarn` classic instead of `npm`
+- Use `context7` for latest library documentation when needed
+
+## Git Workflow
+
+- **DO NOT** perform Git operations (commit, add, reset --hard) unless explicitly requested by user
+- User needs to review code changes before staging them
+- When committing:
+  1. Analyze staged files and changes
+  2. Review recent commit message styles
+  3. Write commit messages following conventional commit format
+  4. Include analysis results and follow existing patterns
+
+## Testing Patterns
+
+- Always run tests after making significant changes
+- Use `make test` for full project testing
+- Individual package testing: `go test ./package -v`
+- Test files must be updated when API signatures change
+
+## Interface Design
+
+- Prefer interface-based architecture for extensibility
+- Use factory patterns for creating implementations
+- Implement graceful fallbacks for external API calls
+- Configuration should be passed through structured config objects
+
+## Error Handling
+
+- Always provide fallback mechanisms for external services
+- Use meaningful error messages with context
+- Prefer `pkg/errors` for error wrapping when available
+
+## Code Organization
+
+- Separate concerns clearly (e.g., conversation history vs current request files)
+- Use dependency injection for testability
+- Keep configuration centralized in [config/](mdc:config/) package

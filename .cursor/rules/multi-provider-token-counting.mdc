@@ -1,0 +1,67 @@
+---
+globs: 'engine/token_counter*.go,engine/openai_token_counter.go,engine/anthropic_token_counter.go'
+---
+
+# Multi-Provider Token Counting Implementation
+
+## Provider Detection Patterns
+
+The system auto-detects providers based on model name prefixes:
+
+```go
+switch {
+case strings.HasPrefix(modelName, "openai/"):
+    return NewOpenAITokenCounter()
+case strings.HasPrefix(modelName, "anthropic/"):
+    return NewAnthropicTokenCounter(f.anthropicApiKey, modelName)
+case strings.HasPrefix(modelName, "xai/"):
+    return NewOpenAITokenCounter() // XAI uses OpenAI-compatible tokenization
+default:
+    return NewOpenAITokenCounter() // Default fallback
+}
+```
+
+## Implementation Requirements
+
+### OpenAI Token Counter
+
+- Uses `tiktoken-go` library for text tokenization
+- Uses `ImageTokenCalculator` for file token estimation
+- No API key required for basic tokenization
+
+### Anthropic Token Counter
+
+- Makes HTTP calls to Anthropic's `count_tokens` API endpoint
+- Requires `ANTHROPIC_API_KEY` for API calls
+- Has fallback to `EstimateTokens()` if API fails
+- Supports images through API, other files through estimation
+
+### Error Handling Pattern
+
+Both counters implement graceful fallback:
+
+```go
+tokens, err := a.callCountTokensAPI(ctx, req)
+if err != nil {
+    // Fallback to estimation if API fails
+    return EstimateTokens(text)
+}
+return tokens
+```
+
+## Factory Pattern Usage
+
+Always use the factory to create token counters:
+
+```go
+factory := NewDefaultTokenCounterFactory(modelConfig)
+tokenCounter, err := factory.CreateTokenCounterForModel(modelName)
+```
+
+## Configuration Integration
+
+Token counters are configured through `ConversationSummaryConfig`:
+
+- `TokenProvider: "auto"` - Auto-detect from model name (recommended)
+- `TokenProvider: "openai"` - Force OpenAI tokenizer
+- `TokenProvider: "anthropic"` - Force Anthropic API

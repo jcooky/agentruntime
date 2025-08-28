@@ -1,0 +1,30 @@
+---
+alwaysApply: true
+---
+
+# Token Counting Architecture
+
+This project implements a multi-provider token counting system for AI conversation summarization.
+
+## Core Architecture
+
+The token counting system follows an interface-based architecture:
+
+- **[TokenCounter interface](mdc:engine/token_counter.go)** - Abstraction for provider-specific token counting
+- **[TokenCounterFactory](mdc:engine/token_counter_factory.go)** - Creates appropriate TokenCounter implementations
+- **[OpenAITokenCounter](mdc:engine/openai_token_counter.go)** - Uses tiktoken-go for OpenAI models
+- **[AnthropicTokenCounter](mdc:engine/anthropic_token_counter.go)** - Uses Anthropic's count_tokens API with fallback
+- **[ConversationSummarizer](mdc:engine/conversation_summary.go)** - Main summarization engine using TokenCounter
+
+## Key Design Principles
+
+1. **Provider Abstraction**: All token counting goes through the TokenCounter interface
+2. **Factory Pattern**: TokenCounterFactory handles auto-detection based on model names
+3. **Fallback Strategy**: Anthropic counter falls back to estimation if API fails
+4. **Configuration-Driven**: Token provider can be set to "auto", "openai", or "anthropic"
+
+## API Signatures
+
+- `NewDefaultTokenCounterFactory(config *config.ModelConfig)` - Requires ModelConfig for API keys
+- `NewAnthropicTokenCounter(apiKey, model string)` - Takes API key as first parameter
+- `NewConversationSummarizer(g *genkit.Genkit, config *config.ModelConfig)` - Uses ModelConfig containing ConversationSummaryConfig
