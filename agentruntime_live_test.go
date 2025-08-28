@@ -588,7 +588,7 @@ func TestAgentRuntimeArtifactGeneration(t *testing.T) {
 		Name:               "ArtifactAgent",
 		Description:        "An AI assistant that creates interactive visual components and HTML artifacts",
 		ModelName:          "anthropic/claude-3.5-haiku", // Use the same model as working tests
-		ArtifactGeneration: true, // Enable artifact generation
+		ArtifactGeneration: true,                         // Enable artifact generation
 		System: `You are an AI assistant specialized in creating beautiful, interactive HTML data visualizations and artifacts.
 
 When users request charts, graphs, interactive components, or data visualizations:
@@ -638,7 +638,13 @@ You have access to modern HTML5, Tailwind CSS (via CDN), and Chart.js libraries 
 		if strings.Contains(responseText, "<htmlCode>") {
 			require.Contains(t, responseText, "January", "Chart should include January data")
 			require.Contains(t, responseText, "25000", "Chart should include correct sales figures")
-			require.Contains(t, responseText, "Chart.js", "Should use Chart.js library")
+			
+			// Check for Chart.js usage (either in CDN or constructor)
+			shouldUseChartJS := strings.Contains(responseText, "chart.js") || 
+				strings.Contains(responseText, "new Chart(") ||
+				strings.Contains(responseText, "Chart(ctx")
+			require.True(t, shouldUseChartJS, "Should use Chart.js library")
+			
 			require.Contains(t, responseText, "<!DOCTYPE html>", "Should be complete HTML document")
 		}
 	})
@@ -666,7 +672,7 @@ You have access to modern HTML5, Tailwind CSS (via CDN), and Chart.js libraries 
 			require.Contains(t, responseText, "<htmlCode>", "Should contain htmlCode opening tag")
 			require.Contains(t, responseText, "</htmlCode>", "Should contain htmlCode closing tag")
 			require.Contains(t, responseText, "<!DOCTYPE html>", "Should be complete HTML document")
-			
+
 			// Check for interactive functionality
 			shouldHaveInteractivity := strings.Contains(responseText, "addEventListener") ||
 				strings.Contains(responseText, "onclick") ||
@@ -692,7 +698,7 @@ You have access to modern HTML5, Tailwind CSS (via CDN), and Chart.js libraries 
 		// Verify artifact creation for HTML table
 		require.Contains(t, responseText, "<habili:artifact", "Response should contain artifact opening tag")
 		require.Contains(t, responseText, `type="html"`, "Response should specify html type for tabular data")
-		
+
 		if strings.Contains(responseText, "<htmlCode>") {
 			require.Contains(t, responseText, "<!DOCTYPE html>", "Should be complete HTML document")
 			require.Contains(t, responseText, "<table", "Should contain HTML table element")
