@@ -141,9 +141,9 @@ func (s *EngineTestSuite) TestArtifactExampleValidity() {
 			"Should contain valid HTML code structure: %s", check)
 	}
 
-	// Verify React data structures are properly formatted
-	s.Assert().Contains(prompt, `labels: [`, "Should contain properly formatted React data structure")
-	s.Assert().Contains(prompt, `backgroundColor: '#`, "Should contain proper color specification in React code")
+	// Verify HTML/JS chart data structures are properly formatted
+	s.Assert().Contains(prompt, `labels: [`, "Should contain properly formatted chart data structure")
+	s.Assert().Contains(prompt, `backgroundColor: '#`, "Should contain proper color specification in JS code")
 
 	s.T().Logf("✅ All artifact examples have valid syntax")
 }
