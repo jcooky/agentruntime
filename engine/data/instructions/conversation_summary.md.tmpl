@@ -1,0 +1,77 @@
+{{- if .Thread }}
+<thread dynamic="true">
+{{- if .UserInfo }}
+<user_info>
+## **About `USER`**:
+```json
+{{ .UserInfo | toJson }}
+```
+</user_info>
+{{- end }}
+
+# About this thread
+{{ .Thread.Instruction }}
+
+{{ if .Thread.Participants -}}
+<participants count="{{ len .Thread.Participants }}">
+{{- range .Thread.Participants }}
+  <participant>
+  - **Name**: {{ .Name }}
+  - **Description**: {{ .Description }}
+  - **Role**: {{ .Role }}
+  </participant>
+  {{- end }}
+</participants>
+{{- end }}
+{{- end }}
+</thread>
+
+<agent name="{{ .Agent.Name }}" model="{{ .Agent.ModelName }}">
+# About {{ .Agent.Name }}:
+
+## Description:
+{{ .Agent.Description }}
+
+## Role:
+{{ .Agent.Role }}
+
+## Must Follow Instructions:
+{{ .Agent.Prompt }}
+</agent>
+
+{{- if .MessageExamples }}
+<message_examples agent="{{ .Agent.Name }}" optional="true">
+# Example Conversations for {{ .Agent.Name }}
+```json
+{{ .Agent.MessageExamples | toJson }}
+```
+</message_examples>
+{{- end }}
+
+{{- if .RecentConversations }}
+<history dynamic="true" optional="true">
+# Recent Conversations
+```json
+{{ .RecentConversations | toJson }}
+```
+</history>
+{{- end }}
+
+<available_actions dynamic="true">
+- You can use the following actions:
+```json
+{{ .AvailableActions | toJson }}
+```
+</available_actions>
+
+<behavior_rules required="true">
+Please provide a comprehensive summary of the following conversation history. The summary should capture:
+
+1. Key topics discussed
+2. Important decisions made
+3. Action items or tasks mentioned
+4. Context that would be relevant for future conversations
+5. Any important user preferences or information revealed
+
+Keep the summary concise but informative (aim for around {{ .MaxTokens }} tokens). Focus on information that would help an AI assistant provide better continuity in future conversations.
+</behavior_rules>

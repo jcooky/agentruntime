@@ -4,14 +4,13 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
-	"fmt"
 	"math"
-	"slices"
-	"strings"
 	"text/template"
 
 	"github.com/firebase/genkit/go/ai"
+	"github.com/firebase/genkit/go/genkit"
 	"github.com/habiliai/agentruntime/entity"
+	"github.com/habiliai/agentruntime/internal/sliceutils"
 	"github.com/habiliai/agentruntime/tool"
 	"github.com/pkg/errors"
 	"github.com/samber/lo"
@@ -60,6 +59,7 @@ type (
 	Thread struct {
 		Instruction  string
 		Participants []Participant `json:"participants,omitempty"`
+		Files        []File        `json:"files,omitempty"`
 	}
 
 	ChatPromptValues struct {
@@ -68,7 +68,7 @@ type (
 		AvailableActions    []AvailableAction
 		MessageExamples     [][]entity.MessageExample
 		Thread              Thread
-		Tools               []ai.ToolRef
+		Tools               []ai.Tool
 		System              string
 		UserInfo            *UserInfo
 	}
@@ -108,52 +108,43 @@ func (s *Engine) Run(
 	streamCallback ai.ModelStreamCallback,
 ) (*RunResponse, error) {
 
-	promptValues, err := s.BuildPromptValues(ctx, agent, req)
+	promptValues, err := s.BuildPromptValues(ctx, agent, req, nil)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to build prompt values")
 	}
 
-	promptFn := GetPromptFn(promptValues)
+	// Use conversation summarizer if available
+	if s.conversationSummarizer != nil && len(req.History) > 0 {
+		result, err := s.conversationSummarizer.ProcessConversationHistory(ctx, promptValues)
+		if err != nil {
+			return nil, err
+		}
+
+		req.History = result.RecentConversations
+		promptValues, err = s.BuildPromptValues(ctx, agent, req, result.Summary)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to build prompt values")
+		}
+	} else {
+		// Fall back to simple truncation when summarizer is not available
+		recentConversations := sliceutils.Cut(req.History, -200, len(req.History))
+		promptValues.RecentConversations = recentConversations
+	}
 
 	ctx = tool.WithEmptyCallDataStore(ctx)
 	var res RunResponse
-	res.ModelResponse, err = s.Generate(
+	res.ModelResponse, err = genkit.Generate(
 		ctx,
-		&GenerateRequest{
-			Model: agent.ModelName,
-		},
+		s.genkit,
+		ai.WithModelName(agent.ModelName),
 		ai.WithSystem(promptValues.System),
 		ai.WithMessagesFn(func(ctx context.Context, _ any) ([]*ai.Message, error) {
-			prompt, err := promptFn(ctx, nil)
-			if err != nil {
-				return nil, err
-			}
-			return []*ai.Message{
-				{
-					Role: ai.RoleUser,
-					Content: slices.Concat(
-						[]*ai.Part{
-							ai.NewTextPart(prompt),
-						},
-						lo.Map(req.Files, func(f File, _ int) *ai.Part {
-							return ai.NewMediaPart(f.ContentType, f.Data)
-						}),
-						[]*ai.Part{
-							ai.NewTextPart(
-								fmt.Sprintf(
-									"<documents>Attached files:\n%s\n</documents>",
-									strings.Join(lo.Map(req.Files, func(f File, i int) string {
-										return fmt.Sprintf("%d. filename:'%s', content_type:'%s', data_length:%d", i+1, f.Filename, f.ContentType, len(f.Data))
-									}), "\n"),
-								),
-							),
-						},
-					),
-				},
-			}, nil
+			return convertToMessages(promptValues)
 		}),
 		ai.WithConfig(agent.ModelConfig),
-		ai.WithTools(promptValues.Tools...),
+		ai.WithTools(lo.Map(promptValues.Tools, func(t ai.Tool, _ int) ai.ToolRef {
+			return t
+		})...),
 		ai.WithStreaming(streamCallback),
 		ai.WithMaxTurns(defaultMaxTurns),
 	)

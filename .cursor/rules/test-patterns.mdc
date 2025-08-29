@@ -1,0 +1,135 @@
+---
+globs: '*_test.go'
+---
+
+# Test Patterns and Modern Testing Practices
+
+## Modern Test Context Management
+
+**ALWAYS use `t.Context()` instead of `context.Background()`:**
+
+```go
+func TestMyFunction(t *testing.T) {
+    ctx := t.Context()  // ✅ CORRECT - automatic timeout management
+
+    // NOT: ctx := context.Background()  // ❌ WRONG
+}
+```
+
+## Environment-Based API Key Management
+
+**ALWAYS use environment variables with fallback patterns:**
+
+```go
+func TestWithAPIKeys(t *testing.T) {
+    // Load .env file if exists
+    _ = godotenv.Load("../.env")
+
+    // Get API keys from environment
+    anthropicKey := os.Getenv("ANTHROPIC_API_KEY")
+    openaiKey := os.Getenv("OPENAI_API_KEY")
+
+    // Skip if no keys provided (both required)
+    if anthropicKey == "" || openaiKey == "" {
+        t.Skip("No API keys provided, skipping test")
+    }
+
+    modelConfig := &config.ModelConfig{
+        AnthropicAPIKey: anthropicKey,
+        OpenAIAPIKey:    openaiKey,
+    }
+}
+```
+
+## ConversationSummarizer Test Patterns
+
+### Correct ModelConfig Setup
+
+```go
+testConfig := &config.ModelConfig{
+    AnthropicAPIKey: anthropicKey,
+    OpenAIAPIKey:    openaiKey,
+    ConversationSummary: config.ConversationSummaryConfig{
+        MaxTokens:                   1000,
+        SummaryTokens:               200,
+        MinConversationsToSummarize: 3,
+        ModelForSummary:             "openai/gpt-5-mini",
+        TokenProvider:               "anthropic",
+    },
+}
+```
+
+### Modern Genkit Setup
+
+```go
+ctx := t.Context()  // ✅ Use test context
+logger := mylog.NewLogger("debug", "text")
+g, err := genkit.NewGenkit(ctx, testConfig, logger, false)
+require.NoError(t, err)
+
+summarizer := NewConversationSummarizer(g, &testConfig.ConversationSummary)
+```
+
+### ChatPromptValues-Based Testing
+
+**Always use `*ChatPromptValues` for modern API:**
+
+```go
+promptValues := &ChatPromptValues{
+    RecentConversations: conversations,
+    Tools:               []ai.Tool{},
+    // ... other fields as needed
+}
+
+// Test token counting
+tokens, err := summarizer.CountTokens(ctx, promptValues)
+
+// Test conversation processing
+result, err := summarizer.ProcessConversationHistory(ctx, promptValues)
+```
+
+## Required Imports
+
+Modern test files need these imports:
+
+```go
+import (
+    "os"
+    "testing"
+
+    "github.com/firebase/genkit/go/ai"
+    "github.com/habiliai/agentruntime/config"
+    "github.com/habiliai/agentruntime/internal/genkit"
+    "github.com/habiliai/agentruntime/internal/mylog"
+    "github.com/joho/godotenv"
+    "github.com/stretchr/testify/assert"
+    "github.com/stretchr/testify/require"
+)
+```
+
+## Token Count Expectations
+
+Account for complete prompt template context:
+
+```go
+// Expect realistic token counts including template overhead
+testCases := []struct {
+    name      string
+    text      string
+    minTokens int
+    maxTokens int
+}{
+    {
+        name:      "empty string",
+        text:      "",
+        minTokens: 220,  // Base template tokens
+        maxTokens: 250,
+    },
+    {
+        name:      "simple text",
+        text:      "Hello world",
+        minTokens: 230,  // Base + simple text
+        maxTokens: 250,
+    },
+}
+```

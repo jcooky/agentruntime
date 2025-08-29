@@ -54,7 +54,7 @@ func TestAgentRuntime(t *testing.T) {
 	// Test basic agent information
 	require.Equal(t, "Bob", agent.Name, "Agent name should be 'Bob'")
 	require.Contains(t, agent.Description, "Bob is a filesystem assistant", "Agent description should contain filesystem assistant info")
-	require.Equal(t, "openai/gpt-4o-mini", agent.ModelName, "Model name should be 'openai/gpt-4o-mini'")
+	require.Equal(t, "openai/gpt-5-mini", agent.ModelName, "Model name should be 'openai/gpt-5-mini'")
 	require.Equal(t, "Take a deep breath and relax. Think step by step.", agent.System, "System prompt should match")
 	require.Equal(t, "Assistant for Filesystem", agent.Role, "Role should be 'Assistant for Filesystem'")
 
@@ -140,7 +140,7 @@ func TestAgentRuntimeWithLLMSkill(t *testing.T) {
 	// Test basic agent information
 	require.Equal(t, "Lily", agent.Name, "Agent name should be 'Lily'")
 	require.Contains(t, agent.Description, "creative writing assistant", "Agent description should contain creative writing assistant info")
-	require.Equal(t, "openai/gpt-4o-mini", agent.ModelName, "Model name should be 'openai/gpt-4o-mini'")
+	require.Equal(t, "openai/gpt-5-mini", agent.ModelName, "Model name should be 'openai/gpt-5-mini'")
 	require.Contains(t, agent.System, "creative writing assistant", "System prompt should mention creative writing")
 	require.Equal(t, "Creative Writing Assistant", agent.Role, "Role should be 'Creative Writing Assistant'")
 

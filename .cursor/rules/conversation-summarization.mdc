@@ -1,0 +1,61 @@
+---
+description: 'Conversation summarization system design and patterns'
+---
+
+# Conversation Summarization System
+
+The conversation summarization system manages long AI conversations by automatically summarizing older parts when token limits are exceeded.
+
+## Template-Based Architecture
+
+**IMPORTANT**: The system uses unified template architecture:
+
+- **[ChatPromptValues](mdc:engine/prompt.go)** - Unified data structure for all prompt contexts
+- **[chat.md.tmpl](mdc:engine/data/instructions/chat.md.tmpl)** - Main conversation template
+- **[conversation_summary.md.tmpl](mdc:engine/data/instructions/conversation_summary.md.tmpl)** - Summary generation template
+
+## Core Components
+
+- **[ConversationSummarizer](mdc:engine/conversation_summary.go)** - Main summarization engine with integrated templates
+- **[ConversationSummaryConfig](mdc:config/ai.go)** - Configuration for summarization behavior
+- **Direct Token Counting** - Uses Anthropic count_tokens API for accuracy
+
+## Key Methods
+
+```go
+// Unified token counting method
+func (cs *ConversationSummarizer) CountTokens(ctx context.Context, promptValues *ChatPromptValues) (int, error)
+
+// Main processing method using ChatPromptValues
+func (cs *ConversationSummarizer) ProcessConversationHistory(ctx context.Context, promptValues *ChatPromptValues) (*ConversationHistoryResult, error)
+
+// Template-based summary generation
+func (cs *ConversationSummarizer) generateSummary(ctx context.Context, promptValues *ChatPromptValues) (string, error)
+```
+
+## Configuration Options
+
+- `MaxTokens` - Maximum tokens for conversation history
+- `SummaryTokens` - Target tokens per summary
+- `MinConversationsToSummarize` - Minimum conversations before summarization
+- `ModelForSummary` - LLM model for generating summaries (e.g., "openai/gpt-5-mini")
+
+## Integration Pattern
+
+The summarizer is integrated into the prompt building process in [run.go](mdc:engine/run.go):
+
+```go
+result, err := s.conversationSummarizer.ProcessConversationHistory(ctx, promptValues)
+promptValues = promptValues.WithRecentConversations(result.RecentConversations)
+```
+
+## Template System
+
+Both templates use the same `ChatPromptValues` structure ensuring consistency:
+
+- Agent information (name, model, description, role, prompt)
+- Thread information (instruction, participants, userInfo)
+- Message examples
+- Recent conversations
+- Available actions
+- Files and context

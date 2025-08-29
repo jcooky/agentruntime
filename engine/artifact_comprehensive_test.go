@@ -1,7 +1,6 @@
 package engine_test
 
 import (
-	"context"
 	"strings"
 	"testing"
 
@@ -28,11 +27,11 @@ func (s *EngineTestSuite) TestHtmlCodeDirectGeneration() {
 		},
 	}
 
-	promptValues, err := s.engine.BuildPromptValues(context.Background(), agent, runRequest)
+	promptValues, err := s.engine.BuildPromptValues(s.T().Context(), agent, runRequest, nil)
 	s.Require().NoError(err)
 
 	promptFn := engine.GetPromptFn(promptValues)
-	prompt, err := promptFn(context.Background(), nil)
+	prompt, err := promptFn(s.T().Context(), nil)
 	s.Require().NoError(err)
 
 	// Test that html type is supported for all artifacts (charts, tables, components)
@@ -81,11 +80,11 @@ func (s *EngineTestSuite) TestXMLAttributesWithoutVersions() {
 		Participant:       thread.Participants,
 	}
 
-	promptValues, err := s.engine.BuildPromptValues(context.Background(), agent, runRequest)
+	promptValues, err := s.engine.BuildPromptValues(s.T().Context(), agent, runRequest, nil)
 	s.Require().NoError(err)
 
 	promptFn := engine.GetPromptFn(promptValues)
-	prompt, err := promptFn(context.Background(), nil)
+	prompt, err := promptFn(s.T().Context(), nil)
 	s.Require().NoError(err)
 
 	// Test that XML tags have meaningful attributes but no version numbers
@@ -175,11 +174,11 @@ func (s *EngineTestSuite) TestChartDesignGuidelineScenarios() {
 				},
 			}
 
-			promptValues, err := s.engine.BuildPromptValues(context.Background(), agent, runRequest)
+			promptValues, err := s.engine.BuildPromptValues(s.T().Context(), agent, runRequest, nil)
 			s.Require().NoError(err)
 
 			promptFn := engine.GetPromptFn(promptValues)
-			prompt, err := promptFn(context.Background(), nil)
+			prompt, err := promptFn(s.T().Context(), nil)
 			s.Require().NoError(err)
 
 			// Verify the scenario instructions contain the expected palette
@@ -213,11 +212,11 @@ func (s *EngineTestSuite) TestChartJSConfigurationStandards() {
 		},
 	}
 
-	promptValues, err := s.engine.BuildPromptValues(context.Background(), agent, runRequest)
+	promptValues, err := s.engine.BuildPromptValues(s.T().Context(), agent, runRequest, nil)
 	s.Require().NoError(err)
 
 	promptFn := engine.GetPromptFn(promptValues)
-	prompt, err := promptFn(context.Background(), nil)
+	prompt, err := promptFn(s.T().Context(), nil)
 	s.Require().NoError(err)
 
 	// Test Chart.js design standards
@@ -329,11 +328,11 @@ func (s *EngineTestSuite) TestTemplateRenderingVariousScenarios() {
 				}
 			}
 
-			promptValues, err := s.engine.BuildPromptValues(context.Background(), scenario.agent, runRequest)
+			promptValues, err := s.engine.BuildPromptValues(s.T().Context(), scenario.agent, runRequest, nil)
 			s.Require().NoError(err)
 
 			promptFn := engine.GetPromptFn(promptValues)
-			prompt, err := promptFn(context.Background(), nil)
+			prompt, err := promptFn(s.T().Context(), nil)
 			s.Require().NoError(err)
 
 			// Basic structure should always be present
@@ -378,11 +377,11 @@ func (s *EngineTestSuite) TestArtifactInstructionCompleteness() {
 		},
 	}
 
-	promptValues, err := s.engine.BuildPromptValues(context.Background(), agent, runRequest)
+	promptValues, err := s.engine.BuildPromptValues(s.T().Context(), agent, runRequest, nil)
 	s.Require().NoError(err)
 
 	promptFn := engine.GetPromptFn(promptValues)
-	prompt, err := promptFn(context.Background(), nil)
+	prompt, err := promptFn(s.T().Context(), nil)
 	s.Require().NoError(err)
 
 	// Extract artifact section
@@ -518,11 +517,11 @@ func (s *EngineTestSuite) TestArtifactGenerationEndToEnd() {
 				},
 			}
 
-			promptValues, err := s.engine.BuildPromptValues(context.Background(), agent, runRequest)
+			promptValues, err := s.engine.BuildPromptValues(s.T().Context(), agent, runRequest, nil)
 			s.Require().NoError(err)
 
 			promptFn := engine.GetPromptFn(promptValues)
-			prompt, err := promptFn(context.Background(), nil)
+			prompt, err := promptFn(s.T().Context(), nil)
 			s.Require().NoError(err)
 
 			// Verify the prompt contains all necessary instructions for handling this type of request

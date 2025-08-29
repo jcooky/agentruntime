@@ -392,7 +392,7 @@ func TestAgentRuntimeWithUserInfo(t *testing.T) {
 	agent := entity.Agent{
 		Name:        "PersonalizedAgent",
 		Description: "An agent that provides personalized responses based on user information",
-		ModelName:   "openai/gpt-4o-mini",
+		ModelName:   "openai/gpt-5-mini",
 		System: `You are a personalized assistant. Use the provided user information to tailor your responses.
 When user information is available:
 - Address the user by their name when appropriate

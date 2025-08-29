@@ -1,0 +1,35 @@
+---
+alwaysApply: true
+---
+
+# Token Counting Architecture
+
+This project uses a simplified, direct token counting system for AI conversation summarization.
+
+## Core Architecture
+
+The token counting system has been simplified to use direct API calls:
+
+- **[CountTokens function](mdc:engine/token_counter.go)** - Generic token counting function
+- **[ConversationSummarizer](mdc:engine/conversation_summary.go)** - Main summarization engine with integrated token counting
+- **[Anthropic Plugin](mdc:internal/genkit/plugins/anthropic/)** - Direct Anthropic count_tokens API integration
+
+## Key Design Principles
+
+1. **Direct API Integration**: Uses Anthropic's count_tokens API directly for accuracy
+2. **Unified Input**: All token counting uses `*ChatPromptValues` for comprehensive context
+3. **Template Integration**: Token counting includes complete prompt template context
+4. **Configuration-Driven**: Model and API keys configured through `ConversationSummaryConfig`
+
+## API Signatures
+
+- `CountTokens(ctx, g, provider, msgs, docs, toolDefs)` - Generic token counting
+- `ConversationSummarizer.CountTokens(ctx, promptValues)` - Main method for counting tokens
+- `ConversationSummarizer.ProcessConversationHistory(ctx, promptValues)` - Main processing method
+
+## Model Configuration
+
+All models must use provider prefixes:
+
+- OpenAI models: `openai/gpt-5-mini`
+- Anthropic models: `anthropic/claude-3.7-sonnet`

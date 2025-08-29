@@ -39,6 +39,8 @@ func (s *EngineTestSuite) TestMissmatchStreamingAndOutput() {
 		return
 	}
 
+	ctx := s.T().Context()
+
 	// Create a tool manager with a simple weather tool
 	skills := []entity.AgentSkillUnion{
 		{
@@ -77,7 +79,7 @@ func (s *EngineTestSuite) TestMissmatchStreamingAndOutput() {
 	}, slog.Default())
 	s.Require().NoError(err)
 
-	toolManager, err := tool.NewToolManager(context.Background(), skills, slog.Default(), g, knowledgeService, memoryService)
+	toolManager, err := tool.NewToolManager(ctx, skills, slog.Default(), g, knowledgeService, memoryService)
 	s.Require().NoError(err)
 	defer toolManager.Close()
 
@@ -155,7 +157,6 @@ func (s *EngineTestSuite) TestMissmatchStreamingAndOutput() {
 	}
 
 	// Run the engine with streaming
-	ctx := context.Background()
 	result, err := testEngine.Run(ctx, agent, req, streamCallback)
 	s.Require().NoError(err)
 	s.Require().NotNil(result)

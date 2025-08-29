@@ -1,0 +1,132 @@
+---
+alwaysApply: true
+---
+
+# AgentRuntime Project Coding Standards
+
+## Language and Documentation
+
+- **MUST** use English for all comments in source code
+- **MUST** use English for all documentation files
+- Project documentation should be in English only
+
+## Dependency Management
+
+- **MUST** use `yarn` classic instead of `npm`
+- Use `context7` for latest library documentation when needed
+
+## Git Workflow
+
+- **DO NOT** perform Git operations (commit, add, reset --hard) unless explicitly requested by user
+- User needs to review code changes before staging them
+- When committing:
+  1. Analyze staged files and changes
+  2. Review recent commit message styles
+  3. Write commit messages following conventional commit format
+  4. Include analysis results and follow existing patterns
+
+## Testing Patterns
+
+- Always run tests after making significant changes
+- Use `make test` for full project testing
+- Individual package testing: `go test ./package -v`
+- Test files must be updated when API signatures change
+
+## Interface Design
+
+- Prefer interface-based architecture for extensibility
+- Use factory patterns for creating implementations
+- Implement graceful fallbacks for external API calls
+- Configuration should be passed through structured config objects
+
+## Error Handling
+
+- Always provide fallback mechanisms for external services
+- Use meaningful error messages with context
+- Prefer `pkg/errors` for error wrapping when available
+
+## Code Organization
+
+- Separate concerns clearly (e.g., conversation history vs current request files)
+- Use dependency injection for testability
+- Keep configuration centralized in [config/](mdc:config/) package
+
+## Model Naming Conventions
+
+**MUST** use provider prefixes in model names:
+
+### Configuration Files (YAML)
+
+```yaml
+# ✅ CORRECT
+model: openai/gpt-5-mini
+model: anthropic/claude-3.7-sonnet
+
+# ❌ WRONG - missing provider prefix
+model: gpt-5-mini
+model: claude-3.7-sonnet
+```
+
+### Go Code with ai.WithModelName
+
+```go
+// ✅ CORRECT
+ai.WithModelName("openai/gpt-5-mini")
+ai.WithModelName("anthropic/claude-3.7-sonnet")
+
+// ❌ WRONG
+ai.WithModelName("gpt-5-mini")
+```
+
+### Plugin Internal Usage (Exception)
+
+```go
+// ✅ CORRECT - within plugin, no prefix needed
+(&oai.OpenAI{}).Model(g, "gpt-5-mini")
+genkit.LookupModel(g, "openai", "gpt-5-mini")
+```
+
+## Template System Patterns
+
+**MUST** register template functions for consistency:
+
+```go
+// ✅ CORRECT - with funcMap()
+template.Must(template.New("name").Funcs(funcMap()).Parse(content))
+
+// ❌ WRONG - missing funcMap()
+template.Must(template.New("name").Parse(content))
+```
+
+## Environment Variable Patterns
+
+**MUST** use environment variables for sensitive data:
+
+```go
+// ✅ CORRECT - with fallback patterns
+anthropicKey := os.Getenv("ANTHROPIC_API_KEY")
+if anthropicKey == "" {
+    // Handle missing key appropriately
+}
+
+// ❌ WRONG - hardcoded values
+anthropicKey := "hardcoded-api-key"
+```
+
+## Test Context Patterns
+
+**MUST** use `t.Context()` in tests for timeout management:
+
+```go
+// ✅ CORRECT
+func TestSomething(t *testing.T) {
+    ctx := t.Context()
+    // ... test code
+}
+
+// ❌ WRONG
+func TestSomething(t *testing.T) {
+    ctx := context.Background()
+    // ... test code
+}
+```

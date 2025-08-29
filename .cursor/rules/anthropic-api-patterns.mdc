@@ -1,0 +1,154 @@
+---
+description: 'Anthropic API integration patterns and token counting'
+---
+
+# Anthropic API Integration Patterns
+
+Direct integration with Anthropic's APIs for accurate token counting and content generation.
+
+## Token Counting Integration
+
+### Direct API Usage
+
+**Use Anthropic's `count_tokens` API for accurate token counting:**
+
+```go
+// In anthropic plugin
+func (p *Plugin) CountTokens(ctx context.Context, g *genkit.Genkit, msgs []*ai.Message, docs []*ai.Document, toolDefs []ai.Tool) (int, error) {
+    params := anthropic.BetaMessageCountTokensParams{
+        Model:    anthropic.ModelClaude4Sonnet20250514, // Always specify model
+        Messages: messages,
+        System:   systems,
+        Tools:    tools, // Optional
+    }
+
+    count, err := p.client.Beta.Messages.CountTokens(ctx, params)
+    return int(count.InputTokens), nil
+}
+```
+
+### Generic CountTokens Function
+
+**Use the generic wrapper for consistent API:**
+
+```go
+func CountTokens(ctx context.Context, g *genkit.Genkit, provider string, msgs []*ai.Message, docs []*ai.Document, toolDefs []ai.Tool) (int, error) {
+    switch provider {
+    case "anthropic":
+        return anthropic.CountTokens(ctx, g, msgs, docs, toolDefs)
+    default:
+        return 0, errors.Errorf("unsupported provider: %s", provider)
+    }
+}
+```
+
+## Model Configuration
+
+### Required Model Field
+
+**ALWAYS include the Model field in API requests:**
+
+```go
+// ✅ CORRECT - with model specification
+params := anthropic.BetaMessageCountTokensParams{
+    Model:    anthropic.ModelClaude4Sonnet20250514,
+    Messages: messages,
+}
+
+// ❌ WRONG - missing model field (will cause 400 error)
+params := anthropic.BetaMessageCountTokensParams{
+    Messages: messages,
+}
+```
+
+### Model Constants
+
+Use appropriate model constants:
+
+```go
+// Current recommended models
+anthropic.ModelClaude4Sonnet20250514     // Latest Claude 4 Sonnet
+anthropic.ModelClaude3_5Sonnet20241022   // Claude 3.5 Sonnet
+```
+
+## API Key Management
+
+### Environment Variable Pattern
+
+**ALWAYS use environment variables for API keys:**
+
+```go
+// ✅ CORRECT - environment-based
+anthropicKey := os.Getenv("ANTHROPIC_API_KEY")
+if anthropicKey == "" {
+    return nil, errors.New("ANTHROPIC_API_KEY not set")
+}
+
+// ❌ WRONG - hardcoded
+anthropicKey := "sk-ant-hardcoded-key"
+```
+
+### Configuration Integration
+
+```go
+type ModelConfig struct {
+    AnthropicAPIKey string
+    OpenAIAPIKey    string
+    // ... other fields
+}
+
+// Load from environment in tests
+modelConfig := &ModelConfig{
+    AnthropicAPIKey: os.Getenv("ANTHROPIC_API_KEY"),
+    OpenAIAPIKey:    os.Getenv("OPENAI_API_KEY"),
+}
+```
+
+## Error Handling Patterns
+
+### API Error Handling
+
+```go
+count, err := p.client.Beta.Messages.CountTokens(ctx, params)
+if err != nil {
+    // Check for specific API errors
+    if strings.Contains(err.Error(), "model: Field required") {
+        return 0, errors.Wrap(err, "model field is required for Anthropic count_tokens API")
+    }
+    return 0, errors.Wrapf(err, "failed to count tokens via Anthropic API")
+}
+```
+
+### Test Error Expectations
+
+```go
+// In tests, expect 401 errors with dummy/missing keys
+if anthropicKey == "" || openaiKey == "" {
+    t.Skip("No API keys provided, skipping test")
+}
+```
+
+## Integration with ConversationSummarizer
+
+### ChatPromptValues to Messages Conversion
+
+```go
+func (cs *ConversationSummarizer) CountTokens(ctx context.Context, promptValues *ChatPromptValues) (int, error) {
+    // Convert ChatPromptValues to messages
+    msgs, err := convertToMessages(promptValues)
+    if err != nil {
+        return 0, errors.Wrapf(err, "failed to convert to messages")
+    }
+
+    // Use generic CountTokens function
+    return CountTokens(ctx, cs.genkit, cs.config.TokenProvider, msgs, nil, promptValues.Tools)
+}
+```
+
+## Best Practices
+
+1. **Model Specification**: Always specify the model in API requests
+2. **Environment Keys**: Use environment variables for API keys
+3. **Error Context**: Provide meaningful error messages with context
+4. **Test Skipping**: Skip tests gracefully when API keys are unavailable
+5. **Generic Wrapper**: Use the generic `CountTokens` function for consistency

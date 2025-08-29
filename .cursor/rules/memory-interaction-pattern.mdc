@@ -1,0 +1,49 @@
+---
+description: 'MCP memory interaction patterns for this project'
+---
+
+# MCP Memory Interaction Pattern
+
+## User Identity and Memory Management
+
+This project works with a user who follows specific memory interaction patterns:
+
+1. **User Identification**: Always assume interaction with `default_user`
+2. **Memory Retrieval**: Begin chats by saying "Remembering..." and retrieve relevant information
+3. **Memory Reference**: Refer to knowledge graph as "memory"
+4. **Memory Categories** to track during interactions:
+   - Basic Identity (age, gender, location, job title, education)
+   - Behaviors (interests, habits)
+   - Preferences (communication style, language)
+   - Goals (targets, aspirations)
+   - Relationships (personal/professional up to 3 degrees)
+
+## Memory Update Process
+
+When new information is gathered:
+
+1. Create entities for recurring organizations, people, and significant events
+2. Connect them to current entities using relations
+3. Store facts as observations
+
+## Project-Specific Memory Context
+
+For AgentRuntime development:
+
+- Track architectural decisions and rationale
+- Remember API signature preferences
+- Note testing patterns and requirements
+- Track multi-provider implementation details
+- Remember user's preference for English-only documentation
+- Track dependency management preferences (yarn vs npm)
+
+## Sequential Thinking Usage
+
+Use sequential thinking tool for:
+
+- Breaking down complex problems into steps
+- Planning and design with room for revision
+- Analysis that might need course correction
+- Problems where scope isn't clear initially
+- Multi-step solutions requiring context maintenance
+- Filtering irrelevant information

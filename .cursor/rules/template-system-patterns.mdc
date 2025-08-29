@@ -1,0 +1,129 @@
+---
+description: 'Unified template system architecture and patterns'
+---
+
+# Template System Architecture
+
+The AgentRuntime uses a unified template system for consistent prompt generation across all contexts.
+
+## Unified Data Structure
+
+**[ChatPromptValues](mdc:engine/prompt.go)** serves as the single data structure for all templates:
+
+```go
+type ChatPromptValues struct {
+    Agent               entity.Agent
+    MessageExamples     []any
+    RecentConversations []Conversation
+    AvailableActions    []AvailableAction
+    Thread              Thread
+    Tools               []ai.Tool
+    SystemPrompt        string
+    UserInfo            any
+}
+```
+
+## Template Files
+
+### Main Templates
+
+- **[chat.md.tmpl](mdc:engine/data/instructions/chat.md.tmpl)** - Primary conversation template
+- **[conversation_summary.md.tmpl](mdc:engine/data/instructions/conversation_summary.md.tmpl)** - Summary generation template
+
+### Template Registration Pattern
+
+**ALWAYS register templates with funcMap():**
+
+```go
+//go:embed data/instructions/template.md.tmpl
+var templateContent string
+var template = template.Must(template.New("name").Funcs(funcMap()).Parse(templateContent))
+```
+
+## Template Structure Consistency
+
+All templates follow the same structure pattern:
+
+```markdown
+{{- if .Thread }}
+<thread dynamic="true">
+<user_info>{{ .UserInfo | toJson }}</user_info>
+
+# About this thread
+
+{{ .Thread.Instruction }}
+</thread>
+{{- end }}
+
+<agent name="{{ .Agent.Name }}" model="{{ .Agent.ModelName }}">
+  ## Description: {{ .Agent.Description }}
+  ## Role: {{ .Agent.Role }}
+  ## Must Follow Instructions: {{ .Agent.Prompt }}
+</agent>
+
+{{- if .MessageExamples }}
+<message_examples>
+{{ .MessageExamples | toJson }}
+</message_examples>
+{{- end }}
+
+{{- if .RecentConversations }}
+<history dynamic="true" optional="true">
+{{ .RecentConversations | toJson }}
+</history>
+{{- end }}
+
+<available_actions>
+{{ .AvailableActions | toJson }}
+</available_actions>
+
+<behavior_rules required="true">
+
+  <!-- Template-specific behavior rules here -->
+
+</behavior_rules>
+```
+
+## Template Functions
+
+Available functions via `funcMap()`:
+
+- `toJson` - Convert to JSON format
+- `toYaml` - Convert to YAML format
+- `fromJson` - Parse from JSON
+- `fromYaml` - Parse from YAML
+
+## Integration Patterns
+
+### Conversation Processing
+
+```go
+// 1. Build ChatPromptValues
+promptValues := &ChatPromptValues{
+    Agent: agent,
+    RecentConversations: conversations,
+    // ... other fields
+}
+
+// 2. Process with summarizer
+result, err := summarizer.ProcessConversationHistory(ctx, promptValues)
+
+// 3. Update with results
+promptValues = promptValues.WithRecentConversations(result.RecentConversations)
+```
+
+### Template Execution
+
+```go
+var buf strings.Builder
+err := template.Execute(&buf, promptValues)
+prompt := buf.String()
+```
+
+## Template Development Guidelines
+
+1. **Consistency**: Use the same `ChatPromptValues` structure for all templates
+2. **Modularity**: Each template focuses on its specific use case while maintaining structure
+3. **Function Registration**: Always use `funcMap()` for template functions
+4. **Data Serialization**: Use `toJson` for complex data structures
+5. **Conditional Rendering**: Use `{{- if .Field }}` for optional sections

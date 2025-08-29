@@ -83,6 +83,9 @@ type Plugin struct {
 	// The maximum number of retries for the request.
 	// If empty, the default value of 3 will be used.
 	MaxRetries int
+
+	// The client to use for the Anthropic API.
+	client anthropic.Client
 }
 
 var (
@@ -90,20 +93,20 @@ var (
 )
 
 // Name implements genkit.Plugin.
-func (o *Plugin) Name() string {
+func (p *Plugin) Name() string {
 	return provider
 }
 
 // Init implements genkit.Plugin.
 // After calling Init, you may call [DefineModel] to create and register any additional generative models.
-func (o *Plugin) Init(_ context.Context, g *genkit.Genkit) (err error) {
+func (p *Plugin) Init(_ context.Context, g *genkit.Genkit) (err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("%s.Init: %w", provider, err)
 		}
 	}()
 
-	apiKey := o.APIKey
+	apiKey := p.APIKey
 	if apiKey == "" {
 		apiKey = os.Getenv(apiKeyEnv)
 		if apiKey == "" {
@@ -111,27 +114,27 @@ func (o *Plugin) Init(_ context.Context, g *genkit.Genkit) (err error) {
 		}
 	}
 
-	if o.RequestTimeout == 0 {
-		o.RequestTimeout = defaultRequestTimeout
+	if p.RequestTimeout == 0 {
+		p.RequestTimeout = defaultRequestTimeout
 	}
-	if o.MaxRetries == 0 {
-		o.MaxRetries = defaultMaxRetries
+	if p.MaxRetries == 0 {
+		p.MaxRetries = defaultMaxRetries
 	}
 
-	client := anthropic.NewClient(
+	p.client = anthropic.NewClient(
 		option.WithAPIKey(apiKey),
-		option.WithRequestTimeout(o.RequestTimeout),
-		option.WithMaxRetries(o.MaxRetries),
+		option.WithRequestTimeout(p.RequestTimeout),
+		option.WithMaxRetries(p.MaxRetries),
 		option.WithEnvironmentProduction(),
 	)
 
 	// Define models with simplified names as requested
-	DefineModel(g, &client, labelPrefix, provider, "claude-4-opus", "claude-opus-4-20250514", knownCaps["claude-opus-4-20250514"])
-	DefineModel(g, &client, labelPrefix, provider, "claude-4-sonnet", "claude-sonnet-4-20250514", knownCaps["claude-sonnet-4-20250514"])
+	DefineModel(g, &p.client, labelPrefix, provider, "claude-4-opus", "claude-opus-4-20250514", knownCaps["claude-opus-4-20250514"])
+	DefineModel(g, &p.client, labelPrefix, provider, "claude-4-sonnet", "claude-sonnet-4-20250514", knownCaps["claude-sonnet-4-20250514"])
 
 	// Also define Claude 3.7 and 3.5 models as alternatives
-	DefineModel(g, &client, labelPrefix, provider, "claude-3.7-sonnet", "claude-3-7-sonnet-latest", knownCaps["claude-3-7-sonnet-latest"])
-	DefineModel(g, &client, labelPrefix, provider, "claude-3.5-haiku", "claude-3-5-haiku-latest", knownCaps["claude-3-5-haiku-latest"])
+	DefineModel(g, &p.client, labelPrefix, provider, "claude-3.7-sonnet", "claude-3-7-sonnet-latest", knownCaps["claude-3-7-sonnet-latest"])
+	DefineModel(g, &p.client, labelPrefix, provider, "claude-3.5-haiku", "claude-3-5-haiku-latest", knownCaps["claude-3-5-haiku-latest"])
 
 	return nil
 }

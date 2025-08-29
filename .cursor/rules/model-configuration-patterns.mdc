@@ -1,0 +1,195 @@
+---
+description: 'Model naming conventions and configuration patterns across the project'
+---
+
+# Model Configuration Patterns
+
+Consistent model naming and configuration patterns across AgentRuntime.
+
+## Provider Prefix Requirements
+
+**ALL model names MUST include provider prefixes:**
+
+### YAML Configuration Files
+
+```yaml
+# ✅ CORRECT - with provider prefix
+model: openai/gpt-5-mini
+model: anthropic/claude-3.7-sonnet
+
+# ❌ WRONG - missing provider prefix
+model: gpt-5-mini
+model: claude-3.7-sonnet
+```
+
+### Go Code with ai.WithModelName
+
+```go
+// ✅ CORRECT
+response, err := genkit.Generate(ctx, g,
+    ai.WithModelName("openai/gpt-5-mini"),
+    ai.WithPrompt(prompt),
+)
+
+// ❌ WRONG
+ai.WithModelName("gpt-5-mini")
+```
+
+### Configuration Structs
+
+```go
+type ConversationSummaryConfig struct {
+    ModelForSummary string `yaml:"model_for_summary"`
+    // ... other fields
+}
+
+// Usage in config files
+var DefaultConversationSummaryConfig = ConversationSummaryConfig{
+    ModelForSummary: "openai/gpt-5-mini", // ✅ With prefix
+}
+```
+
+## Provider-Specific Patterns
+
+### OpenAI Models
+
+- Format: `openai/{model-name}`
+- Examples:
+  - `openai/gpt-5-mini` (preferred for cost efficiency)
+  - `openai/gpt-4o` (for complex tasks)
+
+### Anthropic Models
+
+- Format: `anthropic/{model-name}`
+- Examples:
+  - `anthropic/claude-3.7-sonnet` (latest version)
+  - `anthropic/claude-4-sonnet` (when available)
+
+### XAI Models
+
+- Format: `xai/{model-name}`
+- Note: Uses OpenAI-compatible tokenization
+
+## Exception Cases
+
+### Plugin Internal Usage
+
+**Within plugin implementations, provider prefixes are NOT needed:**
+
+```go
+// ✅ CORRECT - inside OpenAI plugin
+model := (&oai.OpenAI{}).Model(g, "gpt-5-mini")
+
+// ✅ CORRECT - with explicit provider parameter
+model := genkit.LookupModel(g, "openai", "gpt-5-mini")
+```
+
+### Separate Provider Configuration
+
+**When provider is specified separately, prefix not needed:**
+
+```yaml
+# ✅ CORRECT - provider specified separately
+model:
+  provider: 'anthropic'
+  model: 'claude-sonnet-4-20250514' # No prefix needed
+  config:
+    maxOutputTokens: 4000
+```
+
+## Configuration File Updates
+
+### Agent Configuration Files
+
+- [examples/habiliai.agent.yaml](mdc:examples/habiliai.agent.yaml)
+- [examples/example.agent.yaml](mdc:examples/example.agent.yaml)
+- [examples/sendai.agent.yaml](mdc:examples/sendai.agent.yaml)
+- [examples/filesystem.agent.yaml](mdc:examples/filesystem.agent.yaml)
+
+### MCP Agent Configurations
+
+- [config/agents/test-remote-sse-agent.yaml](mdc:config/agents/test-remote-sse-agent.yaml)
+- [config/agents/test-mcp-agent.yaml](mdc:config/agents/test-mcp-agent.yaml)
+- [config/agents/mcp-remote-agent.yaml](mdc:config/agents/mcp-remote-agent.yaml)
+
+## Default Model Recommendations
+
+### Current Recommended Defaults
+
+```go
+// Cost-effective models for common tasks
+DefaultModels = map[string]string{
+    "conversation_summary": "openai/gpt-5-mini",
+    "query_rewrite":       "openai/gpt-5-mini",
+    "pdf_extraction":      "openai/gpt-5-mini",
+    "rerank":             "openai/gpt-5-mini",
+}
+```
+
+### Configuration Examples
+
+```go
+// In config/ai.go
+var DefaultConversationSummaryConfig = ConversationSummaryConfig{
+    MaxTokens:                   5000,
+    SummaryTokens:               200,
+    MinConversationsToSummarize: 3,
+    ModelForSummary:             "openai/gpt-5-mini", // ✅ With prefix
+    TokenProvider:               "anthropic",
+}
+
+// In config/knowledge.go
+var DefaultKnowledgeConfig = KnowledgeConfig{
+    RerankModel:           "openai/gpt-5-mini", // ✅ With prefix
+    QueryRewriteModel:     "openai/gpt-5-mini", // ✅ With prefix
+    PDFExtractionTextModel: "openai/gpt-5-mini", // ✅ With prefix
+}
+```
+
+## Migration Patterns
+
+### From Old Format to New Format
+
+```yaml
+# OLD (❌) → NEW (✅)
+model: gpt-4o-mini        → model: openai/gpt-5-mini
+model: claude-3-5-sonnet  → model: anthropic/claude-3.7-sonnet
+```
+
+### Code Pattern Updates
+
+```go
+// OLD (❌)
+if model == "" {
+    model = "gpt-5-mini"
+}
+
+// NEW (✅)
+if model == "" {
+    model = "openai/gpt-5-mini"
+}
+```
+
+## Validation Patterns
+
+### Runtime Validation
+
+```go
+func validateModelName(modelName string) error {
+    if !strings.Contains(modelName, "/") {
+        return errors.Errorf("model name must include provider prefix: %s", modelName)
+    }
+
+    parts := strings.SplitN(modelName, "/", 2)
+    if len(parts) != 2 {
+        return errors.Errorf("invalid model name format: %s", modelName)
+    }
+
+    provider := parts[0]
+    if provider != "openai" && provider != "anthropic" && provider != "xai" {
+        return errors.Errorf("unsupported provider: %s", provider)
+    }
+
+    return nil
+}
+```

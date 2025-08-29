@@ -1,8 +1,6 @@
 package engine_test
 
 import (
-	"context"
-
 	"github.com/habiliai/agentruntime/engine"
 	"github.com/habiliai/agentruntime/entity"
 )
@@ -54,7 +52,7 @@ func (s *EngineTestSuite) TestBuildPromptValues() {
 		Participant:       thread.Participants,
 	}
 
-	promptValues, err := s.engine.BuildPromptValues(context.Background(), agent, runRequest)
+	promptValues, err := s.engine.BuildPromptValues(s.T().Context(), agent, runRequest, nil)
 	s.Require().NoError(err)
 	s.Require().NotNil(promptValues)
 
@@ -63,7 +61,7 @@ func (s *EngineTestSuite) TestBuildPromptValues() {
 	promptFn := engine.GetPromptFn(promptValues)
 	s.Require().NotNil(promptFn)
 
-	prompt, err := promptFn(context.Background(), nil)
+	prompt, err := promptFn(s.T().Context(), nil)
 	s.Require().NoError(err)
 	s.Require().NotEmpty(prompt)
 

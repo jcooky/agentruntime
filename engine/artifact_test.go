@@ -1,8 +1,6 @@
 package engine_test
 
 import (
-	"context"
-
 	"github.com/habiliai/agentruntime/engine"
 	"github.com/habiliai/agentruntime/entity"
 )
@@ -29,7 +27,7 @@ func (s *EngineTestSuite) TestArtifactGenerationInstructions() {
 	}
 
 	// Build prompt values
-	promptValues, err := s.engine.BuildPromptValues(context.Background(), agent, runRequest)
+	promptValues, err := s.engine.BuildPromptValues(s.T().Context(), agent, runRequest, nil)
 	s.Require().NoError(err)
 	s.Require().NotNil(promptValues)
 
@@ -37,7 +35,7 @@ func (s *EngineTestSuite) TestArtifactGenerationInstructions() {
 	promptFn := engine.GetPromptFn(promptValues)
 	s.Require().NotNil(promptFn)
 
-	prompt, err := promptFn(context.Background(), nil)
+	prompt, err := promptFn(s.T().Context(), nil)
 	s.Require().NoError(err)
 	s.Require().NotEmpty(prompt)
 
@@ -92,11 +90,11 @@ func (s *EngineTestSuite) TestArtifactExampleValidity() {
 		History: []engine.Conversation{},
 	}
 
-	promptValues, err := s.engine.BuildPromptValues(context.Background(), agent, runRequest)
+	promptValues, err := s.engine.BuildPromptValues(s.T().Context(), agent, runRequest, nil)
 	s.Require().NoError(err)
 
 	promptFn := engine.GetPromptFn(promptValues)
-	prompt, err := promptFn(context.Background(), nil)
+	prompt, err := promptFn(s.T().Context(), nil)
 	s.Require().NoError(err)
 
 	// Check that examples have proper XML structure
@@ -190,11 +188,11 @@ func (s *EngineTestSuite) TestTemplateXMLStructure() {
 		Participant:       thread.Participants,
 	}
 
-	promptValues, err := s.engine.BuildPromptValues(context.Background(), agent, runRequest)
+	promptValues, err := s.engine.BuildPromptValues(s.T().Context(), agent, runRequest, nil)
 	s.Require().NoError(err)
 
 	promptFn := engine.GetPromptFn(promptValues)
-	prompt, err := promptFn(context.Background(), nil)
+	prompt, err := promptFn(s.T().Context(), nil)
 	s.Require().NoError(err)
 
 	// Test thread section structure
@@ -247,11 +245,11 @@ func (s *EngineTestSuite) TestArtifactInstructionConditionalRendering() {
 			Participant:       []engine.Participant{},
 		}
 
-		promptValues, err := s.engine.BuildPromptValues(context.Background(), agent, runRequest)
+		promptValues, err := s.engine.BuildPromptValues(s.T().Context(), agent, runRequest, nil)
 		s.Require().NoError(err)
 
 		promptFn := engine.GetPromptFn(promptValues)
-		result, err := promptFn(context.Background(), nil)
+		result, err := promptFn(s.T().Context(), nil)
 		s.Require().NoError(err)
 
 		// Check that artifact instruction section exists
@@ -288,11 +286,11 @@ func (s *EngineTestSuite) TestArtifactInstructionConditionalRendering() {
 			Participant:       []engine.Participant{},
 		}
 
-		promptValues, err := s.engine.BuildPromptValues(context.Background(), agent, runRequest)
+		promptValues, err := s.engine.BuildPromptValues(s.T().Context(), agent, runRequest, nil)
 		s.Require().NoError(err)
 
 		promptFn := engine.GetPromptFn(promptValues)
-		result, err := promptFn(context.Background(), nil)
+		result, err := promptFn(s.T().Context(), nil)
 		s.Require().NoError(err)
 
 		// Check that artifact instruction section does NOT exist
@@ -321,11 +319,11 @@ func (s *EngineTestSuite) TestArtifactInstructionConditionalRendering() {
 			Participant:       []engine.Participant{},
 		}
 
-		promptValues, err := s.engine.BuildPromptValues(context.Background(), agent, runRequest)
+		promptValues, err := s.engine.BuildPromptValues(s.T().Context(), agent, runRequest, nil)
 		s.Require().NoError(err)
 
 		promptFn := engine.GetPromptFn(promptValues)
-		result, err := promptFn(context.Background(), nil)
+		result, err := promptFn(s.T().Context(), nil)
 		s.Require().NoError(err)
 
 		// Check that artifact instruction section does NOT exist

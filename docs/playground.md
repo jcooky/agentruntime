@@ -77,7 +77,7 @@ Create a file called `helper-agent.yaml`:
 ```yaml
 name: 'helper-agent'
 description: 'A friendly assistant that helps with general questions'
-model: 'gpt-4o-mini' # Cost-effective for testing
+model: 'gpt-5-mini' # Cost-effective for testing
 instructions: |
   You are a helpful and friendly assistant. 
   Answer questions clearly and concisely. 
@@ -300,7 +300,7 @@ Try scenarios that might cause issues:
 **Problem**: Agent appears but doesn't respond to messages
 **Solutions**:
 - Check API key is set correctly
-- Verify the model name in your YAML (e.g., 'gpt-4o-mini', not 'gpt-4-mini')
+- Verify the model name in your YAML (e.g., 'gpt-5-mini', not 'gpt-4-mini')
 - Check agentruntime logs for API errors
 - Try a simpler model first (like 'gpt-3.5-turbo')
 
@@ -333,7 +333,7 @@ For more detailed debugging, run agentruntime with verbose logging:
 
 - Begin with basic agents using simple instructions
 - Test one agent at a time initially
-- Use cost-effective models during development (gpt-4o-mini, gpt-3.5-turbo)
+- Use cost-effective models during development (gpt-5-mini, gpt-3.5-turbo)
 
 ### 2. Iterative Testing
 
@@ -367,7 +367,7 @@ For more detailed debugging, run agentruntime with verbose logging:
 ```yaml
 name: 'support-agent'
 description: 'Helpful customer support representative'
-model: 'gpt-4o-mini'
+model: 'gpt-5-mini'
 instructions: |
   You are a friendly and professional customer support representative.
   Always:

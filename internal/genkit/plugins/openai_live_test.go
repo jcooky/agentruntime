@@ -37,8 +37,8 @@ func TestLive(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	embedder := (&oai.OpenAI{}).Embedder(g, "text-embedding-3-small")
-	model := (&oai.OpenAI{}).Model(g, "gpt-4o-mini")
+	embedder := genkit.LookupEmbedder(g, "openai", "text-embedding-3-small")
+	model := genkit.LookupModel(g, "openai", "gpt-5-mini")
 
 	t.Run("embedder", func(t *testing.T) {
 		res, err := ai.Embed(ctx, embedder, ai.WithTextDocs("yellow banana"))

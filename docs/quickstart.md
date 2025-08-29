@@ -38,7 +38,7 @@
 ```yaml
 name: 'my-assistant'
 description: 'A helpful AI assistant for general questions'
-model: 'gpt-4o-mini'
+model: 'openai/gpt-5-mini'
 instructions: |
   You are a friendly and helpful assistant. 
   Answer questions clearly and be polite.

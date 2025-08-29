@@ -24,7 +24,7 @@ type KnowledgeConfig struct {
 
 	// RerankModel specifies which LLM model to use for reranking
 	// Supports OpenAI models (e.g., "gpt-4o-mini", "gpt-4") or other providers
-	// Default: "gpt-4o-mini"
+	// Default: "gpt-5-mini"
 	RerankModel string `json:"rerankModel,omitempty"`
 
 	// RerankTopK sets the maximum number of results to return after reranking
@@ -81,7 +81,7 @@ func NewKnowledgeConfig() *KnowledgeConfig {
 
 		// Rerank Settings
 		RerankEnabled:   true,
-		RerankModel:     "openai/gpt-4o-mini",
+		RerankModel:     "openai/gpt-5-mini",
 		RerankTopK:      10,
 		RetrievalFactor: 3,    // Retrieve 3x candidates for reranking
 		UseBatchRerank:  true, // Use batch reranker for better performance
@@ -89,10 +89,10 @@ func NewKnowledgeConfig() *KnowledgeConfig {
 		// Query Rewrite Settings
 		QueryRewriteEnabled:  false, // Disabled by default
 		QueryRewriteStrategy: "hyde",
-		QueryRewriteModel:    "openai/gpt-4o-mini",
+		QueryRewriteModel:    "openai/gpt-5-mini",
 		// QueryRewriteModel will default to RerankModel if not set
 
-		PDFExtractionTextModel: "openai/gpt-4o-mini",
+		PDFExtractionTextModel: "openai/gpt-5-mini",
 		PDFExtractionMethod:    "library",
 	}
 }

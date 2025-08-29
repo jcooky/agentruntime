@@ -1,7 +1,7 @@
 # Test agent for Remote SSE MCP functionality
 name: 'test-remote-sse-agent'
 description: 'Agent for testing remote SSE MCP servers'
-model: 'claude-3-5-sonnet-20241022'
+model: 'anthropic/claude-3.7-sonnet'
 instructions: |
   You are a helpful assistant with access to remote MCP tools via SSE.
   You can use the echo tool to repeat messages and get_time to check the current time.

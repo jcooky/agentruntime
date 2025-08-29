@@ -37,7 +37,7 @@ type HyDERewriter struct {
 
 func NewHyDERewriter(genkit *genkit.Genkit, model string) QueryRewriter {
 	if model == "" {
-		model = "gpt-4o-mini"
+		model = "openai/gpt-5-mini"
 	}
 	return &HyDERewriter{
 		genkit: genkit,
@@ -76,7 +76,7 @@ type QueryExpansionRewriter struct {
 
 func NewQueryExpansionRewriter(genkit *genkit.Genkit, model string) QueryRewriter {
 	if model == "" {
-		model = "gpt-4o-mini"
+		model = "openai/gpt-5-mini"
 	}
 	return &QueryExpansionRewriter{
 		genkit: genkit,

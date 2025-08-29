@@ -197,7 +197,7 @@ func generateStream(ctx context.Context, client *anthropic.Client, genRequest *a
 }
 
 func buildMessageParams(genRequest *ai.ModelRequest, apiModelName string) (anthropic.BetaMessageNewParams, error) {
-	messages, systems, err := convertMessages(genRequest.Messages)
+	messages, systems, err := convertMessages(genRequest.Messages, genRequest.Docs)
 	if err != nil {
 		return anthropic.BetaMessageNewParams{}, err
 	}
@@ -214,16 +214,7 @@ func buildMessageParams(genRequest *ai.ModelRequest, apiModelName string) (anthr
 			anthropic.AnthropicBetaContext1m2025_08_07,
 			anthropic.AnthropicBetaInterleavedThinking2025_05_14,
 		},
-	}
-
-	// Convert systems prompt to TextBlockParam array
-	for _, system := range systems {
-		if strings.TrimSpace(system) == "" {
-			continue
-		}
-		params.System = append(params.System, anthropic.BetaTextBlockParam{
-			Text: system,
-		})
+		System: systems,
 	}
 
 	if genRequest.Config == nil {
@@ -309,9 +300,20 @@ func buildMessageParams(genRequest *ai.ModelRequest, apiModelName string) (anthr
 	return params, nil
 }
 
-func convertMessages(messages []*ai.Message) ([]anthropic.BetaMessageParam, []string, error) {
-	var systems []string
+func convertMessages(messages []*ai.Message, docs []*ai.Document) ([]anthropic.BetaMessageParam, []anthropic.BetaTextBlockParam, error) {
+	var systems []anthropic.BetaTextBlockParam
 	var anthropicMessages []anthropic.BetaMessageParam
+
+	for _, doc := range docs {
+		blocks, err := convertContent(doc.Content)
+		if err != nil {
+			return nil, nil, err
+		}
+		anthropicMessages = append(anthropicMessages, anthropic.BetaMessageParam{
+			Role:    anthropic.BetaMessageParamRoleUser,
+			Content: blocks,
+		})
+	}
 
 	for _, msg := range messages {
 		var role anthropic.BetaMessageParamRole
@@ -325,7 +327,13 @@ func convertMessages(messages []*ai.Message) ([]anthropic.BetaMessageParam, []st
 		case ai.RoleSystem:
 			for _, part := range msg.Content {
 				if part.IsText() && part.Text != "" {
-					systems = append(systems, part.Text)
+					text := strings.TrimSpace(part.Text)
+					if text == "" {
+						continue
+					}
+					systems = append(systems, anthropic.BetaTextBlockParam{
+						Text: text,
+					})
 				}
 			}
 			continue
