@@ -58,14 +58,9 @@ func (p *Plugin) CountTokens(ctx context.Context, g *genkit.Genkit, msgs []*ai.M
 }
 
 func CountTokens(ctx context.Context, g *genkit.Genkit, msgs []*ai.Message, docs []*ai.Document, toolDefs []ai.Tool) (int, error) {
-	p := genkit.LookupPlugin(g, provider)
-	if p == nil {
-		return 0, errors.Errorf("plugin %s not found", provider)
-	}
-
-	anthropicPlugin, ok := p.(*Plugin)
-	if !ok {
-		return 0, errors.Errorf("plugin %s is not a %T", provider, p)
+	anthropicPlugin, ok := genkit.LookupPlugin(g, provider).(*Plugin)
+	if anthropicPlugin == nil || !ok {
+		return 0, errors.Errorf("plugin %s is not a %T", provider, anthropicPlugin)
 	}
 
 	return anthropicPlugin.CountTokens(ctx, g, msgs, docs, toolDefs)
