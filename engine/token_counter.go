@@ -1,20 +1,17 @@
 package engine
 
+import (
+	"context"
+
+	"github.com/firebase/genkit/go/ai"
+)
+
 // No imports needed for the interface definition
 
 // TokenCounter defines the interface for counting tokens across different model providers
 type TokenCounter interface {
-	// CountTokens counts tokens in text content
-	CountTokens(text string) int
-
-	// CountFileTokens counts tokens in file content (images, PDFs, etc.)
-	CountFileTokens(contentType, data string) int
-
 	// CountConversationTokens counts tokens in a list of conversations
-	CountConversationTokens(conversations []Conversation) int
-
-	// CountRequestFilesTokens counts tokens in request files
-	CountRequestFilesTokens(files []File) int
+	CountConversationTokens(ctx context.Context, history []*ai.Message) int
 
 	// ProviderName returns the name of the token provider
 	ProviderName() string

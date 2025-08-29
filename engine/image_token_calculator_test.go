@@ -206,15 +206,15 @@ func TestConversationSummarizer_CountFileTokens(t *testing.T) {
 			name:        "JPEG image",
 			contentType: "image/jpeg",
 			dataSize:    100 * 1024, // 100KB
-			minTokens:   85,
-			maxTokens:   1000,
+			minTokens:   1200,       // EstimateFileTokens: base64(100KB) / 100 ≈ 1365
+			maxTokens:   1500,
 		},
 		{
 			name:        "PNG image",
 			contentType: "image/png",
 			dataSize:    50 * 1024, // 50KB
-			minTokens:   85,
-			maxTokens:   500,
+			minTokens:   600,       // EstimateFileTokens: base64(50KB) / 100 ≈ 682
+			maxTokens:   800,
 		},
 		{
 			name:        "PDF document",

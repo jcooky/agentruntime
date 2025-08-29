@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
+	"github.com/firebase/genkit/go/ai"
 	"github.com/pkg/errors"
 )
 
@@ -60,106 +62,14 @@ type anthropicTokenResponse struct {
 	InputTokens int `json:"input_tokens"`
 }
 
-// CountTokens counts tokens in text using Anthropic's API
-func (a *AnthropicTokenCounter) CountTokens(text string) int {
-	if text == "" {
-		return 0
-	}
-
-	// Create a simple message for token counting
-	req := anthropicTokenRequest{
-		Model: a.model,
-		Messages: []anthropicMessageParam{
-			{
-				Role: "user",
-				Content: []anthropicContentParam{
-					{
-						Type: "text",
-						Text: text,
-					},
-				},
-			},
-		},
-	}
-
-	tokens, err := a.callCountTokensAPI(context.Background(), req)
-	if err != nil {
-		// Fallback to estimation if API fails
-		return EstimateTokens(text)
-	}
-
-	return tokens
-}
-
-// CountFileTokens counts tokens in file content using Anthropic's API
-func (a *AnthropicTokenCounter) CountFileTokens(contentType, data string) int {
-	if data == "" {
-		return 0
-	}
-
-	// Only handle images through API, fallback for other file types
-	if contentType[:6] != "image/" {
-		return EstimateFileTokens(contentType, data)
-	}
-
-	req := anthropicTokenRequest{
-		Model: a.model,
-		Messages: []anthropicMessageParam{
-			{
-				Role: "user",
-				Content: []anthropicContentParam{
-					{
-						Type: "image",
-						Source: &anthropicSourceParam{
-							Type:      "base64",
-							MediaType: contentType,
-							Data:      data,
-						},
-					},
-				},
-			},
-		},
-	}
-
-	tokens, err := a.callCountTokensAPI(context.Background(), req)
-	if err != nil {
-		// Fallback to estimation if API fails
-		return EstimateFileTokens(contentType, data)
-	}
-
-	return tokens
-}
-
 // CountConversationTokens counts tokens in conversations using Anthropic's API
-func (a *AnthropicTokenCounter) CountConversationTokens(conversations []Conversation) int {
-	if len(conversations) == 0 {
+func (a *AnthropicTokenCounter) CountConversationTokens(ctx context.Context, history []*ai.Message) int {
+	if len(history) == 0 {
 		return 0
 	}
 
-	// Convert conversations to Anthropic message format
-	messages := make([]anthropicMessageParam, 0, len(conversations))
-
-	for _, conv := range conversations {
-		if conv.Text == "" {
-			continue
-		}
-
-		// Map user roles
-		role := "user"
-		if conv.User == "assistant" || conv.User == "bot" {
-			role = "assistant"
-		}
-
-		messages = append(messages, anthropicMessageParam{
-			Role: role,
-			Content: []anthropicContentParam{
-				{
-					Type: "text",
-					Text: conv.Text,
-				},
-			},
-		})
-	}
+	// Convert ai.Message to Anthropic message format
+	messages, systemPrompt := a.convertMessages(history)
 
 	if len(messages) == 0 {
 		return 0
@@ -168,14 +78,19 @@ func (a *AnthropicTokenCounter) CountConversationTokens(conversations []Conversa
 	req := anthropicTokenRequest{
 		Model:    a.model,
 		Messages: messages,
+		System:   systemPrompt,
 	}
 
-	tokens, err := a.callCountTokensAPI(context.Background(), req)
+	tokens, err := a.callCountTokensAPI(ctx, req)
 	if err != nil {
 		// Fallback to estimation if API fails
 		totalText := ""
-		for _, conv := range conversations {
-			totalText += conv.Text + " "
+		for _, msg := range history {
+			for _, part := range msg.Content {
+				if part.IsText() {
+					totalText += part.Text + " "
+				}
+			}
 		}
 		return EstimateTokens(totalText)
 	}
@@ -183,13 +98,90 @@ func (a *AnthropicTokenCounter) CountConversationTokens(conversations []Conversa
 	return tokens
 }
 
-// CountRequestFilesTokens counts tokens in request files
-func (a *AnthropicTokenCounter) CountRequestFilesTokens(files []File) int {
-	totalTokens := 0
-	for _, file := range files {
-		totalTokens += a.CountFileTokens(file.ContentType, file.Data)
+// convertMessages converts ai.Message to anthropicMessageParam format
+func (a *AnthropicTokenCounter) convertMessages(messages []*ai.Message) ([]anthropicMessageParam, string) {
+	var anthropicMessages []anthropicMessageParam
+	var systemPrompts []string
+
+	for _, msg := range messages {
+		switch msg.Role {
+		case ai.RoleSystem:
+			// Extract system prompts
+			for _, part := range msg.Content {
+				if part.IsText() && part.Text != "" {
+					systemPrompts = append(systemPrompts, part.Text)
+				}
+			}
+		case ai.RoleUser:
+			content := a.convertContent(msg.Content)
+			if len(content) > 0 {
+				anthropicMessages = append(anthropicMessages, anthropicMessageParam{
+					Role:    "user",
+					Content: content,
+				})
+			}
+		case ai.RoleModel:
+			content := a.convertContent(msg.Content)
+			if len(content) > 0 {
+				anthropicMessages = append(anthropicMessages, anthropicMessageParam{
+					Role:    "assistant",
+					Content: content,
+				})
+			}
+		case ai.RoleTool:
+			// Tool messages are treated as user messages in Anthropic API
+			content := a.convertContent(msg.Content)
+			if len(content) > 0 {
+				anthropicMessages = append(anthropicMessages, anthropicMessageParam{
+					Role:    "user",
+					Content: content,
+				})
+			}
+		}
 	}
-	return totalTokens
+
+	// Join system prompts
+	systemPrompt := ""
+	if len(systemPrompts) > 0 {
+		systemPrompt = strings.Join(systemPrompts, "\n")
+	}
+
+	return anthropicMessages, systemPrompt
+}
+
+// convertContent converts ai.Part to anthropicContentParam
+func (a *AnthropicTokenCounter) convertContent(parts []*ai.Part) []anthropicContentParam {
+	var content []anthropicContentParam
+
+	for _, part := range parts {
+		if part.IsText() {
+			content = append(content, anthropicContentParam{
+				Type: "text",
+				Text: part.Text,
+			})
+		} else if part.IsMedia() {
+			// For token counting, we'll convert media to text representation
+			// This is a simplified approach - in practice you might want to handle media differently
+			content = append(content, anthropicContentParam{
+				Type: "text",
+				Text: "[Media content]",
+			})
+		} else if part.IsToolRequest() {
+			// Convert tool requests to text for token counting
+			content = append(content, anthropicContentParam{
+				Type: "text",
+				Text: "[Tool request: " + part.ToolRequest.Name + "]",
+			})
+		} else if part.IsToolResponse() {
+			// Convert tool responses to text for token counting
+			content = append(content, anthropicContentParam{
+				Type: "text",
+				Text: "[Tool response]",
+			})
+		}
+	}
+
+	return content
 }
 
 // callCountTokensAPI calls Anthropic's count_tokens API

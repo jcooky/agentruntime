@@ -1,8 +1,10 @@
 package engine
 
 import (
+	"context"
 	"encoding/json"
 
+	"github.com/firebase/genkit/go/ai"
 	"github.com/pkg/errors"
 	"github.com/pkoukk/tiktoken-go"
 )
@@ -26,32 +28,28 @@ func NewOpenAITokenCounter() (*OpenAITokenCounter, error) {
 	}, nil
 }
 
-// CountTokens counts tokens in text using tiktoken
-func (o *OpenAITokenCounter) CountTokens(text string) int {
-	return len(o.enc.Encode(text, nil, nil))
-}
-
-// CountFileTokens counts tokens in file content using OpenAI's vision model algorithm
-func (o *OpenAITokenCounter) CountFileTokens(contentType, data string) int {
-	return o.imageCalculator.CalculateImageTokens(contentType, data)
-}
-
-// CountConversationTokens counts tokens in conversations (text only)
-func (o *OpenAITokenCounter) CountConversationTokens(conversations []Conversation) int {
+// CountConversationTokens counts tokens in conversations using tiktoken
+func (o *OpenAITokenCounter) CountConversationTokens(ctx context.Context, history []*ai.Message) int {
 	totalTokens := 0
-	for _, conv := range conversations {
-		// Serialize conversation to JSON and count tokens
-		convJson, _ := json.Marshal(conv)
-		totalTokens += o.CountTokens(string(convJson))
-	}
-	return totalTokens
-}
-
-// CountRequestFilesTokens counts tokens in request files
-func (o *OpenAITokenCounter) CountRequestFilesTokens(files []File) int {
-	totalTokens := 0
-	for _, file := range files {
-		totalTokens += o.CountFileTokens(file.ContentType, file.Data)
+	for _, msg := range history {
+		// Count tokens for each part of the message
+		for _, part := range msg.Content {
+			if part.IsText() {
+				totalTokens += len(o.enc.Encode(part.Text, nil, nil))
+			} else if part.IsToolRequest() {
+				// Count tokens for tool requests
+				toolReqJson, _ := json.Marshal(part.ToolRequest)
+				totalTokens += len(o.enc.Encode(string(toolReqJson), nil, nil))
+			} else if part.IsToolResponse() {
+				// Count tokens for tool responses
+				toolRespJson, _ := json.Marshal(part.ToolResponse)
+				totalTokens += len(o.enc.Encode(string(toolRespJson), nil, nil))
+			} else if part.IsMedia() {
+				// For media content, use a simplified estimation
+				// In a real implementation, you might want to use vision model token calculation
+				totalTokens += EstimateFileTokens(part.ContentType, part.Text)
+			}
+		}
 	}
 	return totalTokens
 }

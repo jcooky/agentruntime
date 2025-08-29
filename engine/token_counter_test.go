@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/firebase/genkit/go/ai"
 	"github.com/habiliai/agentruntime/config"
 	"github.com/habiliai/agentruntime/internal/genkit"
 	"github.com/habiliai/agentruntime/internal/mylog"
@@ -55,22 +56,36 @@ func TestOpenAITokenCounter(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("count simple text tokens", func(t *testing.T) {
-		tokens := counter.CountTokens("Hello world")
+		// Test through CountConversationTokens since CountTokens is no longer in the interface
+		messages := []*ai.Message{
+			{
+				Role:    ai.RoleUser,
+				Content: []*ai.Part{ai.NewTextPart("Hello world")},
+			},
+		}
+		tokens := counter.CountConversationTokens(t.Context(), messages)
 		assert.Greater(t, tokens, 0)
 		assert.Less(t, tokens, 10) // Should be around 2-3 tokens
 	})
 
 	t.Run("count empty text", func(t *testing.T) {
-		tokens := counter.CountTokens("")
+		// Test with empty message array
+		tokens := counter.CountConversationTokens(t.Context(), []*ai.Message{})
 		assert.Equal(t, 0, tokens)
 	})
 
 	t.Run("count conversation tokens", func(t *testing.T) {
-		conversations := []Conversation{
-			{User: "user", Text: "Hello"},
-			{User: "assistant", Text: "Hi there!"},
+		messages := []*ai.Message{
+			{
+				Role:    ai.RoleUser,
+				Content: []*ai.Part{ai.NewTextPart("Hello")},
+			},
+			{
+				Role:    ai.RoleModel,
+				Content: []*ai.Part{ai.NewTextPart("Hi there!")},
+			},
 		}
-		tokens := counter.CountConversationTokens(conversations)
+		tokens := counter.CountConversationTokens(t.Context(), messages)
 		assert.Greater(t, tokens, 0)
 	})
 
@@ -87,7 +102,14 @@ func TestAnthropicTokenCounter(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("count simple text tokens", func(t *testing.T) {
-		tokens := counter.CountTokens("Hello world")
+		// Test through CountConversationTokens since CountTokens is no longer in the interface
+		messages := []*ai.Message{
+			{
+				Role:    ai.RoleUser,
+				Content: []*ai.Part{ai.NewTextPart("Hello world")},
+			},
+		}
+		tokens := counter.CountConversationTokens(t.Context(), messages)
 		assert.Greater(t, tokens, 0)
 		// Note: This would actually call the API in a real test
 	})
