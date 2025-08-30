@@ -176,6 +176,50 @@ Uses **AI embeddings** to find conceptually related memories, not just keyword m
 		return err
 	}
 
+	// Update memory tool
+	if err := registerNativeTool(
+		m,
+		"update_memory",
+		`Update **existing memory** with new information.
+
+**Use when information changes**:
+- **Personal changes** → *new job, moved cities, changed preferences*
+- **Corrections** → *fix incorrect information previously stored*
+- **Additional details** → *add more context to existing memory*
+- **Status updates** → *goal progress, project status changes*
+
+**REQUIREMENT**: Memory key must already exist
+
+**Examples**:
+- User got promoted → update user_job_title
+- Changed coffee preference → update user_preference_coffee
+- Project completed → update project_status_current`,
+		skill,
+		func(ctx *Context, req struct {
+			Key   string   `json:"key" jsonschema:"required,description=Exact memory key to update - must match existing stored key exactly (e.g. user_name_full, user_preference_coffee). Use search_memory if unsure of exact key."`
+			Value *string  `json:"value,omitempty" jsonschema:"description=New value to replace existing memory content. If not provided, only tags will be updated."`
+			Tags  []string `json:"tags,omitempty" jsonschema:"description=New tags to replace existing tags. If empty, tags will be cleared."`
+		}) (resp struct {
+			Memory *memory.Memory `json:"memory,omitempty" jsonschema:"description=Updated memory object with new values (includes updated value, tags, source, timestamp)"`
+			Error  *string        `json:"error,omitempty" jsonschema:"description=Error message if update failed (e.g. key not found, invalid key format, update error)"`
+		}, err error) {
+			input := memory.UpdateMemoryInput{
+				Value: req.Value,
+				Tags:  req.Tags,
+			}
+
+			updatedMemory, err := m.memoryService.UpdateMemory(ctx, req.Key, input)
+			if err != nil {
+				resp.Error = gog.PtrOf(err.Error())
+				return
+			}
+			resp.Memory = updatedMemory
+			return
+		},
+	); err != nil {
+		return err
+	}
+
 	// Delete memory tool
 	if err := registerNativeTool(
 		m,
@@ -230,6 +274,12 @@ Use 'remember_memory' RIGHT AWAY when user mentions:
 - Context: "This project is about...", "We discussed..."
 - Experiences: "Last time I...", "I tried...", "I learned..."
 
+**IMMEDIATE UPDATE triggers:**
+Use 'update_memory' RIGHT AWAY when user mentions changes:
+- Status changes: "I got promoted", "I moved to Tokyo", "I finished the project"  
+- Corrections: "Actually, I prefer tea", "I work at Apple now", "My name is Mike, not John"
+- Progress updates: "I completed my goal", "The project status changed"
+
 **Before responding:**
 - If discussing specific topic → use 'search_memory' with relevant keywords
 - If user references something specific → try 'recall_memory' with likely key
@@ -264,25 +314,32 @@ Use 'remember_memory' RIGHT AWAY when user mentions:
 - YES → use 'recall_memory' with exact key
 - NO → use 'search_memory' with descriptive terms
 
+**Information Status?**
+- NEW info → use 'remember_memory' to create
+- CHANGED info → use 'update_memory' to modify existing
+- WRONG info → use 'update_memory' to correct or 'delete_memory' if invalid
+
 **Examples:**
 - "Get user's name" → recall_memory(key: "user_name_full")
 - "Find coffee preferences" → search_memory(query: "coffee preferences")
 - "What was that project?" → search_memory(query: "project discussion")
+- "User said they moved" → update_memory(key: "user_location_city", value: "New City")
+- "User corrected their job title" → update_memory(key: "user_job_title", value: "Senior Engineer")
 
-## Avoid Duplicates
+## Avoid Duplicates & Handle Updates
 
 **Before storing new memory:**
 1. Search for existing related memories first
 2. If similar memory exists:
-   - Update with new key if significantly different
-   - Skip if information is identical
-   - Combine if complementary
+   - **SAME key, NEW info** → use 'update_memory' to replace
+   - **SAME info, DIFFERENT context** → create new key  
+   - **IDENTICAL info** → skip saving
+   - **COMPLEMENTARY info** → combine into existing memory
 
-**Example:**
-User says: "I also like tea"
-→ First: search_memory("tea preferences") 
-→ If exists: consider key like "user_preference_drinks" instead of separate entry
-→ If new: use "user_preference_tea"
+**Update vs New Memory:**
+- User says: "I moved to Seoul" → update_memory(key: "user_location_city") ✅
+- User says: "I also like tea" → remember_memory(key: "user_preference_tea") ✅ 
+- User says: "Actually, I hate coffee" → update_memory(key: "user_preference_coffee") ✅
 
 ## How to Talk to Users
 
@@ -293,6 +350,12 @@ User says: "I also like tea"
 - ✅ "I'll save this project information for future reference."
 - ❌ "Calling remember_memory tool..." (too technical)
 
+**When updating memories:**
+- ✅ "I've updated your job title to Senior Engineer!"
+- ✅ "Got it - I've changed your location to Seoul."
+- ✅ "I've noted that you completed your marathon goal!"
+- ❌ "Calling update_memory tool..." (too technical)
+
 **When recalling memories:**
 - ✅ "I remember you mentioned you work at Google..."
 - ✅ "Based on what you told me before about your coffee preferences..."
@@ -302,10 +365,18 @@ User says: "I also like tea"
 ## Quick Examples
 
 **Automatic triggers in action:**
+
+**New Information (remember_memory):**
 - User: "I'm a software engineer" → remember_memory(key: "user_job_title", memory: "Software engineer")
 - User: "I don't like spicy food" → remember_memory(key: "user_preference_food_spicy", memory: "Dislikes spicy food")
 - User: "We decided to use React for this project" → remember_memory(key: "decision_framework_react", memory: "Chose React framework for current project")
 - User: "My name is Sarah" → remember_memory(key: "user_name_full", memory: "Sarah")
+
+**Changed Information (update_memory):**
+- User: "I got promoted to Senior Engineer" → update_memory(key: "user_job_title", value: "Senior Software Engineer")
+- User: "Actually, I love spicy food now" → update_memory(key: "user_preference_food_spicy", value: "Loves spicy food")
+- User: "We switched to Vue.js" → update_memory(key: "decision_framework_react", value: "Switched from React to Vue.js framework for current project")
+- User: "My name is actually Sara, not Sarah" → update_memory(key: "user_name_full", value: "Sara")
 
 ## Conversation Patterns
 
@@ -324,11 +395,12 @@ When user changes subject → search_memory with new topic keywords → Surface 
 
 ## Critical Success Factors
 
-1. **Speed**: Save memories IMMEDIATELY when triggered (don't wait)
-2. **Consistency**: Use standard key naming format always
-3. **Completeness**: Check for existing memories before saving
-4. **Transparency**: Tell user when you remember something
-5. **Context**: Start every conversation with memory check
+1. **Speed**: Save/update memories IMMEDIATELY when triggered (don't wait)
+2. **Accuracy**: Use update_memory for changes, remember_memory for new info
+3. **Consistency**: Use standard key naming format always
+4. **Completeness**: Check for existing memories before deciding create vs update
+5. **Transparency**: Tell user when you remember OR update something
+6. **Context**: Start every conversation with memory check
 
 **Remember**: Your goal is to build a comprehensive, organized memory system that makes every conversation feel personal and contextual!
 </tool:memory_instructions>`)
