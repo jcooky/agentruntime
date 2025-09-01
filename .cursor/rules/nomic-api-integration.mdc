@@ -1,0 +1,70 @@
+---
+description: 'Nomic API integration patterns and best practices for text and image embeddings'
+globs: 'knowledge/*.go,**/embedder*.go'
+---
+
+# Nomic API Integration Patterns
+
+## Model Configuration
+
+**MUST** use these specific model constants:
+
+```go
+const (
+    NomicVisionEmbedderModel = "nomic-embed-vision-v1.5"
+    NomicTextEmbedderModel   = "nomic-embed-text-v1.5"
+    NomicEmbedderTextEndpoint  = "https://api-atlas.nomic.ai/v1/embedding/text"
+    NomicEmbedderImageEndpoint = "https://api-atlas.nomic.ai/v1/embedding/image"
+)
+```
+
+## API Request Formats
+
+### Text Embedding
+
+- **Content-Type**: `application/json`
+- **Format**: JSON with `model`, `task_type`, and `texts` fields
+
+### Image URL Embedding
+
+- **Content-Type**: `application/x-www-form-urlencoded`
+- **Format**: Form data with `model` and multiple `urls` fields
+- **Implementation**: Use `url.Values` and `strings.NewReader`
+
+### Image File Embedding
+
+- **Content-Type**: `multipart/form-data`
+- **Format**: Multipart form with `model` field and multiple `images` files
+- **Implementation**: Use `mime/multipart.Writer` with unique filenames (`image%d.png`)
+
+## Error Handling
+
+Always include HTTP status code and response body in error messages:
+
+```go
+if resp.StatusCode != http.StatusOK {
+    body, _ := io.ReadAll(resp.Body)
+    return nil, errors.Errorf("failed to embed: HTTP %d - %s", resp.StatusCode, string(body))
+}
+```
+
+## Environment Variable Management
+
+**MUST** use `NOMIC_API_KEY` environment variable:
+
+```go
+apiKey := os.Getenv("NOMIC_API_KEY")
+if apiKey == "" {
+    // Handle appropriately - skip tests or return error
+}
+```
+
+## Constructor Pattern
+
+Use simple constructor without HTTP client parameter:
+
+```go
+func NewEmbedder(apiKey string) Embedder {
+    return Embedder{client: http.DefaultClient, apiKey: apiKey}
+}
+```

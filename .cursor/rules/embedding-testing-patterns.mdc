@@ -1,0 +1,120 @@
+---
+description: 'Testing patterns for embedding functionality and API integration'
+globs: '**/*_test.go,knowledge/*.go'
+---
+
+# Embedding Testing Patterns
+
+## Environment Variable Loading
+
+**MUST** use `godotenv` for loading `.env` files in tests:
+
+```go
+import "github.com/joho/godotenv"
+
+func TestSomething(t *testing.T) {
+    _ = godotenv.Load()           // Current directory
+    _ = godotenv.Load("../.env")  // Parent directory
+
+    apiKey := os.Getenv("NOMIC_API_KEY")
+    if apiKey == "" {
+        t.Skip("NOMIC_API_KEY not set, skipping test")
+    }
+}
+```
+
+## Test Context Usage
+
+**MUST** use `t.Context()` instead of `context.Background()` in tests:
+
+```go
+// ✅ CORRECT
+func TestEmbedder(t *testing.T) {
+    ctx := t.Context()
+    result, err := embedder.EmbedTexts(ctx, ...)
+}
+
+// ❌ WRONG
+func TestEmbedder(t *testing.T) {
+    ctx := context.Background()
+    result, err := embedder.EmbedTexts(ctx, ...)
+}
+```
+
+## Test Assertions
+
+**MUST** use `testify/require` for robust error handling:
+
+```go
+import "github.com/stretchr/testify/require"
+
+func TestEmbedder(t *testing.T) {
+    embeddings, err := embedder.EmbedTexts(ctx, ...)
+    require.NoError(t, err)
+    require.Len(t, embeddings, expectedCount)
+    require.Len(t, embeddings[0], 768) // Nomic embedding dimension
+}
+```
+
+## Test Asset Management
+
+**MUST** use `go:embed` for test image files:
+
+```go
+import _ "embed"
+
+//go:embed testdata/test_image.png
+var testImageData []byte
+
+func TestImageEmbedding(t *testing.T) {
+    embeddings, err := embedder.EmbedImageFiles(ctx, "image/png", testImageData)
+    require.NoError(t, err)
+}
+```
+
+## API Key Testing Strategy
+
+**MUST** skip tests when API keys are missing:
+
+```go
+func TestLiveAPI(t *testing.T) {
+    apiKey := os.Getenv("NOMIC_API_KEY")
+    if apiKey == "" {
+        t.Skip("NOMIC_API_KEY not set, skipping live API test")
+    }
+    // Test implementation
+}
+```
+
+## Multi-API Key Tests
+
+For tests requiring multiple APIs, check all required keys:
+
+```go
+func TestVisionPipeline(t *testing.T) {
+    openaiKey := os.Getenv("OPENAI_API_KEY")
+    nomicKey := os.Getenv("NOMIC_API_KEY")
+
+    if openaiKey == "" && !testing.Short() {
+        t.Skip("OPENAI_API_KEY not set, skipping test")
+    }
+    if nomicKey == "" && !testing.Short() {
+        t.Skip("NOMIC_API_KEY not set, skipping test")
+    }
+}
+```
+
+## Test Data Validation
+
+Always validate embedding dimensions and structure:
+
+```go
+// For Nomic embeddings
+require.Len(t, embedding, 768, "Nomic embeddings should be 768-dimensional")
+
+// For multiple embeddings
+require.Len(t, embeddings, inputCount, "embedding count should match input count")
+
+// Check non-zero embeddings
+require.False(t, isZeroVector(embedding), "embedding should not be zero vector")
+```

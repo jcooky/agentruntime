@@ -1,0 +1,163 @@
+---
+description: 'Go module structure and import patterns for AgentRuntime project'
+globs: '**/*.go'
+---
+
+# Go Module and Import Patterns
+
+## Import Organization
+
+**MUST** organize imports in this order:
+
+1. Standard library imports
+2. Third-party imports
+3. Local project imports
+
+```go
+import (
+    // Standard library
+    "context"
+    "encoding/json"
+    "fmt"
+
+    // Third-party
+    "github.com/pkg/errors"
+    "github.com/stretchr/testify/require"
+
+    // Local project
+    "github.com/habiliai/agentruntime/config"
+    "github.com/habiliai/agentruntime/knowledge"
+)
+```
+
+## Embedding Assets
+
+**MUST** use `go:embed` for static assets in tests and data:
+
+```go
+import _ "embed"
+
+//go:embed testdata/example.pdf
+var examplePDF []byte
+
+//go:embed data/instructions/template.md.tmpl
+var templateContent string
+```
+
+## Error Handling
+
+**MUST** use `github.com/pkg/errors` for error wrapping with context:
+
+```go
+import "github.com/pkg/errors"
+
+if err != nil {
+    return nil, errors.Wrapf(err, "failed to process %s", identifier)
+}
+
+// For new errors
+return errors.Errorf("invalid configuration: %s", configValue)
+```
+
+## Testing Imports
+
+**MUST** include blank import for embed when using go:embed:
+
+```go
+import (
+    _ "embed"                                      // Required for go:embed
+    "testing"
+
+    "github.com/joho/godotenv"                    // For .env loading
+    "github.com/stretchr/testify/require"        // For robust assertions
+
+    "github.com/habiliai/agentruntime/knowledge"
+)
+```
+
+## Package Naming
+
+**MUST** use package name that matches directory:
+
+```go
+// File: knowledge/embedder.go
+package knowledge
+
+// File: knowledge/embedder_test.go
+package knowledge_test // Use _test suffix for external testing
+```
+
+## Constructor Patterns
+
+**MUST** use simple constructors that return values, not pointers when appropriate:
+
+```go
+// ✅ CORRECT - Simple value return
+func NewEmbedder(apiKey string) Embedder {
+    return Embedder{
+        client: http.DefaultClient,
+        apiKey: apiKey,
+    }
+}
+
+// ✅ CORRECT - Pointer return when needed for large structs or interfaces
+func NewService(config *Config) *Service {
+    return &Service{
+        config: config,
+    }
+}
+```
+
+## Constants and Configuration
+
+**MUST** define constants for external API endpoints and model names:
+
+```go
+const (
+    DefaultModel     = "model-name"
+    APIEndpoint      = "https://api.example.com/v1"
+    DefaultTimeout   = 30 * time.Second
+    EmbeddingDimension = 768
+)
+```
+
+## Context Usage
+
+**MUST** accept context as first parameter in all functions that may block:
+
+```go
+func ProcessData(ctx context.Context, data []byte) (Result, error) {
+    // Implementation
+}
+```
+
+## Interface Design
+
+**MUST** define interfaces close to their usage, not in separate interface packages:
+
+```go
+// In the same package where it's used
+type Embedder interface {
+    EmbedTexts(ctx context.Context, taskType EmbeddingTaskType, texts ...string) ([][]float32, error)
+    EmbedImageFiles(ctx context.Context, mimeType string, imageFiles ...[]byte) ([][]float32, error)
+}
+```
+
+## Struct Field Ordering
+
+**MUST** organize struct fields logically:
+
+```go
+type Config struct {
+    // Required fields first
+    APIKey   string
+    Model    string
+
+    // Optional configuration
+    Timeout  time.Duration
+    MaxRetries int
+
+    // Internal/private fields last
+    client *http.Client
+}
+```

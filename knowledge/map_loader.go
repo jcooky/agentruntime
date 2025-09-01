@@ -12,11 +12,6 @@ import (
 
 // IndexKnowledge indexes knowledge documents for an agent
 func (s *service) IndexKnowledgeFromMap(ctx context.Context, id string, input []map[string]any) (*Knowledge, error) {
-	if s.embedder == nil {
-		// Return error instead of silently failing - this indicates a configuration issue
-		return nil, errors.New("embedder is not available - check OpenAI API key configuration. Knowledge indexing requires a valid OpenAI API key")
-	}
-
 	// First, delete existing knowledge for this agent
 	if id != "" {
 		if err := s.DeleteKnowledge(ctx, id); err != nil {
@@ -45,11 +40,11 @@ func (s *service) IndexKnowledgeFromMap(ctx context.Context, id string, input []
 	}
 
 	// Generate embeddings
-	embeddings, err := s.embedder.Embed(ctx, gog.Map(knowledge.Documents, func(d *Document) string {
+	embeddings, err := s.embedder.EmbedTexts(ctx, EmbeddingTaskTypeDocument, gog.Map(knowledge.Documents, func(d *Document) string {
 		return d.EmbeddingText
 	})...)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to generate embeddings")
+		return nil, errors.Wrapf(err, "failed to generate document embeddings")
 	}
 
 	if len(embeddings) != len(knowledge.Documents) {

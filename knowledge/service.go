@@ -57,11 +57,11 @@ func NewServiceWithStore(
 	}
 
 	// Create embedder for RAG functionality
-	embedder := NewGenkitEmbedder(genkit)
+	embedder := NewEmbedder(conf.NomicAPIKey)
 
 	// Create reranker if enabled
 	var reranker Reranker
-	if conf.RerankEnabled && embedder != nil {
+	if conf.RerankEnabled {
 		if conf.UseBatchRerank {
 			reranker = NewBatchGenkitReranker(genkit, conf.RerankModel)
 		} else {
@@ -73,7 +73,7 @@ func NewServiceWithStore(
 
 	// Create query rewriter if enabled
 	var queryRewriter QueryRewriter
-	if conf.QueryRewriteEnabled && embedder != nil {
+	if conf.QueryRewriteEnabled {
 		model := conf.QueryRewriteModel
 		if model == "" {
 			model = conf.RerankModel // Default to rerank model
@@ -107,11 +107,6 @@ func (s *service) Close() error {
 
 // RetrieveRelevantKnowledge retrieves relevant knowledge chunks based on query
 func (s *service) RetrieveRelevantKnowledge(ctx context.Context, query string, limit int, allowedKnowledgeIds []string) ([]*KnowledgeSearchResult, error) {
-	if s.embedder == nil {
-		// Gracefully handle when no embedder is available
-		return nil, nil
-	}
-
 	// Apply query rewriting
 	queries, err := s.queryRewriter.Rewrite(ctx, query)
 	if err != nil {
@@ -132,7 +127,7 @@ func (s *service) RetrieveRelevantKnowledge(ctx context.Context, query string, l
 
 	for i, q := range queries {
 		// Generate embedding for this query
-		embeddings, err := s.embedder.Embed(ctx, q)
+		embeddings, err := s.embedder.EmbedTexts(ctx, EmbeddingTaskTypeQuery, q)
 		if err != nil {
 			s.logger.Warn("failed to generate embedding for rewritten query",
 				slog.String("query", q),

@@ -1,0 +1,195 @@
+---
+description: 'HTTP client patterns and API integration best practices'
+globs: '**/*.go'
+---
+
+# HTTP Client and API Integration Patterns
+
+## HTTP Client Configuration
+
+**MUST** use `http.DefaultClient` for simplicity unless specific configuration needed:
+
+```go
+type Client struct {
+    client *http.Client
+    apiKey string
+}
+
+func NewClient(apiKey string) Client {
+    return Client{
+        client: http.DefaultClient,
+        apiKey: apiKey,
+    }
+}
+```
+
+## Request Construction Patterns
+
+### JSON Requests
+
+```go
+reqBody := struct {
+    Model string   `json:"model"`
+    Texts []string `json:"texts"`
+}{
+    Model: modelName,
+    Texts: inputs,
+}
+
+jsonData, err := json.Marshal(reqBody)
+if err != nil {
+    return nil, errors.Wrap(err, "failed to marshal request")
+}
+
+req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(jsonData))
+req.Header.Set("Content-Type", "application/json")
+```
+
+### URL-Encoded Form Requests
+
+```go
+formData := url.Values{}
+formData.Set("model", modelName)
+for _, item := range items {
+    formData.Add("field_name", item)
+}
+
+req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, strings.NewReader(formData.Encode()))
+req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+```
+
+### Multipart Form Requests
+
+```go
+var requestBody bytes.Buffer
+writer := multipart.NewWriter(&requestBody)
+
+err := writer.WriteField("model", modelName)
+if err != nil {
+    return nil, errors.Wrap(err, "failed to write model field")
+}
+
+for i, fileData := range files {
+    filename := fmt.Sprintf("file%d.ext", i) // Use unique filenames
+    part, err := writer.CreateFormFile("files", filename)
+    if err != nil {
+        return nil, errors.Wrapf(err, "failed to create form file %d", i)
+    }
+
+    if _, err := io.Copy(part, bytes.NewReader(fileData)); err != nil {
+        return nil, errors.Wrapf(err, "failed to copy file data %d", i)
+    }
+}
+
+err = writer.Close()
+if err != nil {
+    return nil, errors.Wrap(err, "failed to close multipart writer")
+}
+
+req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, &requestBody)
+req.Header.Set("Content-Type", writer.FormDataContentType())
+```
+
+## Authentication Patterns
+
+**MUST** use Authorization header with Bearer token:
+
+```go
+req.Header.Set("Authorization", "Bearer "+apiKey)
+```
+
+## Error Handling
+
+**MUST** include HTTP status code and response body in errors:
+
+```go
+resp, err := client.Do(req)
+if err != nil {
+    return nil, errors.Wrap(err, "failed to make HTTP request")
+}
+defer resp.Body.Close()
+
+if resp.StatusCode != http.StatusOK {
+    body, _ := io.ReadAll(resp.Body)
+    return nil, errors.Errorf("HTTP %d - %s", resp.StatusCode, string(body))
+}
+```
+
+## Response Processing
+
+### JSON Response Handling
+
+```go
+var response ResponseType
+if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+    return nil, errors.Wrap(err, "failed to decode response")
+}
+```
+
+### Stream Processing for Large Responses
+
+```go
+scanner := bufio.NewScanner(resp.Body)
+for scanner.Scan() {
+    // Process line by line
+}
+if err := scanner.Err(); err != nil {
+    return nil, errors.Wrap(err, "failed to read response stream")
+}
+```
+
+## Context Management
+
+**MUST** use context for all HTTP requests:
+
+```go
+req, err := http.NewRequestWithContext(ctx, method, url, body)
+```
+
+**MUST** check context cancellation in long operations:
+
+```go
+select {
+case <-ctx.Done():
+    return nil, ctx.Err()
+default:
+    // Continue processing
+}
+```
+
+## Resource Management
+
+**MUST** always close response bodies:
+
+```go
+resp, err := client.Do(req)
+if err != nil {
+    return nil, err
+}
+defer resp.Body.Close() // Always defer close
+```
+
+## Retry and Timeout Patterns
+
+For external API calls, implement appropriate timeouts:
+
+```go
+client := &http.Client{
+    Timeout: 30 * time.Second,
+}
+```
+
+For retry logic, use exponential backoff:
+
+```go
+for attempt := 0; attempt < maxRetries; attempt++ {
+    if err := makeRequest(); err != nil {
+        if attempt == maxRetries-1 {
+            return err
+        }
+        time.Sleep(time.Duration(1<<attempt) * time.Second)
+        continue
+    }
+    break
+}
+```

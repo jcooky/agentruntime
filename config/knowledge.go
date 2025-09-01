@@ -1,6 +1,15 @@
 package config
 
+import "os"
+
 type KnowledgeConfig struct {
+	NomicAPIKey string `json:"nomicApiKey,omitempty"`
+
+	// PDFEmbeddingMethod specifies which method to use for PDF embedding
+	// Options: "vision" (use Vision embedding model), "text" (use text embedding model)
+	// Default: "text"
+	PDFEmbeddingMethod string `json:"pdfEmbeddingMethod,omitempty"`
+
 	// Core Database Settings
 	// SqliteEnabled controls whether SQLite knowledge service is activated
 	// Default: true
@@ -94,5 +103,8 @@ func NewKnowledgeConfig() *KnowledgeConfig {
 
 		PDFExtractionTextModel: "openai/gpt-5-mini",
 		PDFExtractionMethod:    "library",
+		PDFEmbeddingMethod:     "text",
+
+		NomicAPIKey: os.Getenv("NOMIC_API_KEY"),
 	}
 }

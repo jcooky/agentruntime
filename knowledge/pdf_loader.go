@@ -18,15 +18,11 @@ import (
 	"github.com/gen2brain/go-fitz"
 	"github.com/habiliai/agentruntime/config"
 	"github.com/habiliai/agentruntime/internal/stringutils"
-	"github.com/mokiat/gog"
 	"github.com/pkg/errors"
+	"github.com/samber/lo"
 )
 
 func (s *service) IndexKnowledgeFromPDF(ctx context.Context, id string, input io.Reader) (*Knowledge, error) {
-	if s.embedder == nil {
-		return nil, errors.New("embedder is not available - check OpenAI API key configuration. Knowledge indexing requires a valid OpenAI API key")
-	}
-
 	// First, delete existing knowledge for this agent
 	if id != "" {
 		if err := s.DeleteKnowledge(ctx, id); err != nil {
@@ -34,35 +30,10 @@ func (s *service) IndexKnowledgeFromPDF(ctx context.Context, id string, input io
 		}
 	}
 
-	knowledge, err := ProcessKnowledgeFromPDF(ctx, s.genkit, id, input, s.logger, s.config)
+	knowledge, err := ProcessKnowledgeFromPDF(ctx, s.genkit, id, input, s.logger, s.config, s.embedder)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to process knowledge from PDF")
 	}
-
-	now := time.Now()
-
-	// Generate embeddings for all documents
-	embeddings, err := s.embedder.Embed(ctx, gog.Map(knowledge.Documents, func(d *Document) string {
-		return d.EmbeddingText
-	})...)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to generate embeddings")
-	}
-
-	if len(embeddings) != len(knowledge.Documents) {
-		return nil, errors.Errorf("embedding count mismatch: got %d, expected %d", len(embeddings), len(knowledge.Documents))
-	}
-
-	// Assign embeddings to documents
-	for i := range knowledge.Documents {
-		emb := embeddings[i]
-		if emb == nil {
-			continue
-		}
-		knowledge.Documents[i].Embeddings = embeddings[i]
-	}
-
-	s.logger.Info("Generated embeddings", "time", time.Since(now))
 
 	// Store all items
 	if err := s.store.Store(ctx, knowledge); err != nil {
@@ -72,7 +43,15 @@ func (s *service) IndexKnowledgeFromPDF(ctx context.Context, id string, input io
 	return knowledge, nil
 }
 
-func ProcessKnowledgeFromPDF(ctx context.Context, g *genkit.Genkit, id string, input io.Reader, logger *slog.Logger, config *config.KnowledgeConfig) (*Knowledge, error) {
+func ProcessKnowledgeFromPDF(
+	ctx context.Context,
+	g *genkit.Genkit,
+	id string,
+	input io.Reader,
+	logger *slog.Logger,
+	config *config.KnowledgeConfig,
+	embedder Embedder,
+) (*Knowledge, error) {
 	// Read PDF data
 	pdfData, err := io.ReadAll(input)
 	if err != nil {
@@ -204,6 +183,56 @@ func ProcessKnowledgeFromPDF(ctx context.Context, g *genkit.Genkit, id string, i
 	if len(knowledge.Documents) == 0 {
 		return nil, errors.Errorf("no pages found in PDF for knowledge %s", id)
 	}
+
+	now = time.Now()
+
+	switch config.PDFEmbeddingMethod {
+	case "vision":
+		{
+			images := make([][]byte, 0, len(knowledge.Documents))
+			for _, doc := range knowledge.Documents {
+				img, err := base64.StdEncoding.DecodeString(doc.Content.Image)
+				if err != nil {
+					return nil, errors.Wrapf(err, "failed to decode image")
+				}
+				images = append(images, img)
+			}
+			embeddings, err := embedder.EmbedImageFiles(ctx, "image/jpeg", images...)
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed to generate document embeddings")
+			}
+			if len(embeddings) != len(knowledge.Documents) {
+				return nil, errors.Errorf("embedding count mismatch: got %d, expected %d", len(embeddings), len(knowledge.Documents))
+			}
+			for i := range knowledge.Documents {
+				knowledge.Documents[i].Embeddings = embeddings[i]
+			}
+		}
+	case "text":
+		{
+			// Generate embeddings for all documents
+			embeddings, err := embedder.EmbedTexts(ctx, EmbeddingTaskTypeDocument, lo.Map(knowledge.Documents, func(d *Document, _ int) string {
+				return d.EmbeddingText
+			})...)
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed to generate document embeddings")
+			}
+
+			if len(embeddings) != len(knowledge.Documents) {
+				return nil, errors.Errorf("embedding count mismatch: got %d, expected %d", len(embeddings), len(knowledge.Documents))
+			}
+
+			// Assign embeddings to documents
+			for i := range knowledge.Documents {
+				emb := embeddings[i]
+				if emb == nil {
+					continue
+				}
+				knowledge.Documents[i].Embeddings = embeddings[i]
+			}
+		}
+	}
+	logger.Info("Generated embeddings", "time", time.Since(now))
 
 	return knowledge, nil
 }
