@@ -148,6 +148,10 @@ func (r *AgentRuntime) GetMemoryService() memory.Service {
 	return r.memoryService
 }
 
+func (r *AgentRuntime) EstimateTokens(ctx context.Context, agent entity.Agent, req engine.RunRequest) (int, error) {
+	return r.engine.EstimateTokens(ctx, agent, req)
+}
+
 func WithOpenAIAPIKey(apiKey string) func(e *AgentRuntime) {
 	return func(e *AgentRuntime) {
 		e.modelConfig.OpenAIAPIKey = apiKey

@@ -1,5 +1,7 @@
 package entity
 
+import "strings"
+
 type Agent struct {
 	Name            string             `json:"name"`
 	Description     string             `json:"description,omitempty"`
@@ -30,4 +32,12 @@ type MessageExample struct {
 type AgentEvaluator struct {
 	Prompt     string `json:"prompt,omitempty"`
 	NumRetries int    `json:"numRetries,omitempty"`
+}
+
+func (a Agent) GetModelProvider() string {
+	values := strings.Split(a.ModelName, "/")
+	if len(values) == 1 {
+		return "openai"
+	}
+	return values[0]
 }

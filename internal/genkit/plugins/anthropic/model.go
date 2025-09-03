@@ -774,12 +774,15 @@ func translateResponse(resp anthropic.BetaMessage, genRequest *ai.ModelRequest) 
 	}
 
 	// Extract usage information
-	if resp.Usage.InputTokens > 0 || resp.Usage.OutputTokens > 0 {
-		r.Usage = &ai.GenerationUsage{
-			InputTokens:  int(resp.Usage.InputTokens),
-			OutputTokens: int(resp.Usage.OutputTokens),
-			TotalTokens:  int(resp.Usage.InputTokens + resp.Usage.OutputTokens),
-		}
+	r.Usage = &ai.GenerationUsage{
+		InputTokens:  int(resp.Usage.InputTokens),
+		OutputTokens: int(resp.Usage.OutputTokens),
+		TotalTokens:  int(resp.Usage.InputTokens + resp.Usage.OutputTokens),
+		Custom: map[string]float64{
+			"cache_read_tokens":   float64(resp.Usage.CacheReadInputTokens),
+			"cache_write_tokens":  float64(resp.Usage.CacheCreationInputTokens),
+			"web_search_requests": float64(resp.Usage.ServerToolUse.WebSearchRequests),
+		},
 	}
 
 	// Set custom data

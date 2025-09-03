@@ -7,6 +7,7 @@ import (
 
 	"github.com/firebase/genkit/go/ai"
 	"github.com/habiliai/agentruntime/config"
+	"github.com/habiliai/agentruntime/entity"
 	"github.com/habiliai/agentruntime/internal/genkit"
 	"github.com/habiliai/agentruntime/internal/mylog"
 	"github.com/joho/godotenv"
@@ -35,20 +36,6 @@ func TestConversationSummarizer_CountTokens(t *testing.T) {
 	g, err := genkit.NewGenkit(ctx, modelConfig, logger, false)
 	require.NoError(t, err)
 
-	testConfig := &config.ModelConfig{
-		AnthropicAPIKey: anthropicKey,
-		OpenAIAPIKey:    openaiKey,
-		ConversationSummary: config.ConversationSummaryConfig{
-			MaxTokens:                   1000,
-			SummaryTokens:               200,
-			MinConversationsToSummarize: 5,
-			ModelForSummary:             "openai/gpt-5-mini",
-			TokenProvider:               "anthropic",
-		},
-	}
-
-	summarizer := NewConversationSummarizer(g, &testConfig.ConversationSummary)
-
 	// Test token counting
 	testCases := []struct {
 		name      string
@@ -66,7 +53,7 @@ func TestConversationSummarizer_CountTokens(t *testing.T) {
 			name:      "simple text",
 			text:      "Hello, world!",
 			minTokens: 230, // Base + simple text tokens
-			maxTokens: 250,
+			maxTokens: 260,
 		},
 		{
 			name:      "longer text",
@@ -78,13 +65,17 @@ func TestConversationSummarizer_CountTokens(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			testAgent := entity.Agent{
+				ModelName: "anthropic/claude-3-5-sonnet",
+			}
 			promptValues := &ChatPromptValues{
+				Agent: testAgent,
 				RecentConversations: []Conversation{
 					{User: "user", Text: tc.text},
 				},
 				Tools: []ai.Tool{},
 			}
-			tokens, err := summarizer.CountTokens(ctx, promptValues)
+			tokens, err := CountTokens(ctx, g, promptValues)
 			require.NoError(t, err)
 			assert.GreaterOrEqual(t, tokens, tc.minTokens)
 			assert.LessOrEqual(t, tokens, tc.maxTokens)
@@ -121,14 +112,17 @@ func TestConversationSummarizer_ProcessConversationHistory(t *testing.T) {
 			SummaryTokens:               100,
 			MinConversationsToSummarize: 3,
 			ModelForSummary:             "openai/gpt-5-mini",
-			TokenProvider:               "anthropic",
 		},
 	}
 
 	summarizer := NewConversationSummarizer(g, &testConfig.ConversationSummary)
 
 	t.Run("empty conversations", func(t *testing.T) {
+		testAgent := entity.Agent{
+			ModelName: "anthropic/claude-3-5-sonnet",
+		}
 		promptValues := &ChatPromptValues{
+			Agent:               testAgent,
 			RecentConversations: []Conversation{},
 			Tools:               []ai.Tool{},
 		}
@@ -145,7 +139,11 @@ func TestConversationSummarizer_ProcessConversationHistory(t *testing.T) {
 			{User: "bot", Text: "Hi there!"},
 		}
 
+		testAgent := entity.Agent{
+			ModelName: "anthropic/claude-3-5-sonnet",
+		}
 		promptValues := &ChatPromptValues{
+			Agent:               testAgent,
 			RecentConversations: conversations,
 			Tools:               []ai.Tool{},
 		}
@@ -163,7 +161,11 @@ func TestConversationSummarizer_ProcessConversationHistory(t *testing.T) {
 			{User: "bot", Text: "This is another very long response that also contains many words and should consume a significant number of tokens to test the token counting and truncation functionality."},
 		}
 
+		testAgent := entity.Agent{
+			ModelName: "anthropic/claude-3-5-sonnet",
+		}
 		promptValues := &ChatPromptValues{
+			Agent:               testAgent,
 			RecentConversations: conversations,
 			Tools:               []ai.Tool{},
 		}
@@ -185,7 +187,11 @@ func TestConversationSummarizer_ProcessConversationHistory(t *testing.T) {
 
 		// Create request with image file
 		imageData := base64.StdEncoding.EncodeToString(make([]byte, 50*1024)) // 50KB
+		testAgent := entity.Agent{
+			ModelName: "anthropic/claude-3-5-sonnet",
+		}
 		promptValues := &ChatPromptValues{
+			Agent:               testAgent,
 			RecentConversations: conversations,
 			Thread: Thread{
 				Files: []File{
@@ -231,7 +237,6 @@ func TestConversationSummarizer_findSplitPoint(t *testing.T) {
 			SummaryTokens:               200,
 			MinConversationsToSummarize: 5,
 			ModelForSummary:             "openai/gpt-5-mini",
-			TokenProvider:               "anthropic",
 		},
 	}
 	g, err := genkit.NewGenkit(ctx, testConfig, logger, false)
@@ -247,7 +252,11 @@ func TestConversationSummarizer_findSplitPoint(t *testing.T) {
 		}
 	}
 
+	testAgent := entity.Agent{
+		ModelName: "anthropic/claude-3-5-sonnet",
+	}
 	promptValues := &ChatPromptValues{
+		Agent:               testAgent,
 		RecentConversations: conversations,
 		Tools:               []ai.Tool{},
 	}
@@ -289,7 +298,6 @@ func TestConversationSummarizer_truncateToTokenLimit(t *testing.T) {
 			SummaryTokens:               50,
 			MinConversationsToSummarize: 3,
 			ModelForSummary:             "openai/gpt-5-mini",
-			TokenProvider:               "anthropic",
 		},
 	}
 	g, err := genkit.NewGenkit(ctx, testConfig, logger, false)
@@ -305,7 +313,11 @@ func TestConversationSummarizer_truncateToTokenLimit(t *testing.T) {
 		{User: "user5", Text: "Fifth message with some content"},
 	}
 
+	testAgent := entity.Agent{
+		ModelName: "anthropic/claude-3-5-sonnet",
+	}
 	promptValues := &ChatPromptValues{
+		Agent:               testAgent,
 		RecentConversations: conversations,
 		Tools:               []ai.Tool{},
 	}
@@ -319,11 +331,15 @@ func TestConversationSummarizer_truncateToTokenLimit(t *testing.T) {
 
 	// Should not exceed token limit
 	if len(result) > 0 {
+		testAgent := entity.Agent{
+			ModelName: "anthropic/claude-3-5-sonnet",
+		}
 		resultPromptValues := &ChatPromptValues{
+			Agent:               testAgent,
 			RecentConversations: result,
 			Tools:               []ai.Tool{},
 		}
-		tokenCount, err := summarizer.CountTokens(ctx, resultPromptValues)
+		tokenCount, err := CountTokens(ctx, g, resultPromptValues)
 		require.NoError(t, err)
 		assert.LessOrEqual(t, tokenCount, 400) // Higher limit
 	}

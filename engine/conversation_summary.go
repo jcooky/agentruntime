@@ -32,16 +32,6 @@ func NewConversationSummarizer(g *genkit.Genkit, config *config.ConversationSumm
 	}
 }
 
-// CountTokens counts the number of tokens in a model request
-func (cs *ConversationSummarizer) CountTokens(ctx context.Context, promptValues *ChatPromptValues) (int, error) {
-	msgs, err := convertToMessages(promptValues)
-	if err != nil {
-		return 0, errors.Wrapf(err, "failed to convert to messages")
-	}
-
-	return CountTokens(ctx, cs.genkit, cs.config.TokenProvider, msgs, nil, promptValues.Tools)
-}
-
 // ConversationHistoryResult contains the processed conversation history
 type ConversationHistoryResult struct {
 	Summary             *string        `json:"summary,omitempty"`
@@ -58,7 +48,7 @@ func (cs *ConversationSummarizer) ProcessConversationHistory(ctx context.Context
 	}
 
 	// Calculate tokens for current request
-	requestTokens, err := cs.CountTokens(ctx, promptValues)
+	requestTokens, err := CountTokens(ctx, cs.genkit, promptValues)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to count request tokens")
 	}
@@ -148,7 +138,7 @@ func (cs *ConversationSummarizer) findSplitPoint(promptValues *ChatPromptValues)
 	// Find the split point that keeps recent conversations under token limit
 	for splitPoint := maxSplitPoint; splitPoint > 0; splitPoint-- {
 		recentConversations := promptValues.RecentConversations[splitPoint:]
-		recentTokens, err := cs.CountTokens(context.Background(), promptValues.WithRecentConversations(recentConversations))
+		recentTokens, err := CountTokens(context.Background(), cs.genkit, promptValues.WithRecentConversations(recentConversations))
 		if err != nil {
 			// On error, continue to next split point
 			continue
@@ -173,7 +163,7 @@ func (cs *ConversationSummarizer) truncateToTokenLimit(ctx context.Context, prom
 
 	for i := len(promptValues.RecentConversations); i > 0; i-- {
 		result = promptValues.RecentConversations[:i]
-		currentTokens, err := cs.CountTokens(ctx, promptValues.WithRecentConversations(result))
+		currentTokens, err := CountTokens(ctx, cs.genkit, promptValues.WithRecentConversations(result))
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to count tokens for conversation %d", i)
 		}
