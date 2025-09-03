@@ -35,7 +35,7 @@ type (
 
 	File struct {
 		ContentType string `json:"content_type" jsonschema:"description=The MIME type of the file. accept only image/*, application/pdf"`
-		Data        string `json:"data" jsonschema:"description=Base64 encoded data"`
+		Data        string `json:"data" jsonschema:"description=Base64 encoded data or a URL to a file"`
 		Filename    string `json:"filename"`
 	}
 

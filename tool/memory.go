@@ -44,11 +44,11 @@ Examples: user_name_full, user_preference_coffee, project_requirements_2024
 			memory, err := m.memoryService.RememberMemory(ctx, input)
 			if err != nil {
 				resp.Error = gog.PtrOf(err.Error())
-				return
+				return resp, nil
 			}
 			resp.Memory = memory
 
-			return
+			return resp, nil
 		},
 	); err != nil {
 		return err
@@ -74,7 +74,7 @@ Uses **AI embeddings** to find conceptually related memories, not just keyword m
 			Query string `json:"query" jsonschema:"required,description=Natural language search query to find related memories (e.g. 'coffee preferences', 'fitness goals', 'work projects', 'user background')"`
 			Limit *int   `json:"limit,omitempty" jsonschema:"description=Maximum number of memories to return (optional parameter, 1-100 range, default: 20, recommended: 10-20 for most conversations)"`
 		}) (resp struct {
-			Memories []memory.ScoredMemory `json:"memories" jsonschema:"description=Array of relevant memories ranked by similarity score (0-1, higher = more relevant)"`
+			Memories []memory.ScoredMemory `json:"memories,omitempty" jsonschema:"description=Array of relevant memories ranked by similarity score (0-1, higher = more relevant)"`
 			Error    *string               `json:"error,omitempty" jsonschema:"description=Error message if search failed (e.g. no memories found, query too vague, search service error)"`
 		}, err error) {
 			limit := 20
@@ -84,12 +84,13 @@ Uses **AI embeddings** to find conceptually related memories, not just keyword m
 
 			memories, err := m.memoryService.SearchMemory(ctx, req.Query, limit)
 			if err != nil {
+				resp.Memories = make([]memory.ScoredMemory, 0, 1)
 				resp.Error = gog.PtrOf(err.Error())
-				return
+				return resp, nil
 			}
 
 			resp.Memories = memories
-			return
+			return resp, nil
 		},
 	); err != nil {
 		return err
@@ -112,13 +113,13 @@ Uses **AI embeddings** to find conceptually related memories, not just keyword m
 **CAUTION**: Returns ALL memories - use carefully if many memories exist`,
 		skill,
 		func(ctx *Context, req struct{}) (resp struct {
-			Memories []*memory.Memory `json:"memories" jsonschema:"description=Complete list of all stored memories with full details (keys, values, sources, tags, timestamps)"`
+			Memories []*memory.Memory `json:"memories,omitempty" jsonschema:"description=Complete list of all stored memories with full details (keys, values, sources, tags, timestamps)"`
 			Error    *string          `json:"error,omitempty" jsonschema:"description=Error message if listing failed (e.g. no memories exist, storage access error)"`
 		}, err error) {
 			memories, err := m.memoryService.ListMemories(ctx)
 			if err != nil {
 				resp.Error = gog.PtrOf(err.Error())
-				return
+				return resp, nil
 			}
 
 			if memories == nil {
@@ -126,7 +127,7 @@ Uses **AI embeddings** to find conceptually related memories, not just keyword m
 			}
 
 			resp.Memories = memories
-			return
+			return resp, nil
 		},
 	); err != nil {
 		return err
@@ -170,7 +171,7 @@ Uses **AI embeddings** to find conceptually related memories, not just keyword m
 			if memory != nil {
 				resp.Memory = memory
 			}
-			return
+			return resp, nil
 		},
 	); err != nil {
 		return err
@@ -211,10 +212,10 @@ Uses **AI embeddings** to find conceptually related memories, not just keyword m
 			updatedMemory, err := m.memoryService.UpdateMemory(ctx, req.Key, input)
 			if err != nil {
 				resp.Error = gog.PtrOf(err.Error())
-				return
+				return resp, nil
 			}
 			resp.Memory = updatedMemory
-			return
+			return resp, nil
 		},
 	); err != nil {
 		return err
@@ -246,10 +247,10 @@ Uses **AI embeddings** to find conceptually related memories, not just keyword m
 			if err != nil {
 				resp.Error = gog.PtrOf(err.Error())
 				resp.Success = false
-				return
+				return resp, nil
 			}
 			resp.Success = true
-			return
+			return resp, nil
 		},
 	); err != nil {
 		return err

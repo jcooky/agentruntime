@@ -18,14 +18,14 @@ type (
 		Date     string `json:"date" jsonschema:"required,description=Date to get the weather for in YYYY-MM-DD format"`
 	}
 
-	// GeoResponse는 OpenWeatherMap Geocoding API 응답 구조체
+	// GeoResponse is the response structure for OpenWeatherMap Geocoding API
 	GeoResponse struct {
 		Lat  float64 `json:"lat"`
 		Lon  float64 `json:"lon"`
 		Name string  `json:"name"`
 	}
 
-	// WeatherSummaryResponse는 OpenWeatherMap One Call API 3.0 `/onecall/day_summary` 응답 구조체
+	// GetWeatherResponse is the response structure for OpenWeatherMap One Call API 3.0 `/onecall/day_summary`
 	GetWeatherResponse struct {
 		Humidity struct {
 			Afternoon float64 `json:"afternoon"`
@@ -46,7 +46,7 @@ type (
 		} `json:"wind"`
 	}
 
-	// APIErrorResponse는 API 호출 실패 시 반환되는 JSON 구조체
+	// APIErrorResponse is the JSON structure returned when API calls fail
 	APIErrorResponse struct {
 		Code       int      `json:"cod"`
 		Message    string   `json:"message"`
@@ -54,7 +54,7 @@ type (
 	}
 )
 
-// getCoordinates: 도시명을 위도/경도로 변환
+// getCoordinates converts city name to latitude/longitude coordinates
 func getCoordinates(apiKey string, city string) (float64, float64, error) {
 	baseURL := "http://api.openweathermap.org/geo/1.0/direct"
 	params := url.Values{}
@@ -71,7 +71,7 @@ func getCoordinates(apiKey string, city string) (float64, float64, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return 0, 0, fmt.Errorf("위도/경도 변환 API 호출 실패: %s", resp.Status)
+		return 0, 0, fmt.Errorf("geocoding API call failed: %s", resp.Status)
 	}
 
 	var geoData []GeoResponse
@@ -80,13 +80,13 @@ func getCoordinates(apiKey string, city string) (float64, float64, error) {
 	}
 
 	if len(geoData) == 0 {
-		return 0, 0, fmt.Errorf("도시명을 찾을 수 없습니다: %s", city)
+		return 0, 0, fmt.Errorf("city not found: %s", city)
 	}
 
 	return geoData[0].Lat, geoData[0].Lon, nil
 }
 
-// getWeatherSummary: `/onecall/day_summary` API 호출하여 특정 날짜의 날씨 요약 가져오기
+// getWeatherSummary calls `/onecall/day_summary` API to get weather summary for a specific date
 func getWeatherSummary(apiKey string, date string, latitude, longitude float64, unit, lang string) (*GetWeatherResponse, error) {
 	baseURL := "https://api.openweathermap.org/data/3.0/onecall/day_summary"
 	params := url.Values{}
@@ -105,13 +105,13 @@ func getWeatherSummary(apiKey string, date string, latitude, longitude float64, 
 	}
 	defer resp.Body.Close()
 
-	// API 에러 응답 처리
+	// Handle API error responses
 	if resp.StatusCode != http.StatusOK {
 		var apiErr APIErrorResponse
 		if err := json.NewDecoder(resp.Body).Decode(&apiErr); err != nil {
-			return nil, fmt.Errorf("API 호출 실패: HTTP %d (응답 해석 실패)", resp.StatusCode)
+			return nil, fmt.Errorf("API call failed: HTTP %d (response decode failed)", resp.StatusCode)
 		}
-		return nil, fmt.Errorf("API 호출 실패: HTTP %d, 메시지: %s, 매개변수: %v", apiErr.Code, apiErr.Message, apiErr.Parameters)
+		return nil, fmt.Errorf("API call failed: HTTP %d, message: %s, parameters: %v", apiErr.Code, apiErr.Message, apiErr.Parameters)
 	}
 
 	var weatherResp GetWeatherResponse

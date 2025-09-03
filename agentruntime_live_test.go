@@ -392,7 +392,7 @@ func TestAgentRuntimeWithUserInfo(t *testing.T) {
 	agent := entity.Agent{
 		Name:        "PersonalizedAgent",
 		Description: "An agent that provides personalized responses based on user information",
-		ModelName:   "openai/gpt-5-mini",
+		ModelName:   "anthropic/claude-3.5-haiku",
 		System: `You are a personalized assistant. Use the provided user information to tailor your responses.
 When user information is available:
 - Address the user by their name when appropriate
@@ -737,5 +737,162 @@ You have access to modern HTML5, Tailwind CSS (via CDN), and Chart.js libraries 
 			strings.Contains(responseText, "interactive") ||
 			strings.Contains(responseText, "dashboard")
 		require.True(t, shouldMentionUseCases, "Should explain artifact use cases")
+	})
+}
+
+func TestAgentRuntimeVisionAnalysis(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping test in short mode")
+	}
+
+	// Check required environment variables
+	if os.Getenv("ANTHROPIC_API_KEY") == "" {
+		t.Skip("Skipping test because ANTHROPIC_API_KEY is not set")
+	}
+
+	ctx := context.Background()
+
+	// Create vision analysis agent with claude-4-sonnet
+	agent := entity.Agent{
+		Name:        "VisionAnalysisAgent",
+		Description: "An AI agent specialized in analyzing and describing images, particularly mountain landscapes and natural scenes",
+		ModelName:   "anthropic/claude-4-sonnet",
+		System: `You are an expert image analysis AI with deep knowledge of geography, mountaineering, and photography. 
+When analyzing images, you should:
+
+1. **Describe the visual content**: What you see in the image - landscapes, structures, people, weather conditions, etc.
+2. **Identify geographical features**: If you recognize specific mountains, regions, or landmarks, mention them
+3. **Analyze photographic elements**: Composition, lighting, perspective, and technical aspects
+4. **Provide contextual information**: Historical, cultural, or technical details relevant to what's shown
+5. **Be specific and detailed**: Give comprehensive descriptions that would help someone understand the image without seeing it
+
+You have particular expertise in:
+- Mountain ranges and peaks around the world (especially the Himalayas)
+- Alpine photography and mountaineering equipment
+- Weather patterns and conditions in high-altitude environments
+- Geological formations and terrain analysis
+
+Always be accurate in your observations and clearly distinguish between what you can directly see versus what you might infer or know from general knowledge.`,
+		Role:   "Vision Analysis Expert",
+		Skills: []entity.AgentSkillUnion{},
+	}
+
+	// Create runtime
+	runtime, err := NewAgentRuntime(
+		ctx,
+		WithAgent(agent),
+		WithAnthropicAPIKey(os.Getenv("ANTHROPIC_API_KEY")),
+		WithLogger(slog.Default()),
+	)
+	require.NoError(t, err)
+	defer runtime.Close()
+
+	t.Run("Analyze Everest Image", func(t *testing.T) {
+		// Test analysis of Everest North Face image
+		everestImageURL := "https://upload.wikimedia.org/wikipedia/commons/e/e7/Everest_North_Face_toward_Base_Camp_Tibet_Luca_Galuzzi_2006.jpg"
+
+		response, err := runtime.Run(ctx, engine.RunRequest{
+			History: []engine.Conversation{
+				{
+					User: "user",
+					Text: "@everest_image.jpg This image shows a mountain landscape. What can you see in it? What is the name of the mountain or its features, and the composition or shooting conditions? Please explain in detail.",
+				},
+			},
+			Files: []engine.File{
+				{
+					ContentType: "image/jpeg",
+					Data:        everestImageURL,
+					Filename:    "everest_image.jpg",
+				},
+			},
+		}, nil)
+		require.NoError(t, err)
+		require.NotEmpty(t, response.Text())
+
+		responseText := strings.ToLower(response.Text())
+
+		// Verify that the AI can analyze the image
+		// Should contain references to mountains, landscape, or visual elements
+		shouldContainMountainTerms := strings.Contains(responseText, "mountain") ||
+			strings.Contains(responseText, "peak") ||
+			strings.Contains(responseText, "snow") ||
+			strings.Contains(responseText, "everest") ||
+			strings.Contains(responseText, "landscape") ||
+			strings.Contains(responseText, "terrain")
+
+		require.True(t, shouldContainMountainTerms, "Response should contain mountain or landscape related terms")
+
+		// Response should be substantial and detailed
+		require.Greater(t, len(response.Text()), 100, "Response should be detailed (over 100 characters)")
+
+		t.Logf("Everest image analysis response: %s", response.Text())
+	})
+
+	t.Run("Ask About Mountain Details", func(t *testing.T) {
+		// Test more specific questions about the mountain
+		everestImageURL := "https://upload.wikimedia.org/wikipedia/commons/e/e7/Everest_North_Face_toward_Base_Camp_Tibet_Luca_Galuzzi_2006.jpg"
+
+		response, err := runtime.Run(ctx, engine.RunRequest{
+			History: []engine.Conversation{
+				{
+					User: "user",
+					Text: fmt.Sprintf("@%s What can you tell me about the climbing conditions and terrain visible in this photograph? What challenges would climbers face in this area?", everestImageURL),
+				},
+			},
+		}, nil)
+		require.NoError(t, err)
+		require.NotEmpty(t, response.Text())
+
+		responseText := strings.ToLower(response.Text())
+
+		// Should contain climbing or mountaineering related terms
+		shouldContainClimbingTerms := strings.Contains(responseText, "climb") ||
+			strings.Contains(responseText, "altitude") ||
+			strings.Contains(responseText, "oxygen") ||
+			strings.Contains(responseText, "terrain") ||
+			strings.Contains(responseText, "weather") ||
+			strings.Contains(responseText, "challenge") ||
+			strings.Contains(responseText, "condition") ||
+			strings.Contains(responseText, "route") ||
+			strings.Contains(responseText, "avalanche") ||
+			strings.Contains(responseText, "expedition")
+
+		require.True(t, shouldContainClimbingTerms, "Response should contain climbing or mountaineering related terms")
+
+		t.Logf("Mountain climbing analysis response: %s", response.Text())
+	})
+
+	t.Run("Photography Analysis", func(t *testing.T) {
+		// Test photographic and technical analysis
+		everestImageURL := "https://upload.wikimedia.org/wikipedia/commons/e/e7/Everest_North_Face_toward_Base_Camp_Tibet_Luca_Galuzzi_2006.jpg"
+
+		response, err := runtime.Run(ctx, engine.RunRequest{
+			History: []engine.Conversation{
+				{
+					User: "user",
+					Text: fmt.Sprintf("@%s Please analyze the photographic aspects of this image - the lighting, composition, perspective, and technical quality. What can you tell me about when and how this photo might have been taken?", everestImageURL),
+				},
+			},
+		}, nil)
+		require.NoError(t, err)
+		require.NotEmpty(t, response.Text())
+
+		responseText := strings.ToLower(response.Text())
+
+		// Should contain photography related terms
+		shouldContainPhotoTerms := strings.Contains(responseText, "light") ||
+			strings.Contains(responseText, "composition") ||
+			strings.Contains(responseText, "perspective") ||
+			strings.Contains(responseText, "exposure") ||
+			strings.Contains(responseText, "contrast") ||
+			strings.Contains(responseText, "shadow") ||
+			strings.Contains(responseText, "clarity") ||
+			strings.Contains(responseText, "focus") ||
+			strings.Contains(responseText, "camera") ||
+			strings.Contains(responseText, "photograph")
+
+		require.True(t, shouldContainPhotoTerms, "Response should contain photography related terms")
+
+		t.Logf("Photography analysis response: %s", response.Text())
 	})
 }

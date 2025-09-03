@@ -110,7 +110,7 @@ func TestBuildMessageParams_WebSearchTool(t *testing.T) {
 		},
 	}
 
-	params, err := buildMessageParams(genRequest, "claude-3-5-haiku-latest")
+	params, err := buildMessageParams(genRequest, "claude-3-5-haiku-latest", false)
 	require.NoError(t, err)
 
 	// Verify that web_search tool was converted properly

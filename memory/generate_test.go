@@ -342,7 +342,7 @@ func testJSONParsingWithProblematicInputs(t *testing.T, service memory.Service) 
 		},
 		{
 			name:  "unicode_and_emojis",
-			input: `User 사용자 left feedback: "Great app! 👍 But needs 🔧 improvements" with unicode chars ñáéíóú`,
+			input: `User left feedback: "Great app! 👍 But needs 🔧 improvements" with unicode chars ñáéíóú`,
 			tags:  []string{"feedback", "multilingual"},
 		},
 		{

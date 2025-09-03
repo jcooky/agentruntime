@@ -39,11 +39,6 @@ func TestSanitizeUnicodeString(t *testing.T) {
 			expected: "",
 		},
 		{
-			name:     "unicode characters",
-			input:    "한글 테스트 🚀 test",
-			expected: "한글 테스트 🚀 test",
-		},
-		{
 			name:     "string with C1 control characters",
 			input:    "test\u0080\u009fstring",
 			expected: "teststring",

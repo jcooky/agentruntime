@@ -14,8 +14,27 @@ import (
 	"github.com/firebase/genkit/go/ai"
 	"github.com/firebase/genkit/go/core"
 	"github.com/firebase/genkit/go/genkit"
+	"github.com/habiliai/agentruntime/internal/version"
 	"github.com/pkg/errors"
 )
+
+func HttpGet(url string) (*http.Response, error) {
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create request")
+	}
+
+	req.Header.Set("User-Agent", "AgentRuntime/"+version.Version)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to send request")
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.Errorf("failed to get URL: %s", resp.Status)
+	}
+	return resp, nil
+}
 
 // DefineModel creates and registers a new generative model with Genkit.
 func DefineModel(g *genkit.Genkit, client *anthropic.Client, labelPrefix, provider, modelName, apiModelName string, caps ai.ModelSupports) ai.Model {
@@ -41,7 +60,7 @@ func DefineModel(g *genkit.Genkit, client *anthropic.Client, labelPrefix, provid
 }
 
 func generate(ctx context.Context, client *anthropic.Client, genRequest *ai.ModelRequest, apiModelName string) (*ai.ModelResponse, error) {
-	params, err := buildMessageParams(genRequest, apiModelName)
+	params, err := buildMessageParams(genRequest, apiModelName, false)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +75,7 @@ func generate(ctx context.Context, client *anthropic.Client, genRequest *ai.Mode
 }
 
 func generateStream(ctx context.Context, client *anthropic.Client, genRequest *ai.ModelRequest, apiModelName string, cb core.StreamCallback[*ai.ModelResponseChunk]) (*ai.ModelResponse, error) {
-	params, err := buildMessageParams(genRequest, apiModelName)
+	params, err := buildMessageParams(genRequest, apiModelName, false)
 	if err != nil {
 		return nil, err
 	}
@@ -196,8 +215,8 @@ func generateStream(ctx context.Context, client *anthropic.Client, genRequest *a
 	return translateResponse(message, genRequest)
 }
 
-func buildMessageParams(genRequest *ai.ModelRequest, apiModelName string) (anthropic.BetaMessageNewParams, error) {
-	messages, systems, err := convertMessages(genRequest.Messages, genRequest.Docs)
+func buildMessageParams(genRequest *ai.ModelRequest, apiModelName string, downloadUrl bool) (anthropic.BetaMessageNewParams, error) {
+	messages, systems, err := convertMessages(genRequest.Messages, genRequest.Docs, downloadUrl)
 	if err != nil {
 		return anthropic.BetaMessageNewParams{}, err
 	}
@@ -300,12 +319,12 @@ func buildMessageParams(genRequest *ai.ModelRequest, apiModelName string) (anthr
 	return params, nil
 }
 
-func convertMessages(messages []*ai.Message, docs []*ai.Document) ([]anthropic.BetaMessageParam, []anthropic.BetaTextBlockParam, error) {
+func convertMessages(messages []*ai.Message, docs []*ai.Document, downloadUrl bool) ([]anthropic.BetaMessageParam, []anthropic.BetaTextBlockParam, error) {
 	var systems []anthropic.BetaTextBlockParam
 	var anthropicMessages []anthropic.BetaMessageParam
 
 	for _, doc := range docs {
-		blocks, err := convertContent(doc.Content)
+		blocks, err := convertContent(doc.Content, downloadUrl)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -341,7 +360,7 @@ func convertMessages(messages []*ai.Message, docs []*ai.Document) ([]anthropic.B
 			return nil, nil, errors.Errorf("unsupported message role: %s", msg.Role)
 		}
 
-		content, err := convertContent(msg.Content)
+		content, err := convertContent(msg.Content, downloadUrl)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -355,7 +374,7 @@ func convertMessages(messages []*ai.Message, docs []*ai.Document) ([]anthropic.B
 	return anthropicMessages, systems, nil
 }
 
-func convertContent(parts []*ai.Part) ([]anthropic.BetaContentBlockParamUnion, error) {
+func convertContent(parts []*ai.Part, downloadUrl bool) ([]anthropic.BetaContentBlockParamUnion, error) {
 	var blocks []anthropic.BetaContentBlockParamUnion
 
 	for _, part := range parts {
@@ -449,9 +468,8 @@ func convertContent(parts []*ai.Part) ([]anthropic.BetaContentBlockParamUnion, e
 			data := part.Text
 
 			isHttpsUrl := strings.HasPrefix(data, "https://")
-
-			if strings.HasPrefix(data, "http://") {
-				resp, err := http.Get(data)
+			if strings.HasPrefix(data, "http://") || (downloadUrl && isHttpsUrl) {
+				resp, err := HttpGet(data)
 				if err != nil {
 					return nil, errors.Wrapf(err, "failed to get URL")
 				}
@@ -466,9 +484,7 @@ func convertContent(parts []*ai.Part) ([]anthropic.BetaContentBlockParamUnion, e
 				} else {
 					data = base64.StdEncoding.EncodeToString(body)
 				}
-			}
-
-			if !isHttpsUrl && strings.HasPrefix(data, "data:") {
+			} else if strings.HasPrefix(data, "data:") {
 				if !strings.Contains(data, ";base64,") {
 					return nil, errors.New("data URL is not base64 encoded")
 				}
@@ -480,20 +496,19 @@ func convertContent(parts []*ai.Part) ([]anthropic.BetaContentBlockParamUnion, e
 
 			switch strings.ToLower(part.ContentType) {
 			case "image/jpeg", "image/png", "image/webp", "image/gif", "image/jpg":
-				if isHttpsUrl {
-					// Create image block with URL source
+				// Create image block with base64 source
+				if isHttpsUrl && !downloadUrl {
 					blocks = append(blocks, anthropic.NewBetaImageBlock(anthropic.BetaURLImageSourceParam{
 						URL: data,
 					}))
 				} else {
-					// Create image block with base64 source
 					blocks = append(blocks, anthropic.NewBetaImageBlock(anthropic.BetaBase64ImageSourceParam{
 						Data:      data,
 						MediaType: getAnthropicMediaType(part.ContentType),
 					}))
 				}
 			case "application/pdf":
-				if isHttpsUrl {
+				if isHttpsUrl && !downloadUrl {
 					blocks = append(blocks, anthropic.NewBetaDocumentBlock(anthropic.BetaURLPDFSourceParam{
 						URL: data,
 					}))
@@ -503,8 +518,8 @@ func convertContent(parts []*ai.Part) ([]anthropic.BetaContentBlockParamUnion, e
 					}))
 				}
 			case "plain/text", "text/plain":
-				if isHttpsUrl {
-					resp, err := http.Get(data)
+				if isHttpsUrl && !downloadUrl {
+					resp, err := HttpGet(data)
 					if err != nil {
 						return nil, errors.Wrapf(err, "failed to get URL")
 					}
@@ -513,6 +528,7 @@ func convertContent(parts []*ai.Part) ([]anthropic.BetaContentBlockParamUnion, e
 					if err != nil {
 						return nil, errors.Wrapf(err, "failed to read URL body")
 					}
+
 					data = string(body)
 				}
 				blocks = append(blocks, anthropic.NewBetaDocumentBlock(anthropic.BetaPlainTextSourceParam{
