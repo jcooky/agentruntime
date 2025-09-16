@@ -26,7 +26,6 @@ require (
 	github.com/mokiat/gog v0.15.0
 	github.com/openai/openai-go v0.1.0-alpha.65
 	github.com/pkg/errors v0.9.1
-	github.com/pkoukk/tiktoken-go v0.1.7
 	github.com/samber/lo v1.51.0
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0
@@ -48,7 +47,6 @@ require (
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
-	github.com/dlclark/regexp2 v1.10.0 // indirect
 	github.com/ebitengine/purego v0.8.4 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect

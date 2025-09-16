@@ -10,19 +10,9 @@ import (
 type (
 	Knowledge struct {
 		ID        string         `json:"id"`
-		Source    Source         `json:"source"`
 		Metadata  map[string]any `json:"metadata"`
 		Documents []*Document    `json:"documents"`
 	}
-
-	Source struct {
-		Title    string     `json:"title"`
-		URL      *string    `json:"url"`
-		Filename *string    `json:"filename"`
-		Type     SourceType `json:"type"`
-	}
-
-	SourceType string
 
 	Document struct {
 		ID            string         `json:"id"`
@@ -47,8 +37,15 @@ type (
 )
 
 const (
+	// Source type constants for metadata
 	SourceTypeMap = "map"
 	SourceTypePDF = "pdf"
+
+	// Metadata keys for source information
+	MetadataKeySourceTitle    = "source_title"
+	MetadataKeySourceURL      = "source_url"
+	MetadataKeySourceFilename = "source_filename"
+	MetadataKeySourceType     = "source_type"
 
 	ContentTypeText  ContentType = "text"
 	ContentTypeImage ContentType = "image"

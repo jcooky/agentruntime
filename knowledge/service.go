@@ -15,7 +15,7 @@ type (
 	Service interface {
 		// Knowledge management methods
 		IndexKnowledgeFromMap(ctx context.Context, id string, input []map[string]any) (*Knowledge, error)
-		IndexKnowledgeFromPDF(ctx context.Context, id string, input io.Reader) (*Knowledge, error)
+		IndexKnowledgeFromPDF(ctx context.Context, id string, inputs []io.Reader) (*Knowledge, error)
 		RetrieveRelevantKnowledge(ctx context.Context, query string, limit int, allowedKnowledgeIds []string) ([]*KnowledgeSearchResult, error)
 		DeleteKnowledge(ctx context.Context, knowledgeId string) error
 		Close() error
@@ -132,11 +132,11 @@ func (s *service) RetrieveRelevantKnowledge(ctx context.Context, query string, l
 			s.logger.Warn("failed to generate embedding for rewritten query",
 				slog.String("query", q),
 				slog.String("error", err.Error()))
-			continue
+			continue // Skip this query rather than using empty embedding
 		}
 
 		if len(embeddings) == 0 {
-			continue
+			continue // Skip if no embeddings returned
 		}
 
 		queryEmbedding := embeddings[0]

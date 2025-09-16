@@ -4,6 +4,7 @@ import (
 	"bytes"
 	_ "embed"
 	"encoding/base64"
+	"fmt"
 	"io"
 	"log/slog"
 	"os"
@@ -25,7 +26,7 @@ var (
 	solanaWhitepaperPDF []byte
 )
 
-func TestProcessKnowledgeFromPDF(t *testing.T) {
+func TestProcessDocumentsFromPDF(t *testing.T) {
 	ctx := t.Context()
 
 	// Check if we have API key
@@ -61,8 +62,8 @@ func TestProcessKnowledgeFromPDF(t *testing.T) {
 	// Create embedder
 	embedder := knowledge.NewEmbedder(nomicApiKey)
 
-	// Process PDF
-	result, err := knowledge.ProcessKnowledgeFromPDF(ctx, g, "test-pdf", reader, logger, config.NewKnowledgeConfig(), embedder)
+	// Process PDF documents
+	documents, metadata, err := knowledge.ProcessDocumentsFromPDF(ctx, g, reader, logger, config.NewKnowledgeConfig(), embedder)
 
 	// If no API key, we expect an error
 	if apiKey == "" {
@@ -72,11 +73,32 @@ func TestProcessKnowledgeFromPDF(t *testing.T) {
 	}
 
 	require.NoError(t, err)
-	require.NotNil(t, result)
+	require.NotNil(t, documents)
+	require.NotNil(t, metadata)
+
+	// Create knowledge object for testing
+	result := &knowledge.Knowledge{
+		ID: "test-pdf",
+		Metadata: map[string]any{
+			knowledge.MetadataKeySourceType: knowledge.SourceTypePDF,
+		},
+		Documents: make([]*knowledge.Document, len(documents)),
+	}
+
+	// Set document IDs and copy documents
+	for i, doc := range documents {
+		doc.ID = fmt.Sprintf("test-pdf_page_%d", i+1)
+		result.Documents[i] = doc
+	}
+
+	// Merge PDF metadata
+	for k, v := range metadata {
+		result.Metadata[k] = v
+	}
 
 	// Validate basic structure
 	assert.Equal(t, "test-pdf", result.ID)
-	assert.Equal(t, knowledge.SourceType("pdf"), result.Source.Type)
+	assert.Equal(t, knowledge.SourceTypePDF, result.Metadata[knowledge.MetadataKeySourceType])
 	assert.NotEmpty(t, result.Documents)
 
 	// Check first document
@@ -93,7 +115,7 @@ func TestProcessKnowledgeFromPDF(t *testing.T) {
 	}
 }
 
-func TestProcessKnowledgeFromPDF_InvalidInput(t *testing.T) {
+func TestProcessDocumentsFromPDF_InvalidInput(t *testing.T) {
 	ctx := t.Context()
 
 	// Initialize genkit
@@ -131,7 +153,7 @@ func TestProcessKnowledgeFromPDF_InvalidInput(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			reader := bytes.NewReader(tt.input)
 			embedder := knowledge.NewEmbedder("")
-			_, err := knowledge.ProcessKnowledgeFromPDF(ctx, g, "test-id", reader, logger, config.NewKnowledgeConfig(), embedder)
+			_, _, err := knowledge.ProcessDocumentsFromPDF(ctx, g, reader, logger, config.NewKnowledgeConfig(), embedder)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), tt.expectedErr)
 		})
@@ -201,7 +223,7 @@ func TestExtractTextWIthVisionLLM_RealImage(t *testing.T) {
 }
 
 // Benchmark for performance testing
-func BenchmarkProcessKnowledgeFromPDF(b *testing.B) {
+func BenchmarkProcessDocumentsFromPDF(b *testing.B) {
 	ctx := b.Context()
 
 	// Skip if no API key
@@ -227,7 +249,7 @@ func BenchmarkProcessKnowledgeFromPDF(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		reader := bytes.NewReader(pdfData)
 		embedder := knowledge.NewEmbedder("test-key")
-		_, err := knowledge.ProcessKnowledgeFromPDF(ctx, g, "bench-pdf", reader, logger, config.NewKnowledgeConfig(), embedder)
+		_, _, err := knowledge.ProcessDocumentsFromPDF(ctx, g, reader, logger, config.NewKnowledgeConfig(), embedder)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -235,7 +257,7 @@ func BenchmarkProcessKnowledgeFromPDF(b *testing.B) {
 }
 
 // Integration test with real PDF file
-func TestProcessKnowledgeFromPDF_RealFile(t *testing.T) {
+func TestProcessDocumentsFromPDF_RealFile(t *testing.T) {
 	ctx := t.Context()
 
 	// Check if we have API key
@@ -264,17 +286,38 @@ func TestProcessKnowledgeFromPDF_RealFile(t *testing.T) {
 	// Process only first few pages to avoid token limits
 	// We'll create a limited reader that processes only a subset
 	embedder := knowledge.NewEmbedder(nomicApiKey)
-	result, err := knowledge.ProcessKnowledgeFromPDF(ctx, g, "solana-whitepaper", pdfFile, logger, config.NewKnowledgeConfig(), embedder)
+	documents, metadata, err := knowledge.ProcessDocumentsFromPDF(ctx, g, pdfFile, logger, config.NewKnowledgeConfig(), embedder)
 
 	// Allow partial success - the function might fail on some pages
 	require.NoError(t, err)
+	require.NotNil(t, documents)
+	require.NotNil(t, metadata)
+
+	// Create knowledge object
+	result := &knowledge.Knowledge{
+		ID: "solana-whitepaper",
+		Metadata: map[string]any{
+			knowledge.MetadataKeySourceType: knowledge.SourceTypePDF,
+		},
+		Documents: make([]*knowledge.Document, len(documents)),
+	}
+
+	// Set document IDs and copy documents
+	for i, doc := range documents {
+		doc.ID = fmt.Sprintf("solana-whitepaper_page_%d", i+1)
+		result.Documents[i] = doc
+	}
+
+	// Merge PDF metadata
+	for k, v := range metadata {
+		result.Metadata[k] = v
+	}
 
 	// Validate results
 	assert.Equal(t, "solana-whitepaper", result.ID)
-	assert.Equal(t, knowledge.SourceType("pdf"), result.Source.Type)
+	assert.Equal(t, knowledge.SourceTypePDF, result.Metadata[knowledge.MetadataKeySourceType])
 
 	// Check metadata
-	t.Logf("PDF Title: %v", result.Source.Title)
 	t.Logf("PDF Author: %v", result.Metadata["author"])
 	t.Logf("PDF Subject: %v", result.Metadata["subject"])
 	t.Logf("Pages processed: %d", len(result.Documents))
@@ -326,7 +369,7 @@ func TestProcessKnowledgeFromPDF_RealFile(t *testing.T) {
 }
 
 // Test with a simpler PDF to ensure basic functionality
-func TestProcessKnowledgeFromPDF_Simple(t *testing.T) {
+func TestProcessDocumentsFromPDF_Simple(t *testing.T) {
 	ctx := t.Context()
 
 	// Check if we have API key
@@ -358,7 +401,7 @@ func TestProcessKnowledgeFromPDF_Simple(t *testing.T) {
 
 	reader := bytes.NewReader(pdfData)
 	embedder := knowledge.NewEmbedder(nomicApiKey)
-	result, err := knowledge.ProcessKnowledgeFromPDF(ctx, g, "test-pdf", reader, logger, config.NewKnowledgeConfig(), embedder)
+	documents, metadata, err := knowledge.ProcessDocumentsFromPDF(ctx, g, reader, logger, config.NewKnowledgeConfig(), embedder)
 
 	// If no API key, we expect an error
 	if apiKey == "" {
@@ -368,7 +411,23 @@ func TestProcessKnowledgeFromPDF_Simple(t *testing.T) {
 	}
 
 	require.NoError(t, err)
-	require.NotNil(t, result)
+	require.NotNil(t, documents)
+	require.NotNil(t, metadata)
+
+	// Create knowledge object
+	result := &knowledge.Knowledge{
+		ID: "test-pdf",
+		Metadata: map[string]any{
+			knowledge.MetadataKeySourceType: knowledge.SourceTypePDF,
+		},
+		Documents: make([]*knowledge.Document, len(documents)),
+	}
+
+	// Set document IDs and copy documents
+	for i, doc := range documents {
+		doc.ID = fmt.Sprintf("test-pdf_page_%d", i+1)
+		result.Documents[i] = doc
+	}
 
 	// This simple PDF should work without token limit issues
 	assert.Equal(t, 1, len(result.Documents))
@@ -377,7 +436,7 @@ func TestProcessKnowledgeFromPDF_Simple(t *testing.T) {
 	t.Logf("Simple PDF extracted text: %s", result.Documents[0].EmbeddingText)
 }
 
-func TestProcessKnowledgeFromPDF_Vision(t *testing.T) {
+func TestProcessDocumentsFromPDF_Vision(t *testing.T) {
 	ctx := t.Context()
 
 	// Check if we have API key
@@ -411,7 +470,7 @@ func TestProcessKnowledgeFromPDF_Vision(t *testing.T) {
 	knowledgeConfig.PDFExtractionMethod = "library" // Use library extraction for faster testing
 
 	// Process PDF with vision embedding
-	result, err := knowledge.ProcessKnowledgeFromPDF(ctx, g, "test-pdf-vision", reader, logger, knowledgeConfig, embedder)
+	documents, metadata, err := knowledge.ProcessDocumentsFromPDF(ctx, g, reader, logger, knowledgeConfig, embedder)
 
 	// For now, let's expect an error due to function signature mismatch
 	// TODO: Fix the EmbedImageFiles signature issue
@@ -422,7 +481,24 @@ func TestProcessKnowledgeFromPDF_Vision(t *testing.T) {
 	}
 
 	require.NoError(t, err)
-	require.NotNil(t, result)
+	require.NotNil(t, documents)
+	require.NotNil(t, metadata)
+
+	// Create knowledge object
+	result := &knowledge.Knowledge{
+		ID: "test-pdf-vision",
+		Metadata: map[string]any{
+			knowledge.MetadataKeySourceType: knowledge.SourceTypePDF,
+		},
+		Documents: make([]*knowledge.Document, len(documents)),
+	}
+
+	// Set document IDs and copy documents
+	for i, doc := range documents {
+		doc.ID = fmt.Sprintf("test-pdf-vision_page_%d", i+1)
+		result.Documents[i] = doc
+	}
+
 	require.Greater(t, len(result.Documents), 0, "should have at least one document")
 
 	// Check that documents have vision embeddings

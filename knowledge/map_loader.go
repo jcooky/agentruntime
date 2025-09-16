@@ -21,9 +21,8 @@ func (s *service) IndexKnowledgeFromMap(ctx context.Context, id string, input []
 
 	knowledge := &Knowledge{
 		ID: id,
-		Source: Source{
-			Title: "Map",
-			Type:  SourceTypeMap,
+		Metadata: map[string]any{
+			MetadataKeySourceType: SourceTypeMap,
 		},
 	}
 
@@ -44,7 +43,7 @@ func (s *service) IndexKnowledgeFromMap(ctx context.Context, id string, input []
 		return d.EmbeddingText
 	})...)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to generate document embeddings")
+		return nil, errors.Wrapf(err, "failed to generate text embeddings - check your API configuration and keys")
 	}
 
 	if len(embeddings) != len(knowledge.Documents) {

@@ -30,7 +30,6 @@ func (i *InMemoryStore) Store(ctx context.Context, knowledge *Knowledge) error {
 	// Deep copy the knowledge to avoid external modifications
 	storedKnowledge := &Knowledge{
 		ID:        knowledge.ID,
-		Source:    knowledge.Source,
 		Metadata:  copyMap(knowledge.Metadata),
 		Documents: make([]*Document, len(knowledge.Documents)),
 	}
@@ -139,7 +138,6 @@ func (i *InMemoryStore) GetKnowledgeById(ctx context.Context, knowledgeId string
 	// Deep copy knowledge to avoid external modifications
 	result := &Knowledge{
 		ID:        knowledge.ID,
-		Source:    knowledge.Source,
 		Metadata:  copyMap(knowledge.Metadata),
 		Documents: make([]*Document, len(knowledge.Documents)),
 	}

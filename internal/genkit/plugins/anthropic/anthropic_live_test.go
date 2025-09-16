@@ -332,7 +332,7 @@ func TestLive_GenerateWithReasoning(t *testing.T) {
 				anthropic.ExtendedThinkingConfig
 			}{
 				GenerationCommonConfig: ai.GenerationCommonConfig{
-					MaxOutputTokens: 5000, // Large enough to support reasoning budget (5000 * 0.25 = 1250 > 1024)
+					MaxOutputTokens: 8192, // Large enough to support reasoning budget (8192 * 0.15 = 1228 > 1024, leaving 6963 for actual output)
 					Temperature:     0.0,
 				},
 				ExtendedThinkingConfig: anthropic.ExtendedThinkingConfig{
@@ -432,12 +432,12 @@ func TestLive_GenerateWithReasoningStreaming(t *testing.T) {
 		anthropic.ExtendedThinkingConfig
 	}{
 		GenerationCommonConfig: ai.GenerationCommonConfig{
-			MaxOutputTokens: 5000, // Large enough to support reasoning budget (5000 * 0.25 = 1250 > 1024)
+			MaxOutputTokens: 8192, // Large enough to support reasoning budget (8192 * 0.15 = 1228 > 1024, leaving 6963 for actual output)
 			Temperature:     0.0,
 		},
 		ExtendedThinkingConfig: anthropic.ExtendedThinkingConfig{
 			ExtendedThinkingEnabled:     true,
-			ExtendedThinkingBudgetRatio: 0.25, // 25% of maxOutputTokens
+			ExtendedThinkingBudgetRatio: 0.25, // 25% of 8192 = 2048 tokens for reasoning, 6144 for actual output
 		},
 	}
 
@@ -577,7 +577,7 @@ func TestLive_Claude4AutomaticReasoning(t *testing.T) {
 					},
 				},
 				Config: ai.GenerationCommonConfig{
-					MaxOutputTokens: 5000, // Ensure enough tokens for reasoning (5000 * 0.25 = 1250 > 1024)
+					MaxOutputTokens: 8192, // Ensure enough tokens for reasoning (8192 * 0.15 = 1228 > 1024, leaving 6963 for actual output)
 					Temperature:     0.0,
 				},
 			}

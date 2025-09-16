@@ -27,7 +27,6 @@ type SqliteKnowledgeRecord struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 
-	Source   datatypes.JSONType[Source]
 	Metadata datatypes.JSONType[map[string]any]
 
 	Documents []*SqliteDocumentRecord `gorm:"foreignKey:KnowledgeRecordID"`
@@ -125,7 +124,6 @@ func (s *SqliteStore) Store(ctx context.Context, knowledge *Knowledge) error {
 		}
 		record := SqliteKnowledgeRecord{
 			ID:        knowledge.ID,
-			Source:    datatypes.NewJSONType(knowledge.Source),
 			Metadata:  datatypes.NewJSONType(knowledge.Metadata),
 			Documents: make([]*SqliteDocumentRecord, 0, len(knowledge.Documents)),
 		}
@@ -199,6 +197,11 @@ func (s *SqliteStore) Search(ctx context.Context, queryEmbedding []float32, limi
 		if len(allowedDocumentIds) == 0 {
 			return []KnowledgeSearchResult{}, nil
 		}
+	}
+
+	// Validate embedding
+	if len(queryEmbedding) == 0 {
+		return []KnowledgeSearchResult{}, nil
 	}
 
 	// Serialize query embedding
@@ -311,7 +314,6 @@ func (s *SqliteStore) GetKnowledgeById(ctx context.Context, knowledgeId string) 
 
 	knowledge := &Knowledge{
 		ID:        record.ID,
-		Source:    record.Source.Data(),
 		Metadata:  record.Metadata.Data(),
 		Documents: make([]*Document, 0, len(record.Documents)),
 	}

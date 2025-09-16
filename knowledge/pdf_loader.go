@@ -22,7 +22,15 @@ import (
 	"github.com/samber/lo"
 )
 
-func (s *service) IndexKnowledgeFromPDF(ctx context.Context, id string, input io.Reader) (*Knowledge, error) {
+// min returns the smaller of two integers
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func (s *service) IndexKnowledgeFromPDF(ctx context.Context, id string, inputs []io.Reader) (*Knowledge, error) {
 	// First, delete existing knowledge for this agent
 	if id != "" {
 		if err := s.DeleteKnowledge(ctx, id); err != nil {
@@ -30,9 +38,9 @@ func (s *service) IndexKnowledgeFromPDF(ctx context.Context, id string, input io
 		}
 	}
 
-	knowledge, err := ProcessKnowledgeFromPDF(ctx, s.genkit, id, input, s.logger, s.config, s.embedder)
+	knowledge, err := ProcessKnowledgeFromMultiplePDFs(ctx, s.genkit, id, inputs, s.logger, s.config, s.embedder)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to process knowledge from PDF")
+		return nil, errors.Wrapf(err, "failed to process knowledge from PDFs")
 	}
 
 	// Store all items
@@ -43,48 +51,130 @@ func (s *service) IndexKnowledgeFromPDF(ctx context.Context, id string, input io
 	return knowledge, nil
 }
 
-func ProcessKnowledgeFromPDF(
+// ProcessKnowledgeFromMultiplePDFs processes multiple PDF readers and merges them into a single Knowledge object
+func ProcessKnowledgeFromMultiplePDFs(
 	ctx context.Context,
 	g *genkit.Genkit,
 	id string,
-	input io.Reader,
+	inputs []io.Reader,
 	logger *slog.Logger,
 	config *config.KnowledgeConfig,
 	embedder Embedder,
 ) (*Knowledge, error) {
+	// Create knowledge object
+	knowledge := &Knowledge{
+		ID: id,
+		Metadata: map[string]any{
+			MetadataKeySourceType: SourceTypePDF,
+			"pdf_count":           0,
+			"authors":             make([]string, 0),
+			"subjects":            make([]string, 0),
+		},
+		Documents: make([]*Document, 0),
+	}
+
+	pdfCount := 0
+	allAuthors := make([]string, 0)
+	allSubjects := make([]string, 0)
+	globalPageNumber := 1
+
+	// Process each PDF directly
+	for _, input := range inputs {
+		pdfCount++
+
+		// Process PDF directly to get documents and metadata
+		documents, pdfMetadata, err := ProcessDocumentsFromPDF(ctx, g, input, logger, config, embedder)
+		if err != nil {
+			logger.Warn("Failed to process PDF", "pdf_number", pdfCount, "error", err.Error())
+			continue
+		}
+
+		// Add documents with updated IDs and metadata
+		for _, doc := range documents {
+			// Update document ID to include PDF number and global page number
+			doc.ID = fmt.Sprintf("%s_pdf_%d_page_%d", id, pdfCount, globalPageNumber)
+
+			// Update metadata to include PDF source info
+			if doc.Metadata == nil {
+				doc.Metadata = make(map[string]any)
+			}
+			doc.Metadata["pdf_number"] = pdfCount
+			doc.Metadata["global_page_number"] = globalPageNumber
+			doc.Metadata["original_page_number"] = doc.Metadata["page_number"]
+			doc.Metadata["page_number"] = globalPageNumber
+
+			knowledge.Documents = append(knowledge.Documents, doc)
+			globalPageNumber++
+		}
+
+		// Collect metadata directly
+		if author, ok := pdfMetadata["author"].(string); ok && author != "" {
+			allAuthors = append(allAuthors, author)
+		}
+		if subject, ok := pdfMetadata["subject"].(string); ok && subject != "" {
+			allSubjects = append(allSubjects, subject)
+		}
+
+	}
+
+	if len(knowledge.Documents) == 0 {
+		return nil, errors.Errorf("no valid pages found in any PDF for knowledge %s", id)
+	}
+
+	// Update metadata with collected information
+	knowledge.Metadata["pdf_count"] = pdfCount
+	knowledge.Metadata["total_pages"] = globalPageNumber - 1
+	if len(allAuthors) > 0 {
+		knowledge.Metadata["authors"] = allAuthors
+	}
+	if len(allSubjects) > 0 {
+		knowledge.Metadata["subjects"] = allSubjects
+	}
+
+	logger.Info("Processed multiple PDFs",
+		"pdf_count", pdfCount,
+		"total_pages", len(knowledge.Documents),
+		"knowledge_id", id)
+
+	return knowledge, nil
+}
+
+// ProcessDocumentsFromPDF processes a single PDF and returns documents and metadata separately
+func ProcessDocumentsFromPDF(
+	ctx context.Context,
+	g *genkit.Genkit,
+	input io.Reader,
+	logger *slog.Logger,
+	config *config.KnowledgeConfig,
+	embedder Embedder,
+) ([]*Document, map[string]any, error) {
 	// Read PDF data
 	pdfData, err := io.ReadAll(input)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to read PDF data")
+		return nil, nil, errors.Wrapf(err, "failed to read PDF data")
 	}
 
 	// Open PDF with go-fitz
 	doc, err := fitz.NewFromMemory(pdfData)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to open PDF")
+		return nil, nil, errors.Wrapf(err, "failed to open PDF")
 	}
 	defer doc.Close()
 
 	// Get PDF metadata
 	pdfMetadata := doc.Metadata()
 
-	// Create knowledge object
-	knowledge := &Knowledge{
-		ID: id,
-		Source: Source{
-			Title: stringutils.SanitizeUnicodeString(pdfMetadata["title"]),
-			Type:  SourceTypePDF,
-		},
-		Metadata: map[string]any{
-			"author":   stringutils.SanitizeUnicodeString(pdfMetadata["author"]),
-			"subject":  stringutils.SanitizeUnicodeString(pdfMetadata["subject"]),
-			"keywords": stringutils.SanitizeUnicodeString(pdfMetadata["keywords"]),
-			"creator":  stringutils.SanitizeUnicodeString(pdfMetadata["creator"]),
-			"producer": stringutils.SanitizeUnicodeString(pdfMetadata["producer"]),
-		},
-		Documents: make([]*Document, 0),
+	// Create metadata map
+	metadata := map[string]any{
+		"author":   stringutils.SanitizeUnicodeString(pdfMetadata["author"]),
+		"subject":  stringutils.SanitizeUnicodeString(pdfMetadata["subject"]),
+		"keywords": stringutils.SanitizeUnicodeString(pdfMetadata["keywords"]),
+		"creator":  stringutils.SanitizeUnicodeString(pdfMetadata["creator"]),
+		"producer": stringutils.SanitizeUnicodeString(pdfMetadata["producer"]),
+		"title":    stringutils.SanitizeUnicodeString(pdfMetadata["title"]),
 	}
 
+	documents := make([]*Document, 0)
 	now := time.Now()
 
 	// Process each page
@@ -94,7 +184,7 @@ func ProcessKnowledgeFromPDF(
 		// Use 120 DPI for balance between quality and size
 		img, err := doc.ImageDPI(pageNum, 120)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to render page %d as image", pageNum+1)
+			return nil, nil, errors.Wrapf(err, "failed to render page %d as image", pageNum+1)
 		}
 
 		// Resize image if it's too large to prevent token limit issues
@@ -134,7 +224,7 @@ func ProcessKnowledgeFromPDF(
 		var buf bytes.Buffer
 		// Use JPEG with quality 85 for good balance of quality and size
 		if err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: 85}); err != nil {
-			return nil, errors.Wrapf(err, "failed to convert page %d to JPEG", pageNum+1)
+			return nil, nil, errors.Wrapf(err, "failed to convert page %d to JPEG", pageNum+1)
 		}
 		base64Image := base64.StdEncoding.EncodeToString(buf.Bytes())
 
@@ -144,21 +234,24 @@ func ProcessKnowledgeFromPDF(
 			// Extract text using Vision LLM
 			extractedText, err = ExtractTextWithVisionLLM(ctx, g, base64Image, pageNum+1)
 			if err != nil {
-				return nil, errors.Wrapf(err, "failed to extract text from page %d", pageNum+1)
+				return nil, nil, errors.Wrapf(err, "failed to extract text from page %d", pageNum+1)
 			}
 		case "library":
 			extractedText, err = doc.Text(pageNum)
 			if err != nil {
-				return nil, errors.Wrapf(err, "failed to extract text from page %d", pageNum+1)
+				return nil, nil, errors.Wrapf(err, "failed to extract text from page %d", pageNum+1)
 			}
 			extractedText = stringutils.SanitizeUnicodeString(extractedText)
 		default:
-			return nil, errors.Errorf("invalid PDF extraction method: %s", config.PDFExtractionMethod)
+			return nil, nil, errors.Errorf("invalid PDF extraction method: %s", config.PDFExtractionMethod)
+		}
+
+		if extractedText == "" {
+			continue
 		}
 
 		// Create document for this page
 		document := &Document{
-			ID: fmt.Sprintf("%s_page_%d", id, pageNum+1),
 			Content: Content{
 				Image:    base64Image,
 				MIMEType: "image/jpeg",
@@ -171,17 +264,13 @@ func ProcessKnowledgeFromPDF(
 			},
 		}
 
-		if document.EmbeddingText == "" {
-			continue
-		}
-
-		knowledge.Documents = append(knowledge.Documents, document)
+		documents = append(documents, document)
 	}
 
-	logger.Info("Extracted pages", "time", time.Since(now), "pages", len(knowledge.Documents))
+	logger.Info("Extracted pages", "time", time.Since(now), "pages", len(documents))
 
-	if len(knowledge.Documents) == 0 {
-		return nil, errors.Errorf("no pages found in PDF for knowledge %s", id)
+	if len(documents) == 0 {
+		return nil, nil, errors.Errorf("no pages found in PDF")
 	}
 
 	now = time.Now()
@@ -189,52 +278,52 @@ func ProcessKnowledgeFromPDF(
 	switch config.PDFEmbeddingMethod {
 	case "vision":
 		{
-			images := make([][]byte, 0, len(knowledge.Documents))
-			for _, doc := range knowledge.Documents {
+			images := make([][]byte, 0, len(documents))
+			for _, doc := range documents {
 				img, err := base64.StdEncoding.DecodeString(doc.Content.Image)
 				if err != nil {
-					return nil, errors.Wrapf(err, "failed to decode image")
+					return nil, nil, errors.Wrapf(err, "failed to decode image")
 				}
 				images = append(images, img)
 			}
 			embeddings, err := embedder.EmbedImageFiles(ctx, "image/jpeg", images...)
 			if err != nil {
-				return nil, errors.Wrapf(err, "failed to generate document embeddings")
+				return nil, nil, errors.Wrapf(err, "failed to generate image embeddings - check your API configuration")
 			}
-			if len(embeddings) != len(knowledge.Documents) {
-				return nil, errors.Errorf("embedding count mismatch: got %d, expected %d", len(embeddings), len(knowledge.Documents))
+			if len(embeddings) != len(documents) {
+				return nil, nil, errors.Errorf("embedding count mismatch: got %d, expected %d", len(embeddings), len(documents))
 			}
-			for i := range knowledge.Documents {
-				knowledge.Documents[i].Embeddings = embeddings[i]
+			for i := range documents {
+				documents[i].Embeddings = embeddings[i]
 			}
 		}
 	case "text":
 		{
 			// Generate embeddings for all documents
-			embeddings, err := embedder.EmbedTexts(ctx, EmbeddingTaskTypeDocument, lo.Map(knowledge.Documents, func(d *Document, _ int) string {
+			embeddings, err := embedder.EmbedTexts(ctx, EmbeddingTaskTypeDocument, lo.Map(documents, func(d *Document, _ int) string {
 				return d.EmbeddingText
 			})...)
 			if err != nil {
-				return nil, errors.Wrapf(err, "failed to generate document embeddings")
+				return nil, nil, errors.Wrapf(err, "failed to generate text embeddings - check your API configuration and keys")
 			}
 
-			if len(embeddings) != len(knowledge.Documents) {
-				return nil, errors.Errorf("embedding count mismatch: got %d, expected %d", len(embeddings), len(knowledge.Documents))
+			if len(embeddings) != len(documents) {
+				return nil, nil, errors.Errorf("embedding count mismatch: got %d, expected %d", len(embeddings), len(documents))
 			}
 
 			// Assign embeddings to documents
-			for i := range knowledge.Documents {
+			for i := range documents {
 				emb := embeddings[i]
 				if emb == nil {
 					continue
 				}
-				knowledge.Documents[i].Embeddings = embeddings[i]
+				documents[i].Embeddings = embeddings[i]
 			}
 		}
 	}
 	logger.Info("Generated embeddings", "time", time.Since(now))
 
-	return knowledge, nil
+	return documents, metadata, nil
 }
 
 // ExtractTextWithVisionLLM uses Vision LLM to extract text from an image

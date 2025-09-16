@@ -3,6 +3,7 @@ package agentruntime_test
 import (
 	"bytes"
 	"context"
+	"io"
 	"log/slog"
 	"os"
 	"strings"
@@ -209,6 +210,9 @@ func TestAgentWithRAGAndCustomKnowledge(t *testing.T) {
 	if os.Getenv("ANTHROPIC_API_KEY") == "" {
 		t.Skip("Skipping test because ANTHROPIC_API_KEY is not set")
 	}
+	if os.Getenv("NOMIC_API_KEY") == "" {
+		t.Skip("Skipping test because NOMIC_API_KEY is not set (required for embeddings)")
+	}
 
 	// Create a simple agent with knowledge
 	agent := entity.Agent{
@@ -378,6 +382,9 @@ func TestAgentWithRAGAndPDFKnowledge(t *testing.T) {
 	if os.Getenv("ANTHROPIC_API_KEY") == "" {
 		t.Skip("Skipping test because ANTHROPIC_API_KEY is not set")
 	}
+	if os.Getenv("NOMIC_API_KEY") == "" {
+		t.Skip("Skipping test because NOMIC_API_KEY is not set (required for embeddings)")
+	}
 
 	ctx := context.TODO()
 	pdfFile, err := os.ReadFile("./knowledge/testdata/solana-whitepaper-en.pdf")
@@ -403,7 +410,7 @@ func TestAgentWithRAGAndPDFKnowledge(t *testing.T) {
 	}, knowledgeConfig, logger)
 	require.NoError(t, err)
 
-	if _, err := knowledgeService.IndexKnowledgeFromPDF(ctx, "solana-whitepaper", bytes.NewReader(pdfFile)); err != nil {
+	if _, err := knowledgeService.IndexKnowledgeFromPDF(ctx, "solana-whitepaper", []io.Reader{bytes.NewReader(pdfFile)}); err != nil {
 		t.Fatalf("Failed to index knowledge from PDF: %v", err)
 	}
 

@@ -17,12 +17,9 @@ func TestInMemoryStore_StoreAndRetrieve(t *testing.T) {
 	// Create test knowledge
 	testKnowledge := &knowledge.Knowledge{
 		ID: "test-knowledge-1",
-		Source: knowledge.Source{
-			Title: "Test Source",
-			Type:  knowledge.SourceTypeMap,
-		},
 		Metadata: map[string]any{
-			"test": "metadata",
+			knowledge.MetadataKeySourceType: knowledge.SourceTypeMap,
+			"test":                          "metadata",
 		},
 		Documents: []*knowledge.Document{
 			{
@@ -61,7 +58,7 @@ func TestInMemoryStore_StoreAndRetrieve(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, retrieved)
 	assert.Equal(t, testKnowledge.ID, retrieved.ID)
-	assert.Equal(t, testKnowledge.Source.Title, retrieved.Source.Title)
+	assert.Equal(t, testKnowledge.Metadata[knowledge.MetadataKeySourceType], retrieved.Metadata[knowledge.MetadataKeySourceType])
 	assert.Equal(t, len(testKnowledge.Documents), len(retrieved.Documents))
 	assert.Equal(t, "python", retrieved.Documents[0].Metadata["language"])
 	assert.Equal(t, "javascript", retrieved.Documents[1].Metadata["language"])
